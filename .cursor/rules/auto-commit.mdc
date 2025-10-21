@@ -1,0 +1,40 @@
+---
+alwaysApply: false
+---
+# Auto Conventional Commit
+
+## When to apply
+When the user is about to commit code changes, or when explicitly asked to "generate a commit message".
+
+## Goal
+Generate a Conventional Commit message automatically based on the code diffs.
+
+## Access
+Use the MCP GitHub context to read the current staged changes and file diffs.
+
+## Output format
+Produce a single-line commit message in the format:
+<type>(<scope>): <short title>
+
+<concise explanation of what has been modified and why> 
+<detailed bullet list summarizing the main changes>
+
+Optionally, include a body with a summary of the changes.
+
+## Examples
+- 'feat(api): add endpoint for museum data synchronization
+
+    Introduced a new API endpoint to synchronize museum metadata between the backend and the local cache.
+    - Created `api/museums/sync.py`
+    - Added route `/api/museums/sync` to `routes.py`
+    - Updated validation schema for `MuseumData`
+    - Added unit tests for the new endpoint'
+
+-'fix(audio): correct voice output delay in playback'
+- 'refactor(core): simplify chunking logic for PDF preprocessing'
+
+## Steps
+1. Inspect the current git diff using the MCP GitHub context.
+2. Identify what type of change this is (feature, fix, refactor, docs, chore, etc.).
+3. Derive a concise, imperative summary describing what was changed.
+4. Return only the commit message.
