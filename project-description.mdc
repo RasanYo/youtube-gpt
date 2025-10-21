@@ -1,0 +1,97 @@
+---
+alwaysApply: true
+description: Project overview and context for intelligent YouTube search application
+---
+
+# YouTube-GPT - Intelligent YouTube Search Application
+
+## Project Overview
+This is a **full-stack AI-powered YouTube search application** that helps users instantly find information hidden inside hours of video content. Users can add individual videos or full channels to create a searchable personal knowledge base, search across multiple videos, ask AI questions, and get grounded answers with citations and timestamps.
+
+## User Goals & Jobs-to-be-Done
+Users who watch YouTube videos or follow YouTube channels want to:
+- **Find specific information quickly** in their videos
+- **Turn knowledge into shareable content** (LinkedIn posts, summaries, outlines)
+- Get **trustworthy and grounded** answers with sources (citations, timestamps)
+
+**Example Use Cases:**
+1. "What are the three pricing strategies mentioned in this video?"
+2. "Summarize the learnings of the selected videos into a LinkedIn post."
+3. "Find every mention of 'maintenance cost idea' in my selected videos and their timestamp"
+4. "Find all videos talking about Claude code, and do a LinkedIn post about best practices using bullet points"
+
+## Core Features
+
+### Three-Column ChatGPT-Style Interface
+- **Left Column**: Conversation history with profile section at bottom
+- **Center Column**: Real-time Chat and Compose mode for generating structured outputs
+- **Right Column**: Knowledge Base (KB) Explorer with video list, search, filtering, and content input
+
+### Authentication & Profile
+- User authentication (magic link or OAuth via Supabase)
+- Profile section with user info, logout, and dark/light mode toggle (persisted)
+
+### Knowledge Base Explorer (Right Column)
+- Input to paste YouTube links (video or channel)
+- Auto-detect type: single video or channel (ingests latest 10 videos)
+- Show ingestion status (queued → processing → ready / failed)
+- Retry failed ingestions
+- List videos with thumbnail, title, and metadata
+- Search and filter capabilities
+- Multi-select videos with checkboxes
+- Toolbar for "Use as Context" / "Clear Selection"
+
+### Scope-Aware Chat (Center Column)
+- Two modes: All videos (default) or Subset (selected videos)
+- Scope bar with chips for each scoped video and "Reset to All" button
+- Retrieval searches only in scoped videos
+- Streamed responses with citations (video title + timestamp)
+- Clickable citations open video at timestamp
+- Tool usage notifications (e.g., when RAG tool is used)
+
+### Conversation History (Left Column)
+- List past conversations (auto-generated or editable titles)
+- Click to restore conversation and its scope
+- "New Chat" button
+
+### Observability & Metrics
+- Display total videos, total conversations, last ingestion time, recent failures
+- Clear empty/error states with user feedback
+
+## Technology Stack (Required)
+- **Framework**: Next.js (App Router)
+- **Backend**: Server Actions
+- **Database & Auth**: Supabase (Auth, DB, Storage, Realtime, RLS)
+- **ORM**: Prisma
+- **Deployment**: Vercel
+- **UI**: shadcn/ui + Tailwind CSS
+- **Background Jobs**: Inngest
+- **Embeddings/Vector Search**: ZeroEntropy
+- **LLM**: Claude (recommended)
+- **Real-time**: SSE or Supabase Realtime
+
+## Architecture Approach
+- **Full-stack vertical slices** built end-to-end
+- **Design quality, reliability, and scalability** as core principles
+- **Background job processing** for video ingestion and transcription
+- **Vector embeddings** for semantic search across video content
+- **RAG (Retrieval-Augmented Generation)** for grounded AI responses
+- **Row-Level Security (RLS)** for multi-tenant data isolation
+
+## Design Expectations
+- Use shadcn/ui and Tailwind with thoughtful spacing, typography, and visual hierarchy
+- Clear states: empty, loading, error, success
+- Responsive layout with accessible interactions
+- Keyboard-friendly chat input
+- Polished scope chips, selection toolbar, and profile section
+- Video/channel input feels integrated into KB Explorer (not separate screen)
+
+## Key Implementation Details
+- **YouTube Transcription**: Use `youtube-transcript` npm package
+- **Citations**: Include video title + timestamp for all AI responses
+- **Scope Management**: Track and restore conversation scope across sessions
+- **Ingestion Pipeline**: Queue → Process → Embed → Index workflow
+- **Error Handling**: Retry logic for failed ingestions with user feedback
+
+## Target Users
+Content creators, researchers, students, and professionals who consume YouTube content regularly and need to efficiently extract, search, and repurpose information from video libraries.
