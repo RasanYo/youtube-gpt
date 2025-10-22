@@ -1,39 +1,39 @@
-import { FileText, Folder, Youtube } from "lucide-react";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { FileText, Folder, Youtube } from 'lucide-react'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 
 export const KnowledgeBase = () => {
   const documents = [
     {
       id: 1,
-      title: "YouTube Analytics Guide 2024",
-      type: "document",
+      title: 'YouTube Analytics Guide 2024',
+      type: 'document',
       pages: 24,
-      date: "2 days ago",
+      date: '2 days ago',
     },
     {
       id: 2,
-      title: "Content Strategy Template",
-      type: "document",
+      title: 'Content Strategy Template',
+      type: 'document',
       pages: 12,
-      date: "1 week ago",
+      date: '1 week ago',
     },
     {
       id: 3,
-      title: "SEO Best Practices",
-      type: "video",
-      duration: "15:30",
-      date: "2 weeks ago",
+      title: 'SEO Best Practices',
+      type: 'video',
+      duration: '15:30',
+      date: '2 weeks ago',
     },
     {
       id: 4,
-      title: "Audience Growth Tactics",
-      type: "document",
+      title: 'Audience Growth Tactics',
+      type: 'document',
       pages: 18,
-      date: "3 weeks ago",
+      date: '3 weeks ago',
     },
-  ];
+  ]
 
   return (
     <div className="flex h-screen w-96 flex-col border-l bg-card">
@@ -56,7 +56,7 @@ export const KnowledgeBase = () => {
             >
               <div className="flex items-start gap-3 w-full">
                 <div className="flex-shrink-0 mt-0.5">
-                  {doc.type === "video" ? (
+                  {doc.type === 'video' ? (
                     <Youtube className="h-5 w-5 text-primary" />
                   ) : (
                     <FileText className="h-5 w-5 text-muted-foreground" />
@@ -68,7 +68,7 @@ export const KnowledgeBase = () => {
                   </div>
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     <Badge variant="secondary" className="text-xs px-1.5 py-0">
-                      {doc.type === "video"
+                      {doc.type === 'video'
                         ? doc.duration
                         : `${doc.pages} pages`}
                     </Badge>
@@ -89,5 +89,5 @@ export const KnowledgeBase = () => {
         </Button>
       </div>
     </div>
-  );
-};
+  )
+}

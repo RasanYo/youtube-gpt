@@ -18,17 +18,20 @@ YouTube GPT helps users instantly find information hidden inside hours of video 
 ## Tech Stack
 
 ### Frontend
+
 - [Next.js 14](https://nextjs.org/) with App Router
 - [React 18](https://react.dev/) + [TypeScript](https://www.typescriptlang.org/)
 - [Tailwind CSS](https://tailwindcss.com/) + [shadcn/ui](https://ui.shadcn.com/)
 
 ### Backend
+
 - [Next.js Server Actions](https://nextjs.org/docs/app/building-your-application/data-fetching/server-actions-and-mutations)
 - [Supabase](https://supabase.com/) (Auth, PostgreSQL, Realtime, RLS)
 - [Prisma](https://www.prisma.io/) ORM
 - [Vercel](https://vercel.com/) deployment
 
 ### AI & Processing
+
 - [Anthropic Claude](https://www.anthropic.com/claude) - LLM for chat
 - [ZeroEntropy](https://zeroentropy.dev/) - Vector embeddings & search
 - [Inngest](https://www.inngest.com/) - Background jobs
@@ -45,12 +48,14 @@ YouTube GPT helps users instantly find information hidden inside hours of video 
 ### Installation
 
 1. **Clone the repository**
+
    ```bash
    git clone https://github.com/your-username/youtube-gpt.git
    cd youtube-gpt
    ```
 
 2. **Install dependencies**
+
    ```bash
    npm install
    ```
@@ -58,22 +63,39 @@ YouTube GPT helps users instantly find information hidden inside hours of video 
 3. **Set up environment variables**
 
    Copy the example environment file and configure your credentials:
+
    ```bash
    cp .env.example .env.local
    ```
 
    Open `.env.local` and fill in your Supabase credentials:
+
    ```bash
    VITE_SUPABASE_URL=https://your-project-id.supabase.co
    VITE_SUPABASE_ANON_KEY=your-anon-key-here
+   DATABASE_URL=postgresql://postgres:[PASSWORD]@db.[PROJECT-ID].supabase.co:5432/postgres?pgbouncer=true
    ```
 
    **How to get Supabase credentials:**
    - Go to [supabase.com](https://supabase.com) and create a new project
    - Navigate to Project Settings (gear icon) > API
    - Copy the **Project URL** and **anon/public key**
+   - Navigate to Project Settings > Database > Connection String
+   - Select "Transaction" mode and copy the connection string
+   - Replace `[YOUR-PASSWORD]` with your database password
 
-4. **Start the development server**
+4. **Set up the database**
+
+   Run Prisma migrations to create database tables:
+
+   ```bash
+   npm run db:migrate
+   ```
+
+   This will create the User, Video, and Conversation tables in your Supabase PostgreSQL database.
+
+5. **Start the development server**
+
    ```bash
    npm run dev
    ```
@@ -86,6 +108,7 @@ YouTube GPT helps users instantly find information hidden inside hours of video 
 - [ ] Supabase account created
 - [ ] Environment variables configured in `.env.local`
 - [ ] Dependencies installed (`npm install`)
+- [ ] Database migration run (`npm run db:migrate`)
 - [ ] Dev server running (`npm run dev`)
 - [ ] App accessible at `http://localhost:8080`
 
@@ -128,27 +151,40 @@ YouTube GPT helps users instantly find information hidden inside hours of video 
 ### Project Structure
 
 ```
-src/
-├── components/          # React components
-│   ├── ChatArea.tsx
-│   ├── ConversationSidebar.tsx
-│   ├── KnowledgeBase.tsx
-│   ├── ThemeToggle.tsx
-│   └── ui/             # shadcn/ui components
-├── contexts/           # React Context providers
-│   └── AuthContext.tsx
-├── hooks/              # Custom React hooks
-│   ├── use-mobile.tsx
-│   └── use-toast.ts
-├── lib/                # Utilities
-│   └── utils.ts
-├── pages/              # Route-level components
-│   ├── Index.tsx
-│   ├── Login.tsx
-│   └── NotFound.tsx
-├── index.css
-├── main.tsx
-└── vite-env.d.ts
+youtube-gpt/
+├── prisma/
+│   ├── migrations/       # Version-controlled database migrations
+│   └── schema.prisma    # Database schema definition
+├── src/
+│   ├── components/      # React components
+│   │   ├── ChatArea.tsx
+│   │   ├── ConversationSidebar.tsx
+│   │   ├── KnowledgeBase.tsx
+│   │   ├── ThemeToggle.tsx
+│   │   └── ui/         # shadcn/ui components
+│   ├── contexts/       # React Context providers
+│   │   └── AuthContext.tsx
+│   ├── hooks/          # Custom React hooks
+│   │   ├── use-mobile.tsx
+│   │   └── use-toast.ts
+│   ├── lib/            # Utilities & integrations
+│   │   ├── prisma.ts   # Prisma Client singleton
+│   │   └── utils.ts
+│   ├── pages/          # Route-level components
+│   │   ├── Index.tsx
+│   │   ├── Login.tsx
+│   │   └── NotFound.tsx
+│   ├── index.css
+│   ├── main.tsx
+│   └── vite-env.d.ts
+├── tests/              # Test files
+│   ├── setup/
+│   └── unit/
+├── .env.local          # Local environment variables (not committed)
+├── .env.example        # Template for environment variables
+├── package.json
+├── tsconfig.json
+└── vite.config.ts
 ```
 
 ## Configuration
@@ -162,10 +198,10 @@ The application uses the following environment variables (configured in `.env.lo
 VITE_SUPABASE_URL=https://your-project-id.supabase.co
 VITE_SUPABASE_ANON_KEY=your-anon-key-here
 
-# Future Configuration (To be added in later steps)
-# Database (Prisma)
-# DATABASE_URL=postgresql://...
+# Database (Prisma) - Required
+DATABASE_URL=postgresql://postgres:[PASSWORD]@db.[PROJECT-ID].supabase.co:5432/postgres?pgbouncer=true
 
+# Future Configuration (To be added in later steps)
 # AI Services
 # ANTHROPIC_API_KEY=
 # ZEROENTROPY_API_KEY=
@@ -176,33 +212,118 @@ VITE_SUPABASE_ANON_KEY=your-anon-key-here
 ```
 
 **Important Notes:**
+
 - All client-side environment variables must use the `VITE_` prefix to be accessible in the browser
-- Never commit `.env.local` to version control (it's included in `.gitignore`)
+- `DATABASE_URL` uses Transaction mode for Prisma compatibility with Supabase
+- Never commit `.env.local` or `.env` to version control (both are in `.gitignore`)
 - Use `.env.example` as a template for setting up new environments
 
 ### Supabase Setup
 
 The application uses Supabase for:
+
 - **Authentication**: Magic link email authentication with session management
 - **Database**: PostgreSQL database with Row Level Security (RLS)
 - **Real-time**: Live updates for video ingestion status (coming in Step 2)
 
 **Configuration Details:**
+
 - **PKCE Flow**: Enhanced security using Proof Key for Code Exchange
 - **Session Persistence**: Auth tokens stored in localStorage
 - **Auto Refresh**: Tokens automatically refresh before expiration
 - **Session Detection**: Handles magic link callback URLs automatically
 
+### Database Setup (Prisma)
+
+The application uses Prisma ORM for type-safe database access with PostgreSQL (via Supabase).
+
+**Database Schema:**
+
+- **User**: Stores user profiles synced with Supabase Auth
+- **Video**: Tracks ingested YouTube videos with processing status (QUEUED, PROCESSING, READY, FAILED)
+- **Conversation**: Represents chat sessions between users and AI
+
+**Prisma Commands:**
+
+```bash
+# Run migrations (apply schema changes to database)
+npm run db:migrate
+
+# Open Prisma Studio (visual database editor)
+npm run db:studio
+
+# Push schema changes without creating migration files
+npm run db:push
+
+# Reset database (⚠️ deletes all data)
+npm run db:reset
+
+# Generate Prisma Client types (runs automatically after install)
+npx prisma generate
+```
+
+**Key Features:**
+
+- **Type Safety**: Full TypeScript types generated from schema
+- **Migrations**: Version-controlled schema changes
+- **Relationships**: Foreign keys with cascade delete
+- **Indexes**: Optimized queries on userId and status fields
+- **Singleton Pattern**: Prevents connection pool exhaustion in development
+
+**Usage Example:**
+
+```typescript
+import { prisma } from '@/lib/prisma'
+
+// Create a user
+const user = await prisma.user.create({
+  data: { email: 'user@example.com', name: 'John Doe' },
+})
+
+// Query videos with user relation
+const videos = await prisma.video.findMany({
+  where: { userId: user.id, status: 'READY' },
+  include: { user: true },
+})
+```
+
+**Troubleshooting:**
+
+If you encounter connection issues:
+
+1. Verify `DATABASE_URL` in `.env.local` is correct
+2. Ensure connection string uses Transaction mode (`?pgbouncer=true`)
+3. Check Supabase project is active (not paused)
+4. Confirm database password is correct (no special characters need escaping)
+
 ## Development
 
 ```bash
-npm run dev          # Start dev server
-npm run build        # Build for production
-npm run lint         # Run linting
-npx tsc --noEmit     # Type check
+# Development server
+npm run dev          # Start Vite dev server (http://localhost:8080)
 
-npx prisma studio    # Open Prisma Studio (after Issue #7)
-npx inngest-cli dev  # Start Inngest dev server (future)
+# Building
+npm run build        # Build for production
+npm run build:dev    # Build in development mode
+
+# Code quality
+npm run lint         # Run ESLint
+npx tsc --noEmit     # Type check without emitting files
+
+# Testing
+npm run test         # Run tests in watch mode
+npm run test:ui      # Run tests with UI
+npm run test:run     # Run tests once
+npm run test:coverage # Run tests with coverage
+
+# Database
+npm run db:studio    # Open Prisma Studio (visual database editor)
+npm run db:migrate   # Create and apply migrations
+npm run db:push      # Push schema without migrations
+npm run db:reset     # Reset database (⚠️ deletes all data)
+
+# Future tools
+npx inngest-cli dev  # Start Inngest dev server (Step 3+)
 ```
 
 ## Retrieval Strategy

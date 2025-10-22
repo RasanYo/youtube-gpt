@@ -26,6 +26,7 @@ tests/
 Test individual components, functions, and modules in isolation.
 
 **Current Coverage:**
+
 - **Auth Helper Functions** (`lib/auth.test.ts`): Tests for `signInWithMagicLink`, `signOut`, `getCurrentUser`, `getCurrentSession`
 - **Supabase Client** (`lib/client.test.ts`): Tests for client initialization and configuration
 - **AuthContext** (`contexts/AuthContext.test.tsx`): Tests for authentication state management
@@ -38,26 +39,31 @@ Test interactions between multiple components and services. (To be added in futu
 ## 🚀 Running Tests
 
 ### All Tests (Watch Mode)
+
 ```bash
 npm test
 ```
 
 ### Run Once (CI Mode)
+
 ```bash
 npm run test:run
 ```
 
 ### With UI Dashboard
+
 ```bash
 npm run test:ui
 ```
 
 ### With Coverage Report
+
 ```bash
 npm run test:coverage
 ```
 
 ### Watch Mode
+
 ```bash
 npm run test:watch
 ```
@@ -65,6 +71,7 @@ npm run test:watch
 ## 📊 Coverage Goals
 
 Based on CLAUDE.md guidelines, we target **80%+ code coverage** with focus on:
+
 - ✅ Authentication flow (login, logout, session management)
 - ✅ Auth helper functions
 - ✅ Protected route redirects
@@ -142,6 +149,7 @@ describe('MyComponent', () => {
 ## 🎯 Current Test Coverage
 
 ### Authentication Module
+
 - ✅ **Auth Helpers** (100% coverage)
   - Magic link sending
   - Sign out
@@ -162,6 +170,7 @@ describe('MyComponent', () => {
   - Configuration (PKCE flow)
 
 ### Protected Routes
+
 - ✅ **Index Page** (100% coverage)
   - Loading states
   - Redirect when unauthenticated
@@ -181,25 +190,31 @@ describe('MyComponent', () => {
 ## 🐛 Debugging Tests
 
 ### Run specific test file
+
 ```bash
 npm test auth.test.ts
 ```
 
 ### Run tests matching pattern
+
 ```bash
 npm test AuthContext
 ```
 
 ### Debug with UI
+
 ```bash
 npm run test:ui
 ```
+
 Then click on any test to see detailed output and logs.
 
 ### View coverage details
+
 ```bash
 npm run test:coverage
 ```
+
 Open `coverage/index.html` in browser for detailed coverage report.
 
 ## 📚 Resources

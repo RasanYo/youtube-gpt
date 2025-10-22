@@ -1,59 +1,65 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { useAuth } from "@/contexts/AuthContext";
-import { useToast } from "@/hooks/use-toast";
-import { Mail, Sparkles } from "lucide-react";
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card'
+import { useAuth } from '@/contexts/AuthContext'
+import { useToast } from '@/hooks/use-toast'
+import { Mail, Sparkles } from 'lucide-react'
 
 const Login = () => {
-  const [email, setEmail] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [emailSent, setEmailSent] = useState(false);
-  const navigate = useNavigate();
-  const { login } = useAuth();
-  const { toast } = useToast();
+  const [email, setEmail] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
+  const [emailSent, setEmailSent] = useState(false)
+  const navigate = useNavigate()
+  const { login } = useAuth()
+  const { toast } = useToast()
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
+    e.preventDefault()
+
     if (!email) {
       toast({
-        title: "Email required",
-        description: "Please enter your email address",
-        variant: "destructive",
-      });
-      return;
+        title: 'Email required',
+        description: 'Please enter your email address',
+        variant: 'destructive',
+      })
+      return
     }
 
-    setIsLoading(true);
+    setIsLoading(true)
 
     try {
       // Simulate sending magic link
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      setEmailSent(true);
-      
+      await new Promise((resolve) => setTimeout(resolve, 1000))
+      setEmailSent(true)
+
       toast({
-        title: "Magic link sent!",
-        description: "Check your email for the login link",
-      });
+        title: 'Magic link sent!',
+        description: 'Check your email for the login link',
+      })
 
       // Auto-login after 2 seconds for demo
       setTimeout(async () => {
-        await login(email);
-        navigate("/");
-      }, 2000);
+        await login(email)
+        navigate('/')
+      }, 2000)
     } catch (error) {
       toast({
-        title: "Error",
-        description: "Failed to send magic link",
-        variant: "destructive",
-      });
+        title: 'Error',
+        description: 'Failed to send magic link',
+        variant: 'destructive',
+      })
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
     }
-  };
+  }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
@@ -90,7 +96,7 @@ const Login = () => {
                 </div>
               </div>
               <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? "Sending magic link..." : "Send magic link"}
+                {isLoading ? 'Sending magic link...' : 'Send magic link'}
               </Button>
               <p className="text-xs text-center text-muted-foreground">
                 We'll send you a magic link to sign in without a password
@@ -117,7 +123,7 @@ const Login = () => {
         </CardContent>
       </Card>
     </div>
-  );
-};
+  )
+}
 
-export default Login;
+export default Login

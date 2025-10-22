@@ -1,0 +1,90 @@
+// This is your Prisma schema file for YouTube GPT
+// Learn more: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// ENUMS
+// ============================================
+
+/// Video processing status enum
+/// - QUEUED: Video is queued for ingestion
+/// - PROCESSING: Video is currently being processed (transcript extraction, embedding generation)
+/// - READY: Video is ready for search and AI queries
+/// - FAILED: Video processing failed (check error field)
+enum VideoStatus {
+  QUEUED
+  PROCESSING
+  READY
+  FAILED
+}
+
+// ============================================
+// MODELS
+// ============================================
+
+/// User model - represents authenticated users
+/// Synced with Supabase Auth (id matches auth.users.id)
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String?
+  avatarUrl String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  videos        Video[]
+  conversations Conversation[]
+
+  @@map("users")
+}
+
+/// Video model - represents ingested YouTube videos
+/// Each video belongs to a user and tracks processing status
+model Video {
+  id           String      @id @default(uuid())
+  userId       String
+  youtubeId    String      @unique
+  title        String
+  thumbnailUrl String?
+  channelName  String
+  duration     Int // Duration in seconds
+  status       VideoStatus @default(QUEUED)
+  error        String? // Error message if status is FAILED
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Indexes for query optimization
+  @@index([userId])
+  @@index([status])
+  @@map("videos")
+}
+
+/// Conversation model - represents chat sessions
+/// Each conversation belongs to a user and contains multiple messages
+/// TODO: Add Message model in Phase 2 for chat history
+model Conversation {
+  id        String   @id @default(uuid())
+  userId    String
+  title     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Indexes for query optimization
+  @@index([userId])
+  @@map("conversations")
+}

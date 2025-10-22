@@ -7,6 +7,7 @@ This document contains actionable GitHub issues derived from the Bravi YouTube A
 **Goal**: Build an intelligent YouTube search app that helps users instantly find information hidden inside hours of video content.
 
 **Tech Stack**:
+
 - Frontend: Next.js 14 (App Router), React 18, TypeScript, Tailwind CSS, shadcn/ui
 - Backend: Next.js Server Actions, Supabase (Auth + PostgreSQL), Prisma ORM
 - AI Services: Anthropic Claude, ZeroEntropy (embeddings), Inngest (background jobs)
@@ -101,13 +102,13 @@ Configure Tailwind CSS with dark mode support and set up CSS variables for themi
     theme: {
       extend: {
         colors: {
-          border: "hsl(var(--border))",
-          background: "hsl(var(--background))",
-          foreground: "hsl(var(--foreground))",
+          border: 'hsl(var(--border))',
+          background: 'hsl(var(--background))',
+          foreground: 'hsl(var(--foreground))',
           // ... shadcn colors
-        }
-      }
-    }
+        },
+      },
+    },
   }
   ```
 - [x] Add CSS variables in `app/globals.css` for both light and dark themes
@@ -236,10 +237,11 @@ Set up Supabase as the backend service for authentication and PostgreSQL databas
 - [ ] Create `lib/supabase/client.ts` for client-side usage:
   ```typescript
   import { createBrowserClient } from '@supabase/ssr'
-  export const createClient = () => createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
+  export const createClient = () =>
+    createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    )
   ```
 - [ ] Create `lib/supabase/server.ts` for server-side usage with cookie helpers for Server Actions & Route Handlers
 - [ ] Create `lib/supabase/middleware.ts` for auth refresh in middleware
@@ -327,6 +329,7 @@ Set up Prisma ORM with PostgreSQL (via Supabase), define the initial database sc
   npx prisma init
   ```
 - [ ] Configure `prisma/schema.prisma` with Supabase PostgreSQL connection:
+
   ```prisma
   datasource db {
     provider = "postgresql"
@@ -337,6 +340,7 @@ Set up Prisma ORM with PostgreSQL (via Supabase), define the initial database sc
     provider = "prisma-client-js"
   }
   ```
+
 - [ ] Define Phase 1 schema with models:
   - `User` (id, email, name, avatarUrl, createdAt, updatedAt, videos, conversations)
   - `Video` (id, userId, youtubeId, title, thumbnailUrl, channelName, duration, status, error, createdAt, updatedAt, user)
@@ -382,7 +386,8 @@ Create comprehensive environment variable configuration files for local developm
 
 #### ✅ Acceptance Criteria
 
-- [ ] Create `.env.local` with all required variables:
+- [x] Create `.env.local` with all required variables:
+
   ```bash
   # Supabase
   NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
@@ -391,16 +396,11 @@ Create comprehensive environment variable configuration files for local developm
 
   # Database
   DATABASE_URL=your_postgres_connection_string
-
-  # Placeholders for later steps
-  ANTHROPIC_API_KEY=
-  ZEROENTROPY_API_KEY=
-  INNGEST_EVENT_KEY=
-  INNGEST_SIGNING_KEY=
   ```
-- [ ] Create `.env.example` (without sensitive values) as a template for other developers
-- [ ] Verify `.env*` files are included in `.gitignore`
-- [ ] Document all environment variables with descriptions
+
+- [x] Create `.env.example` (without sensitive values) as a template for other developers
+- [x] Verify `.env*` files are included in `.gitignore`
+- [x] Document all environment variables with descriptions
 
 #### 🔗 Related
 
@@ -426,22 +426,22 @@ Set up development infrastructure including health check endpoint, ESLint config
 
 #### ✅ Acceptance Criteria
 
-- [ ] Create health check route `app/api/health/route.ts`:
+- [x] Create health check route `app/api/health/route.ts`:
   ```typescript
   export async function GET() {
     return Response.json({ status: 'ok', timestamp: new Date().toISOString() })
   }
   ```
-- [ ] Install and configure ESLint:
+- [x] Install and configure ESLint:
   ```bash
   npm install -D eslint-config-prettier
   ```
-- [ ] Install and configure Prettier:
+- [x] Install and configure Prettier:
   ```bash
   npm install -D prettier
   echo '{"semi": false, "singleQuote": true}' > .prettierrc
   ```
-- [ ] Add useful scripts to `package.json`:
+- [x] Add useful scripts to `package.json`:
   ```json
   "scripts": {
     "db:push": "prisma db push",
@@ -450,7 +450,7 @@ Set up development infrastructure including health check endpoint, ESLint config
     "lint": "next lint"
   }
   ```
-- [ ] Test all scripts to ensure they work correctly
+- [x] Test all scripts to ensure they work correctly
 
 #### 🔗 Related
 
@@ -546,6 +546,7 @@ After completing all issues in Step 1, you should have:
 ## 🚀 Next Steps
 
 Once Step 1 is complete, proceed to **Step 2 – YouTube Ingestion Foundations** which includes:
+
 - YouTube Data API integration
 - Inngest background jobs setup
 - Video detection and metadata extraction

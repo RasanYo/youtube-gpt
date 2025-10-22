@@ -33,7 +33,7 @@ You are building for a user who:
 **Example jobs-to-be-done:**
 
 1. “What are the three pricing strategies mentioned in this video?”
-2. “Summarize the learnings of the selected videos from  into a LinkedIn post.”
+2. “Summarize the learnings of the selected videos from into a LinkedIn post.”
 3. “Find every mention of ‘maintenance cost idea’ in my selected videos and their timestamp”
 4. “Can you find all the videos talking about Claude code, and do a linkedin post about the best practices using bullet points”
 
@@ -44,8 +44,8 @@ A **three-column web app** (ChatGPT-style):
 - **Left column:** Conversation history. Profile section at bottom.
 - **Center:** Real-time Chat and a Compose mode for generating structured outputs.
 - **Right column:** Knowledge Base (KB) Explorer with:
-    - Video list, search, filtering, and selection
-    - **Add YouTube content input directly in this column** (video or channel)
+  - Video list, search, filtering, and selection
+  - **Add YouTube content input directly in this column** (video or channel)
 
 The user can:
 
@@ -56,11 +56,8 @@ The user can:
 - Chat with an AI that only searches within the current context.
 - Generate content (LinkedIn posts, summaries, outlines) from the scoped videos.
 - Browse conversation history, restore scope, and manage their profile/theme.
-    
-    ![This is an example of what we built for Bravi’s clients, where they can upload documents to the knowledge base, and have a chat to interact with the documents. You’ll be building the same but instead of docs it will be youtube videos.](attachment:f48dbcff-a14e-4231-8780-cb2ddb3f13fa:Screenshot_2025-08-10_at_11.52.51.png)
-    
-    This is an example of what we built for Bravi’s clients, where they can upload documents to the knowledge base, and have a chat to interact with the documents. You’ll be building the same but instead of docs it will be youtube videos.
-    
+  ![This is an example of what we built for Bravi’s clients, where they can upload documents to the knowledge base, and have a chat to interact with the documents. You’ll be building the same but instead of docs it will be youtube videos.](attachment:f48dbcff-a14e-4231-8780-cb2ddb3f13fa:Screenshot_2025-08-10_at_11.52.51.png)
+  This is an example of what we built for Bravi’s clients, where they can upload documents to the knowledge base, and have a chat to interact with the documents. You’ll be building the same but instead of docs it will be youtube videos.
 
 ## **4. ⚠️ Required Technologies**
 
@@ -88,16 +85,16 @@ It’s important that you stick to this stack!
 
 - Simple User authentication (magic link or OAuth).
 - Profile section in left column bottom:
-    - User info (name, email, avatar if available)
-    - Logout button
-    - Dark/light mode toggle (persisted)
+  - User info (name, email, avatar if available)
+  - Logout button
+  - Dark/light mode toggle (persisted)
 
 ### **Knowledge Base Explorer (Right Column)**
 
 - **Top of column:** input to paste a YouTube link (video or channel).
 - Detect type:
-    - Video → ingest that video.
-    - Channel → ingest latest 10 videos from that channel.
+  - Video → ingest that video.
+  - Channel → ingest latest 10 videos from that channel.
 - Show ingestion status (queued → processing → ready / failed) next to each video.
 - Allow retry for failed ingestions.
 - List videos with thumbnail, title, and key metadata.
@@ -108,8 +105,8 @@ It’s important that you stick to this stack!
 ### **Scope-Aware Chat (Center Column)**
 
 - Modes:
-    1. **All videos** (default)
-    2. **Subset** (one or several selected)
+  1. **All videos** (default)
+  2. **Subset** (one or several selected)
 - Scope bar with chips for each scoped video and a “Reset to All” button.
 - Retrieval only searches in scoped videos.
 - Streamed responses with **citations** (video title + timestamp).
@@ -139,7 +136,7 @@ It’s important that you stick to this stack!
 <aside>
 💡
 
-The user experience will be super important for this test! 
+The user experience will be super important for this test!
 
 </aside>
 
@@ -163,19 +160,19 @@ You are expected to:
 
 1. **Deployed app** on Vercel (live URL).
 2. **GitHub repo** with:
-    - `README.md` including:
-        - Screenshots/GIFs
-        - Setup instructions
-        - Architecture diagram
-        - Design decisions & trade-offs
-        - Retrieval/scoping approach
-        - Known limitations & next steps
-    - `.env.example`
+   - `README.md` including:
+     - Screenshots/GIFs
+     - Setup instructions
+     - Architecture diagram
+     - Design decisions & trade-offs
+     - Retrieval/scoping approach
+     - Known limitations & next steps
+   - `.env.example`
 3. **Loom video** (≤5 min) demo showing:
-    - Adding a channel (auto-ingest 10 videos) + a single video via right column input
-    - Multi-select scope in KB Explorer and asking a scoped question
-    - Restoring scope from conversation history
-    - Profile section (theme toggle, logout)
+   - Adding a channel (auto-ingest 10 videos) + a single video via right column input
+   - Multi-select scope in KB Explorer and asking a scoped question
+   - Restoring scope from conversation history
+   - Profile section (theme toggle, logout)
 4. A call with Pierre-Habté to discuss the process, improvements etc
 
 ## **9. Evaluation Criteria**

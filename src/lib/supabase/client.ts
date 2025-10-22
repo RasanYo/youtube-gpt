@@ -24,16 +24,16 @@
  * ```
  */
 
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
 if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error(
     'Missing Supabase environment variables. ' +
-    'Please ensure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are set in .env.local'
-  );
+      'Please ensure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are set in .env.local',
+  )
 }
 
 /**
@@ -52,16 +52,16 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     detectSessionInUrl: true,
     flowType: 'pkce',
   },
-});
+})
 
 /**
  * Database type - will be replaced with Prisma-generated types in Issue #7
  * For now using 'any' as placeholder until schema is defined
  */
-export type Database = any;
+export type Database = any
 
 /**
  * Type helper for the Supabase client instance
  * Use this when you need to type-hint the client in function parameters
  */
-export type SupabaseClient = typeof supabase;
+export type SupabaseClient = typeof supabase
