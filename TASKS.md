@@ -1,218 +1,264 @@
-# Implementation Plan: Issue #11 - Infrastructure & Testing
+# Feature Implementation Plan: Inngest Background Job Processing
+
+**Issue**: #19 - feature/inngest-setup
+**Priority**: High
+**Estimated Time**: ~15 minutes
+**Status**: In Progress
 
 ---
 
 ## >� Context about Project
 
-**YouTube GPT** is an intelligent video knowledge base application that transforms hours of YouTube content into an instantly searchable, AI-powered system. The platform allows users to ingest individual videos or entire YouTube channels (latest 10 videos), search across their personal video library, ask AI questions with grounded answers including citations and timestamps, and generate content from selected videos.
+YouTube GPT is an AI-powered knowledge base platform that transforms hours of YouTube video content into an instantly searchable, queryable library. Users can add individual videos or entire YouTube channels (up to 10 latest videos) to their personal knowledge base, then use AI to search, ask questions, and generate content based on that video library. The platform provides grounded answers with citations and exact timestamps, making it easy to reference specific moments in videos.
 
-The tech stack consists of a **React 18 + TypeScript** frontend built with **Vite**, styled with **Tailwind CSS** and **shadcn/ui** components. The backend uses **Supabase** for authentication and **PostgreSQL** database, with **Prisma ORM** for type-safe database access. The application features a three-column layout: left sidebar for conversation history, center area for AI chat, and right sidebar for knowledge base management.
+The tech stack includes React 18 + TypeScript + Vite on the frontend, Supabase for authentication and PostgreSQL database with real-time capabilities, and Prisma ORM for type-safe database access. The application deploys to Vercel and follows a mobile-first, three-column responsive layout (conversation sidebar, chat area, knowledge base explorer).
 
-The project is currently in **Step 1 (Project Bootstrap & Skeleton Deployment)** phase, where foundational infrastructure, authentication, database, and UI layout have been established. The application is built for the Bravi Founding Engineer technical assessment and follows strict code quality guidelines defined in CLAUDE.md, emphasizing KISS principles, YAGNI, and React best practices with comprehensive testing.
+Currently, the project is in **Step 2 of development** (YouTube Ingestion Foundations), building out the backend infrastructure to ingest and process YouTube videos asynchronously. Step 1 (authentication, database setup, deployment) is complete. The system needs background job processing to handle video ingestion (fetching metadata, extracting transcripts, generating embeddings) without blocking the user interface.
 
 ---
 
 ## <� Context about Feature
 
-**Issue #11 (Infrastructure & Testing)** focuses on finalizing the development infrastructure for the project. This is a foundational task that ensures code quality, consistency, and maintainability across the codebase. The feature sits at the infrastructure layer, touching build configuration, code formatting, linting, and monitoring capabilities.
+Inngest is a background job processing framework that allows asynchronous execution of long-running tasks with built-in retries, observability, and step-based workflows. For this project, Inngest will orchestrate the video ingestion pipeline: when a user adds a YouTube video or channel, the system creates database records with status `QUEUED`, then triggers Inngest events that process videos in the background (status transitions: QUEUED � PROCESSING � READY/FAILED).
 
-The current setup already includes **ESLint** (eslint.config.js), **Vitest** for testing, and database management scripts. However, the project lacks **Prettier** for automated code formatting, **eslint-config-prettier** to prevent ESLint/Prettier conflicts, a **health check API endpoint** for monitoring and deployment verification, and a convenient **format script** for developers.
+The challenge is that the GitHub issue template assumes Next.js App Router architecture (`app/api/inngest/route.ts`), but this project uses **Vite + React + React Router**. Since deployment is on Vercel, we can use **Vercel Serverless Functions** (in the `/api` directory at the project root) to create the Inngest webhook endpoint. The Inngest SDK provides a `serve` function that handles incoming webhook requests from Inngest's cloud infrastructure.
 
-This feature is critical because it establishes the developer experience foundation, ensuring all team members follow consistent code style, can easily format code, verify application health, and maintain code quality. The implementation must be compatible with the **Vite + React** architecture (not Next.js), requiring custom API route setup for the health check endpoint. The feature has no database schema changes, no authentication requirements, and minimal UI impactit's purely infrastructure-focused.
+The database schema (Prisma) already has a `Video` model with a `status` enum (QUEUED, PROCESSING, READY, FAILED) and an `error` field for failure messages. The Inngest client needs to be configured with environment variables (`INNGEST_EVENT_KEY` for sending events, `INNGEST_SIGNING_KEY` for webhook verification). This setup is a prerequisite for Issues #15-16 which will implement the actual video ingestion Server Actions and Inngest functions.
 
 ---
 
 ## <� Feature Vision & Flow
 
-**End-to-End Behavior:**
+When complete, the Inngest setup will enable the following workflow:
 
-Developers working on the codebase will have access to automated code formatting via Prettier, ensuring consistent style (single quotes, no semicolons) across all TypeScript/JavaScript files. When they run `npm run format`, all files will be automatically formatted according to the project's standards without manual intervention.
+1. **User Action**: User pastes a YouTube URL into the Knowledge Base input and submits
+2. **Server Action**: Backend detects URL type (video/channel), creates Video records in database with status `QUEUED`, and emits Inngest events (`video.ingest.requested`)
+3. **Inngest Processing**: Inngest cloud receives events, triggers webhook to our `/api/inngest` endpoint, which executes registered functions
+4. **Video Ingestion Function**: Updates video status to `PROCESSING`, fetches YouTube metadata, extracts transcripts, generates embeddings, saves to database, updates status to `READY` (or `FAILED` on error)
+5. **Real-time UI Update**: Supabase Realtime broadcasts video status changes to frontend, user sees progress indicators update automatically
 
-The ESLint and Prettier integration will work harmoniouslyESLint will focus on code quality rules while Prettier handles formatting, with no conflicting rules between them. Developers can run `npm run lint` to check for code quality issues without getting formatting complaints that Prettier can auto-fix.
-
-The application will expose a `/api/health` endpoint that returns JSON with the application status and current timestamp. This endpoint can be used by deployment platforms (like Vercel), monitoring tools, or CI/CD pipelines to verify the application is running correctly. The endpoint requires no authentication and provides instant feedback on application availability.
-
-All development workflows (formatting, linting, database management) will be accessible via npm scripts with clear naming conventions. Developers can discover available scripts by checking package.json, and all scripts will execute successfully without errors in the current environment.
+The Inngest setup itself (this issue) focuses on the infrastructure layer: creating the client, exposing the webhook endpoint, configuring environment variables, and verifying the connection works. The actual ingestion logic (steps 2-4 above) will be implemented in subsequent issues. Expected UX: users never see loading spinners block the interface; they can continue browsing while videos process in the background with live status badges updating.
 
 ---
 
 ## =� Implementation Plan: Tasks & Subtasks
 
-**Note:** Please mark each task and subtask as complete by changing `[ ]` to `[x]` as you finish them.
-
-**Instruction:** After completing each top-level task, I will pause to confirm with you that the implementation is correct before moving to the next task.
-
----
-
-### **Task 1: Install and Configure Prettier** � ~5 minutes
-
-This task sets up Prettier as the code formatting tool for the project. Prettier will automatically format code according to the project's style guide (single quotes, no semicolons) as defined in CLAUDE.md.
-
-- [ ] **Subtask 1.1: Install Prettier as dev dependency**
-  - Run `npm install --save-dev prettier` to add Prettier to the project
-  - This adds prettier to devDependencies in package.json
-  - Verify installation by checking package.json contains prettier in devDependencies
-
-- [ ] **Subtask 1.2: Create Prettier configuration file**
-  - Create `.prettierrc` file in the project root directory
-  - Add configuration: `{ "semi": false, "singleQuote": true }` (no semicolons, single quotes)
-  - This follows the project's code style conventions as specified in the issue requirements
-
-- [ ] **Subtask 1.3: Create Prettier ignore file (optional but recommended)**
-  - Create `.prettierignore` file in the project root to exclude auto-generated files
-  - Add patterns: `node_modules`, `dist`, `.next`, `build`, `coverage`, `*.min.js`, `.git`
-  - This prevents Prettier from formatting files that shouldn't be touched (dependencies, build outputs)
-
-- [ ] **Subtask 1.4: Test Prettier configuration**
-  - Run `npx prettier --check .` to verify Prettier can scan all files
-  - Check the output to see which files would be formatted
-  - Do not format files yetjust verify the configuration is working
+**Note**: Mark each task and subtask as complete by changing `[ ]` to `[x]` as you finish them.
+**Instruction**: After completing each top-level task, pause to confirm implementation is correct before moving to the next task.
 
 ---
 
-### **Task 2: Install and Configure ESLint + Prettier Integration** � ~3 minutes
+### **Task 1: Create Inngest Client** ✅
+**File**: `src/lib/inngest/client.ts`
 
-This task ensures ESLint and Prettier work together without conflicts. The `eslint-config-prettier` package disables all ESLint rules that conflict with Prettier's formatting.
+- [x] Create the directory structure `src/lib/inngest/` if it doesn't exist
+- [x] Create `client.ts` file that imports the Inngest SDK and initializes a new client instance
+- [x] Configure the client with:
+  - `id`: A unique identifier for this app (e.g., `'youtube-gpt'` or `'bravi-youtube-ai'`)
+  - `eventKey`: Read from environment variable `import.meta.env.VITE_INNGEST_EVENT_KEY` for client-side OR use Vite's `import.meta.env.INNGEST_EVENT_KEY` pattern for server-side access
+- [x] Export the `inngest` client as a named export so it can be imported in Server Actions and API routes
+- [x] Add TypeScript types if needed (Inngest SDK should provide them automatically)
+- [x] Verify the file follows the project's CLAUDE.md guidelines (max 100 characters per line, double quotes, proper exports)
 
-- [ ] **Subtask 2.1: Install eslint-config-prettier**
-  - Run `npm install --save-dev eslint-config-prettier`
-  - This package disables ESLint formatting rules that conflict with Prettier
-  - Verify installation by checking package.json devDependencies
+**Example structure**:
+```typescript
+import { Inngest } from 'inngest'
 
-- [ ] **Subtask 2.2: Update ESLint configuration**
-  - Open `eslint.config.js` file (uses new ESLint flat config format)
-  - Import eslint-config-prettier: `import prettier from "eslint-config-prettier";`
-  - Add prettier config to the extends array in the configuration object
-  - The config should extend prettier after other configs to ensure it overrides formatting rules
-
-- [ ] **Subtask 2.3: Test ESLint + Prettier integration**
-  - Run `npm run lint` to verify ESLint still works correctly
-  - Check that no formatting-related errors appear (only code quality issues)
-  - Confirm ESLint and Prettier are not conflicting on formatting rules
-
----
-
-### **Task 3: Add Format Script to package.json** � ~2 minutes
-
-This task adds a convenient npm script that allows developers to format all code in the project with a single command.
-
-- [ ] **Subtask 3.1: Add format script to package.json**
-  - Open `package.json` file in the project root
-  - Add new script under "scripts" section: `"format": "prettier --write ."`
-  - This script will format all files in the project according to Prettier configuration
-  - Place it near other quality scripts (lint, test) for easy discovery
-
-- [ ] **Subtask 3.2: Test the format script**
-  - Run `npm run format` to execute the formatting script
-  - Verify that Prettier formats all relevant files in the project
-  - Check git diff to see what files were changed by the formatter
-  - Review formatted files to ensure the style matches expectations (single quotes, no semicolons)
+export const inngest = new Inngest({
+  id: 'youtube-gpt',
+  eventKey: import.meta.env.INNGEST_EVENT_KEY,
+})
+```
 
 ---
 
-### **Task 4: Create Health Check API Endpoint** � ~5 minutes
+### **Task 2: Create Vercel Serverless Function for Inngest Webhook** ✅
+**File**: `api/inngest.ts` (at project root, NOT in src/)
 
-This task creates a simple HTTP endpoint that returns application status. Since this is a Vite + React app (not Next.js), we need to create a mock API route or use a simple approach compatible with the current architecture.
+- [x] Create `api/` directory at the project root (same level as `src/`, `prisma/`, etc.)
+- [x] Create `inngest.ts` file inside the `api/` directory (this becomes a Vercel Serverless Function automatically)
+- [x] Import the Inngest `serve` function from `inngest/next` (works with Vercel Functions, not just Next.js)
+- [x] Import the `inngest` client from `@/lib/inngest/client` (may need path adjustment since this is outside src/)
+- [x] Create a placeholder `functions` array (empty for now, will be populated in Issue #16)
+- [x] Export the handler using Inngest's `serve` function, which returns an object with `GET`, `POST`, `PUT` methods
+- [x] Configure the `serve` call with the client and functions array
+- [x] Verify Vercel will recognize this as a serverless function (Vercel auto-detects `.ts` files in `/api`)
 
-**Note:** Vite doesn't have built-in API routes like Next.js. We have two options:
+**Example structure**:
+```typescript
+import { serve } from 'inngest/next'
+import { inngest } from '../src/lib/inngest/client'
 
-1. Create a simple Express server for the health endpoint
-2. Use Vite's dev server proxy feature to mock the endpoint
-3. **Recommended:** Create a simple health check page component that can be accessed at a route
+// Placeholder - will add actual functions in Issue #16
+const functions: any[] = []
 
-For this implementation, we'll create a dedicated `/health` route component that returns JSON-like information visible in the browser.
+export default serve({
+  client: inngest,
+  functions,
+})
+```
 
-- [ ] **Subtask 4.1: Create health check route component**
-  - Create new file `src/pages/Health.tsx` in the pages directory
-  - Export a functional component that displays health status information
-  - Include: status ("ok"), timestamp (current ISO timestamp), version (from package.json)
-  - Use a simple JSON-formatted display (pre-formatted text or code block)
-
-- [ ] **Subtask 4.2: Add health route to React Router**
-  - Open `src/App.tsx` file where routes are defined
-  - Import the Health component: `import Health from "./pages/Health"`
-  - Add a new route above the catch-all route: `<Route path="/health" element={<Health />} />`
-  - This creates a `/health` endpoint accessible in the browser
-
-- [ ] **Subtask 4.3: Make health route public (no authentication required)**
-  - Review `src/pages/Health.tsx` to ensure it doesn't use `useAuth()` hook
-  - The health route should not check for authentication or redirect to login
-  - This allows external monitoring tools and deployment platforms to check health without auth
-
-- [ ] **Subtask 4.4: Test the health check endpoint**
-  - Start the dev server with `npm run dev`
-  - Navigate to `http://localhost:8080/health` in the browser
-  - Verify the page displays status information correctly (status: ok, timestamp, version)
-  - Test that the endpoint is accessible without being logged in
-
-**Alternative Approach (if needed):**
-If a true REST API endpoint is required, we can add `express` as a dependency and create a simple API server, but this adds complexity beyond the scope of the issue. The route-based approach is simpler and sufficient for health checking.
+**Note**: Since this file is outside `src/`, the import path for the client may need adjustment. Test with `../src/lib/inngest/client` or configure path aliases in `tsconfig.json` if needed.
 
 ---
 
-### **Task 5: Verify All Scripts and Final Testing** � ~3 minutes
+### **Task 3: Configure Environment Variables** ✅
+**Files**: `.env.local`, `.env.example`
 
-This task ensures all npm scripts in package.json work correctly and the infrastructure is fully functional.
+- [x] Open Inngest Dashboard (https://app.inngest.com) and navigate to your app/project
+- [x] Locate the **Event Key** (used for sending events from your app to Inngest)
+- [x] Locate the **Signing Key** (used to verify webhook requests are from Inngest)
+- [x] Add both keys to `.env.local`:
+  ```bash
+  INNGEST_EVENT_KEY=your_event_key_here
+  INNGEST_SIGNING_KEY=your_signing_key_here
+  ```
+- [x] Update `.env.example` to include placeholders for these variables with explanatory comments:
+  ```bash
+  # Inngest Background Jobs (Step 2+)
+  INNGEST_EVENT_KEY=
+  INNGEST_SIGNING_KEY=
+  ```
+- [x] Verify that `.env.local` is in `.gitignore` to prevent committing secrets
+- [x] Add a note in README.md or CLAUDE.md if needed about when to set these variables (Step 2+)
 
-- [ ] **Subtask 5.1: Test all existing scripts**
-  - Run `npm run dev` to start the development server (verify it starts without errors)
-  - Run `npm run build` to create a production build (verify it completes successfully)
-  - Run `npm run lint` to check for code quality issues (verify ESLint runs correctly)
-  - Run `npm run test` to run the test suite (verify Vitest runs correctly)
-
-- [ ] **Subtask 5.2: Test database management scripts**
-  - Run `npm run db:studio` to open Prisma Studio (verify it launches correctly, then close it)
-  - The other db scripts (db:push, db:migrate, db:reset) require database access, so just verify they exist
-  - Check package.json to confirm all database scripts are present: db:push, db:studio, db:migrate, db:reset
-
-- [ ] **Subtask 5.3: Test the new format script**
-  - Run `npm run format` to format all files in the project
-  - Verify Prettier formats code according to the configuration (single quotes, no semicolons)
-  - Check git status to see what files were changed (if any)
-  - If many files were changed, review a few to ensure formatting is correct
-
-- [ ] **Subtask 5.4: Run final verification**
-  - Run `npm run lint` to ensure no linting errors after formatting
-  - Run `npm run build` to ensure the project builds successfully after all changes
-  - Start the dev server and visit `http://localhost:8080/health` to verify health endpoint
-  - Confirm all acceptance criteria from Issue #11 are met
+**Important**: The `INNGEST_EVENT_KEY` might need the `VITE_` prefix if accessed client-side, but for server-side Vercel Functions, no prefix is needed. Verify based on where the client is used.
 
 ---
 
-##  Acceptance Criteria Checklist
+### **Task 4: Configure Inngest Webhook in Dashboard** ✅
+**Platform**: Inngest Dashboard
 
-- [ ] Health check route accessible at `/health` (returns status and timestamp)
-- [ ] eslint-config-prettier installed and configured
-- [ ] Prettier installed and configured (single quotes, no semicolons)
-- [ ] `.prettierrc` file created with correct configuration
-- [ ] Format script added to package.json (`npm run format`)
-- [ ] All scripts tested and working correctly (dev, build, lint, test, format, db:\*)
-- [ ] ESLint and Prettier work together without conflicts
-- [ ] No linting errors in the codebase after formatting
+- [x] Log in to Inngest Dashboard (https://app.inngest.com)
+- [x] Navigate to your app's settings or webhook configuration section
+- [x] Determine your local development URL:
+  - For local testing: Use a tunnel service like `ngrok` or Inngest's built-in dev server
+  - Command: `npx inngest-cli dev` (this starts a local dev server that syncs with Inngest cloud)
+- [x] If using `npx inngest-cli dev`:
+  - Run the command in a separate terminal
+  - It will provide a URL to use for the webhook endpoint
+  - The Inngest CLI dev server proxies requests between Inngest cloud and your local `/api/inngest` endpoint
+- [x] If using ngrok for testing:
+  - Run `ngrok http 8080` to expose your local Vite dev server
+  - Copy the HTTPS URL (e.g., `https://abc123.ngrok.io`)
+  - Add `/api/inngest` to the URL
+- [x] For production (after deployment):
+  - Use your Vercel deployment URL + `/api/inngest`
+  - Example: `https://youtube-gpt.vercel.app/api/inngest`
+- [x] Save the webhook configuration in Inngest Dashboard
 
----
-
-## = Related Information
-
-- **Issue**: #11 - Infrastructure & Testing
-- **Branch**: `11-featureinfrastructure-testing`
-- **Dependencies**: Issue #1 (Project Generation & Setup)  Completed
-- **Followed by**: Issue #10 (Vercel Deployment)
-- **Part of**: Step 1  Project Bootstrap & Skeleton Deployment
-- **Estimated Total Time**: ~18 minutes
-
----
-
-## =� Notes
-
-- This is a Vite + React project, not Next.js, so traditional API routes (like Next.js App Router) are not available
-- The health check implementation uses a React Router route instead of a REST API endpoint
-- The project already has ESLint configured with the new flat config format (eslint.config.js)
-- Database management scripts (db:push, db:studio, db:migrate, db:reset) are already present in package.json
-- The lint script already exists and uses ESLint
-- Follow CLAUDE.md guidelines for code style and conventions throughout implementation
+**Note**: For now, focus on local development setup. Production webhook will be configured during deployment (Issue #21).
 
 ---
 
-**Generated**: 2025-10-22
-**Status**: Ready for implementation
+### **Task 5: Verify Webhook Connection** ✅
+**Testing & Validation**
+
+- [x] Start the Vite dev server: `npm run dev` (runs on http://localhost:8080)
+- [x] In a separate terminal, start Inngest dev server: `npx inngest-cli dev`
+- [x] The Inngest CLI should detect the `/api/inngest` endpoint and establish a connection
+- [x] Check the Inngest CLI output for success messages like "Connected to Inngest" or "Functions registered: 0"
+- [x] Open the Inngest Dashboard and navigate to the "Functions" tab
+- [x] Verify that the connection status shows as "Connected" or "Active"
+- [x] Send a test event from the Inngest Dashboard or CLI to verify the webhook receives requests:
+  ```bash
+  npx inngest-cli send -n "test/event" -d '{"test": true}'
+  ```
+- [x] Check your Vercel Function logs (or terminal output) to see if the event was received
+- [x] If errors occur:
+  - Verify environment variables are set correctly
+  - Check that `api/inngest.ts` exports the handler properly
+  - Ensure the Inngest client is initialized with the correct event key
+  - Review Inngest Dashboard logs for webhook delivery failures
+
+**Success criteria**: Inngest CLI shows "Connected", Dashboard shows active connection, test events are received without errors.
+
+---
+
+### **Task 6: Update Documentation & Prepare for Next Issue** ✅
+**Files**: `README.md`, `TASKS.md`, commit message
+
+- [x] Update README.md if needed to document the Inngest setup (or note that it's part of Step 2)
+- [x] Mark this task (#19) as complete in the project tracking (update TASKS.md, GitHub issue, etc.)
+- [ ] Verify all acceptance criteria from Issue #19 are met:
+  -  Inngest account created
+  -  Inngest SDK installed
+  -  Inngest client created at `src/lib/inngest/client.ts`
+  -  Route handler created at `api/inngest.ts`
+  -  Environment variables added to `.env.local`
+  -  Webhook configured in Inngest Dashboard
+  -  Webhook connection verified
+- [ ] Create a git commit with a descriptive message following the project's commit format:
+  ```
+  feat(inngest): add background job processing setup
+
+  - Create Inngest client for event-driven workflows
+  - Add Vercel serverless function for webhook endpoint
+  - Configure environment variables for Inngest keys
+  - Verify webhook connection with Inngest dev server
+
+  Part of Step 2 (Issue #19)
+  ```
+- [ ] Push the branch to GitHub and prepare for PR review (or proceed to Issue #14 if working solo)
+
+---
+
+## =� Implementation Notes
+
+### **Architecture Decision: Vercel Serverless Functions vs Next.js API Routes**
+
+Since this project uses **Vite + React** (not Next.js), we cannot use Next.js API routes (`app/api/inngest/route.ts`). Instead, we use **Vercel Serverless Functions** by creating files in the `/api` directory at the project root. Vercel automatically converts these files into serverless endpoints:
+
+- `/api/inngest.ts` � `https://your-app.vercel.app/api/inngest`
+
+The Inngest SDK's `serve` function from `inngest/next` is compatible with Vercel Functions, not just Next.js.
+
+### **Development Workflow**
+
+For local development, use the **Inngest Dev Server** (`npx inngest-cli dev`) instead of manually configuring webhooks. The dev server:
+
+1. Runs locally on your machine
+2. Syncs with Inngest cloud
+3. Proxies events between Inngest and your local `/api/inngest` endpoint
+4. Provides a UI for viewing function runs, event payloads, and logs
+5. Hot-reloads when you change function code
+
+### **Environment Variable Naming**
+
+- **Server-side** (Vercel Functions, Inngest client): Use `INNGEST_EVENT_KEY` and `INNGEST_SIGNING_KEY` (no `VITE_` prefix)
+- **Client-side** (if needed): Use `VITE_INNGEST_EVENT_KEY` (but avoid exposing keys in the browser if possible)
+
+For this setup, all Inngest operations are server-side, so no `VITE_` prefix is needed.
+
+### **Testing Strategy**
+
+1. **Local Testing**: Use `npx inngest-cli dev` + `npm run dev`
+2. **Integration Testing**: Send test events from Inngest Dashboard or CLI
+3. **Production Testing**: After deployment (Issue #21), verify webhook works with production URL
+
+### **Next Steps (After Issue #19)**
+
+- **Issue #14**: Create video detection utils (detect YouTube URL types, extract IDs)
+- **Issue #15**: Create Server Action to add YouTube content (emit Inngest events)
+- **Issue #16**: Create Inngest function to handle video ingestion (the actual processing logic)
+
+---
+
+##  Completion Checklist
+
+Before marking this issue as complete, ensure:
+
+- [ ] All 6 tasks above are marked as complete
+- [ ] Inngest client is created and properly configured
+- [ ] Vercel serverless function is created and exports the handler
+- [ ] Environment variables are set in `.env.local` and documented in `.env.example`
+- [ ] Inngest webhook connection is verified (dev server shows "Connected")
+- [ ] Code follows CLAUDE.md guidelines (TypeScript, formatting, naming conventions)
+- [ ] Git commit is created with descriptive message
+- [ ] Ready to proceed to Issue #14 (Video Detection Utils)
+
+---
+
+**Last Updated**: 2025-10-22
+**Issue**: #19 - feature/inngest-setup
+**Branch**: `19-featureinngest-setup`
