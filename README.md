@@ -36,7 +36,58 @@ YouTube GPT helps users instantly find information hidden inside hours of video 
 
 ## Getting Started
 
-_Installation instructions and configuration details will be added as the project progresses._
+### Prerequisites
+
+- [Node.js 18+](https://nodejs.org/) installed
+- [Supabase account](https://supabase.com) (free tier available)
+- npm or your preferred package manager
+
+### Installation
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/your-username/youtube-gpt.git
+   cd youtube-gpt
+   ```
+
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
+
+3. **Set up environment variables**
+
+   Copy the example environment file and configure your credentials:
+   ```bash
+   cp .env.example .env.local
+   ```
+
+   Open `.env.local` and fill in your Supabase credentials:
+   ```bash
+   VITE_SUPABASE_URL=https://your-project-id.supabase.co
+   VITE_SUPABASE_ANON_KEY=your-anon-key-here
+   ```
+
+   **How to get Supabase credentials:**
+   - Go to [supabase.com](https://supabase.com) and create a new project
+   - Navigate to Project Settings (gear icon) > API
+   - Copy the **Project URL** and **anon/public key**
+
+4. **Start the development server**
+   ```bash
+   npm run dev
+   ```
+
+   The app will be available at `http://localhost:8080`
+
+### Setup Checklist
+
+- [ ] Node.js 18+ installed
+- [ ] Supabase account created
+- [ ] Environment variables configured in `.env.local`
+- [ ] Dependencies installed (`npm install`)
+- [ ] Dev server running (`npm run dev`)
+- [ ] App accessible at `http://localhost:8080`
 
 ## Features
 
@@ -62,9 +113,9 @@ _Installation instructions and configuration details will be added as the projec
 
 ### Profile & Settings
 
-- Magic link authentication
-- Dark/light mode toggle
-- User profile management
+- Magic link authentication via Supabase Auth
+- Dark/light mode toggle with persistent preferences
+- User profile management with session handling
 
 ## Architecture
 
@@ -100,6 +151,48 @@ src/
 └── vite-env.d.ts
 ```
 
+## Configuration
+
+### Environment Variables
+
+The application uses the following environment variables (configured in `.env.local`):
+
+```bash
+# Supabase Configuration (Required)
+VITE_SUPABASE_URL=https://your-project-id.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-key-here
+
+# Future Configuration (To be added in later steps)
+# Database (Prisma)
+# DATABASE_URL=postgresql://...
+
+# AI Services
+# ANTHROPIC_API_KEY=
+# ZEROENTROPY_API_KEY=
+
+# Background Jobs
+# INNGEST_EVENT_KEY=
+# INNGEST_SIGNING_KEY=
+```
+
+**Important Notes:**
+- All client-side environment variables must use the `VITE_` prefix to be accessible in the browser
+- Never commit `.env.local` to version control (it's included in `.gitignore`)
+- Use `.env.example` as a template for setting up new environments
+
+### Supabase Setup
+
+The application uses Supabase for:
+- **Authentication**: Magic link email authentication with session management
+- **Database**: PostgreSQL database with Row Level Security (RLS)
+- **Real-time**: Live updates for video ingestion status (coming in Step 2)
+
+**Configuration Details:**
+- **PKCE Flow**: Enhanced security using Proof Key for Code Exchange
+- **Session Persistence**: Auth tokens stored in localStorage
+- **Auto Refresh**: Tokens automatically refresh before expiration
+- **Session Detection**: Handles magic link callback URLs automatically
+
 ## Development
 
 ```bash
@@ -108,8 +201,8 @@ npm run build        # Build for production
 npm run lint         # Run linting
 npx tsc --noEmit     # Type check
 
-npx prisma studio    # Open Prisma Studio
-npx inngest-cli dev  # Start Inngest dev server
+npx prisma studio    # Open Prisma Studio (after Issue #7)
+npx inngest-cli dev  # Start Inngest dev server (future)
 ```
 
 ## Retrieval Strategy
