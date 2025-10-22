@@ -269,9 +269,9 @@ Implement magic link authentication using Supabase Auth. Create login page, auth
 
 #### ✅ Acceptance Criteria
 
-- [ ] Configure Magic Link in Supabase Dashboard > Authentication > Providers
-- [ ] Create login page `app/login/page.tsx` with email input and "Send Magic Link" button
-- [ ] Create Server Action for magic link in `app/login/actions.ts`:
+- [x] Configure Magic Link in Supabase Dashboard > Authentication > Providers
+- [x] Create login page `app/login/page.tsx` with email input and "Send Magic Link" button
+- [x] Create Server Action for magic link in `app/login/actions.ts`:
   ```typescript
   'use server'
   export async function signInWithEmail(email: string) {
@@ -279,14 +279,14 @@ Implement magic link authentication using Supabase Auth. Create login page, auth
     return await supabase.auth.signInWithOtp({ email })
   }
   ```
-- [ ] Create callback handler `app/auth/callback/route.ts`
-- [ ] Protect routes with middleware in `middleware.ts`
-- [ ] Create `ProfileSection` component in sidebar with:
+- [x] Create callback handler `app/auth/callback/route.ts`
+- [x] Protect routes with middleware in `middleware.ts`
+- [x] Create `ProfileSection` component in sidebar with:
   - Avatar (or initials)
   - User name + email
   - Logout button
   - ThemeToggle
-- [ ] Implement logout action:
+- [x] Implement logout action:
   ```typescript
   'use server'
   export async function signOut() {
@@ -295,7 +295,7 @@ Implement magic link authentication using Supabase Auth. Create login page, auth
     redirect('/login')
   }
   ```
-- [ ] Persist theme preference in localStorage
+- [x] Persist theme preference in localStorage
 
 #### 🔗 Related
 
