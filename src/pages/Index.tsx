@@ -31,9 +31,18 @@ const Index = () => {
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-background">
-      <ConversationSidebar />
+      {/* Conversation Sidebar - Hidden on mobile, shown from md up */}
+      <div className="hidden md:block">
+        <ConversationSidebar />
+      </div>
+
+      {/* Chat Area - Full width on mobile, flex-1 on larger screens */}
       <ChatArea />
-      <KnowledgeBase />
+
+      {/* Knowledge Base - Hidden on mobile and tablet, shown from lg up */}
+      <div className="hidden lg:block">
+        <KnowledgeBase />
+      </div>
     </div>
   )
 }

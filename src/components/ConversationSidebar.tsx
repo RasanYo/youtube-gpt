@@ -1,4 +1,4 @@
-import { MessageSquare, LogOut, User } from 'lucide-react'
+import { MessageSquare, LogOut, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { ThemeToggle } from './ThemeToggle'
@@ -9,44 +9,61 @@ import { Separator } from '@/components/ui/separator'
 export const ConversationSidebar = () => {
   const { user, logout } = useAuth()
 
-  const conversations = [
-    { id: 1, title: 'YouTube Strategy 2024', date: 'Today' },
-    { id: 2, title: 'Content Calendar Planning', date: 'Yesterday' },
-    { id: 3, title: 'SEO Optimization Tips', date: '2 days ago' },
-  ]
+  // Empty conversations array to show empty state
+  const conversations: Array<{ id: number; title: string; date: string }> = []
 
   return (
     <div className="flex h-screen w-64 flex-col border-r bg-sidebar">
-      {/* Header */}
-      <div className="flex h-14 items-center border-b px-4">
+      {/* Header with New Chat Button */}
+      <div className="flex h-14 items-center justify-between border-b px-4">
         <h2 className="text-sm font-semibold text-sidebar-foreground">
           Conversations
         </h2>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8"
+          title="New Chat"
+        >
+          <Plus className="h-4 w-4" />
+        </Button>
       </div>
 
       {/* Conversations List */}
       <ScrollArea className="flex-1 p-2">
-        <div className="space-y-1">
-          {conversations.map((conv) => (
-            <Button
-              key={conv.id}
-              variant="ghost"
-              className="w-full justify-start text-left h-auto py-3 px-3"
-            >
-              <div className="flex items-start gap-2 w-full">
-                <MessageSquare className="h-4 w-4 mt-0.5 flex-shrink-0 text-muted-foreground" />
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium truncate text-sidebar-foreground">
-                    {conv.title}
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    {conv.date}
+        {conversations.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-full text-center px-4 py-8">
+            <MessageSquare className="h-12 w-12 text-muted-foreground/50 mb-3" />
+            <p className="text-sm text-muted-foreground mb-1 font-medium">
+              No conversations yet
+            </p>
+            <p className="text-xs text-muted-foreground/70">
+              Start a new chat to begin
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-1">
+            {conversations.map((conv) => (
+              <Button
+                key={conv.id}
+                variant="ghost"
+                className="w-full justify-start text-left h-auto py-3 px-3"
+              >
+                <div className="flex items-start gap-2 w-full">
+                  <MessageSquare className="h-4 w-4 mt-0.5 flex-shrink-0 text-muted-foreground" />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium truncate text-sidebar-foreground">
+                      {conv.title}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {conv.date}
+                    </div>
                   </div>
                 </div>
-              </div>
-            </Button>
-          ))}
-        </div>
+              </Button>
+            ))}
+          </div>
+        )}
       </ScrollArea>
 
       {/* Profile Section */}
@@ -56,12 +73,12 @@ export const ConversationSidebar = () => {
           <div className="flex items-center gap-3">
             <Avatar className="h-9 w-9">
               <AvatarFallback className="bg-primary text-primary-foreground">
-                {user?.name?.charAt(0).toUpperCase() || 'U'}
+                {user?.email?.charAt(0).toUpperCase() || 'U'}
               </AvatarFallback>
             </Avatar>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium truncate text-sidebar-foreground">
-                {user?.name}
+                {user?.email?.split('@')[0]}
               </p>
               <p className="text-xs text-muted-foreground truncate">
                 {user?.email}

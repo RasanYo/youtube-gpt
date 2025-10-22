@@ -1,39 +1,22 @@
-import { FileText, Folder, Youtube } from 'lucide-react'
+import { FileText, Folder, Video, Calendar } from 'lucide-react'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Separator } from '@/components/ui/separator'
 
 export const KnowledgeBase = () => {
-  const documents = [
-    {
-      id: 1,
-      title: 'YouTube Analytics Guide 2024',
-      type: 'document',
-      pages: 24,
-      date: '2 days ago',
-    },
-    {
-      id: 2,
-      title: 'Content Strategy Template',
-      type: 'document',
-      pages: 12,
-      date: '1 week ago',
-    },
-    {
-      id: 3,
-      title: 'SEO Best Practices',
-      type: 'video',
-      duration: '15:30',
-      date: '2 weeks ago',
-    },
-    {
-      id: 4,
-      title: 'Audience Growth Tactics',
-      type: 'document',
-      pages: 18,
-      date: '3 weeks ago',
-    },
-  ]
+  // Empty documents array to show empty state
+  const documents: Array<{
+    id: number
+    title: string
+    type: string
+    pages?: number
+    duration?: string
+    date: string
+  }> = []
+
+  const totalVideos = 0
+  const lastIngestion = 'Never'
 
   return (
     <div className="flex h-screen w-96 flex-col border-l bg-card">
@@ -47,46 +30,81 @@ export const KnowledgeBase = () => {
 
       {/* Documents */}
       <ScrollArea className="flex-1 p-4">
-        <div className="space-y-3">
-          {documents.map((doc) => (
-            <Button
-              key={doc.id}
-              variant="ghost"
-              className="w-full justify-start text-left h-auto py-3 px-3 hover:bg-accent"
-            >
-              <div className="flex items-start gap-3 w-full">
-                <div className="flex-shrink-0 mt-0.5">
-                  {doc.type === 'video' ? (
-                    <Youtube className="h-5 w-5 text-primary" />
-                  ) : (
-                    <FileText className="h-5 w-5 text-muted-foreground" />
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium mb-1 line-clamp-2">
-                    {doc.title}
+        {documents.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-full text-center px-4 py-8">
+            <Video className="h-12 w-12 text-muted-foreground/50 mb-3" />
+            <p className="text-sm text-muted-foreground mb-1 font-medium">
+              No documents yet
+            </p>
+            <p className="text-xs text-muted-foreground/70">
+              Add videos to build your knowledge base
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {documents.map((doc) => (
+              <Button
+                key={doc.id}
+                variant="ghost"
+                className="w-full justify-start text-left h-auto py-3 px-3 hover:bg-accent"
+              >
+                <div className="flex items-start gap-3 w-full">
+                  <div className="flex-shrink-0 mt-0.5">
+                    {doc.type === 'video' ? (
+                      <Video className="h-5 w-5 text-primary" />
+                    ) : (
+                      <FileText className="h-5 w-5 text-muted-foreground" />
+                    )}
                   </div>
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <Badge variant="secondary" className="text-xs px-1.5 py-0">
-                      {doc.type === 'video'
-                        ? doc.duration
-                        : `${doc.pages} pages`}
-                    </Badge>
-                    <span>{doc.date}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium mb-1 line-clamp-2">
+                      {doc.title}
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Badge variant="secondary" className="text-xs px-1.5 py-0">
+                        {doc.type === 'video'
+                          ? doc.duration
+                          : `${doc.pages} pages`}
+                      </Badge>
+                      <span>{doc.date}</span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </Button>
-          ))}
-        </div>
+              </Button>
+            ))}
+          </div>
+        )}
       </ScrollArea>
 
-      {/* Footer */}
-      <div className="border-t p-4">
-        <Button variant="outline" className="w-full">
-          <FileText className="h-4 w-4 mr-2" />
-          Add Document
-        </Button>
+      {/* Footer with Add Button */}
+      <div className="border-t">
+        <div className="p-4 pb-3">
+          <Button variant="outline" className="w-full">
+            <FileText className="h-4 w-4 mr-2" />
+            Add Document
+          </Button>
+        </div>
+
+        {/* Mini-Metrics Footer */}
+        <Separator />
+        <div className="bg-muted/30 px-4 py-3">
+          <div className="space-y-2 text-xs">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Video className="h-3.5 w-3.5" />
+                <span>Total videos:</span>
+              </div>
+              <span className="font-medium text-foreground">{totalVideos}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Calendar className="h-3.5 w-3.5" />
+                <span>Last ingestion:</span>
+              </div>
+              <span className="font-medium text-foreground">{lastIngestion}</span>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   )
