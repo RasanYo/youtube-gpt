@@ -1,13 +1,10 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-
-interface User {
-  id: string;
-  email: string;
-  name: string;
-}
+import { supabase } from '@/lib/supabase/client';
+import type { User, Session } from '@supabase/supabase-js';
 
 interface AuthContextType {
   user: User | null;
+  session: Session | null;
   login: (email: string) => Promise<void>;
   logout: () => void;
   isLoading: boolean;
@@ -17,36 +14,51 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Check for stored user session
-    const storedUser = localStorage.getItem('bravi_user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
-    setIsLoading(false);
+    // Get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      setIsLoading(false);
+    });
+
+    // Listen for auth changes (login, logout, token refresh)
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      setIsLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const login = async (email: string) => {
-    // Simulate magic link authentication
-    const mockUser: User = {
-      id: Math.random().toString(36).substring(7),
+    const { error } = await supabase.auth.signInWithOtp({
       email,
-      name: email.split('@')[0],
-    };
-    
-    localStorage.setItem('bravi_user', JSON.stringify(mockUser));
-    setUser(mockUser);
+      options: {
+        emailRedirectTo: `${window.location.origin}/`,
+      },
+    });
+
+    if (error) {
+      throw error;
+    }
   };
 
-  const logout = () => {
-    localStorage.removeItem('bravi_user');
-    setUser(null);
+  const logout = async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      throw error;
+    }
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, isLoading }}>
+    <AuthContext.Provider value={{ user, session, login, logout, isLoading }}>
       {children}
     </AuthContext.Provider>
   );
