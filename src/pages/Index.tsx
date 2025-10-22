@@ -1,19 +1,19 @@
-import { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { useAuth } from "@/contexts/AuthContext";
-import { ConversationSidebar } from "@/components/ConversationSidebar";
-import { ChatArea } from "@/components/ChatArea";
-import { KnowledgeBase } from "@/components/KnowledgeBase";
+import { useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { useAuth } from '@/contexts/AuthContext'
+import { ConversationSidebar } from '@/components/ConversationSidebar'
+import { ChatArea } from '@/components/ChatArea'
+import { KnowledgeBase } from '@/components/KnowledgeBase'
 
 const Index = () => {
-  const { user, isLoading } = useAuth();
-  const navigate = useNavigate();
+  const { user, isLoading } = useAuth()
+  const navigate = useNavigate()
 
   useEffect(() => {
     if (!isLoading && !user) {
-      navigate("/login");
+      navigate('/login')
     }
-  }, [user, isLoading, navigate]);
+  }, [user, isLoading, navigate])
 
   if (isLoading) {
     return (
@@ -22,11 +22,11 @@ const Index = () => {
           <div className="animate-pulse text-muted-foreground">Loading...</div>
         </div>
       </div>
-    );
+    )
   }
 
   if (!user) {
-    return null;
+    return null
   }
 
   return (
@@ -35,7 +35,7 @@ const Index = () => {
       <ChatArea />
       <KnowledgeBase />
     </div>
-  );
-};
+  )
+}
 
-export default Index;
+export default Index

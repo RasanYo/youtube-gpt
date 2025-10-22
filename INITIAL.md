@@ -4,12 +4,13 @@ Create a comprehensive `ROADMAP.md` file that converts the hierarchical roadmap 
 
 ### What needs to be done:
 
-
 Transform the detailed technical roadmap (which has ~2500 lines with Steps, sub-steps, and checkboxes) into:
+
 - A well-organized markdown file with GitHub issue definitions
 - Each sub-step (e.g., 1.1, 1.2, 2.3, etc.) becomes a separate GitHub issue
 - Issues should be properly formatted with titles, descriptions, labels, and assignable tasks
-IMPORTANT: Do it only for Step 1. Don't do the other steps
+  IMPORTANT: Do it only for Step 1. Don't do the other steps
+
 ### Steps to accomplish this:
 
 1. **Parse the roadmap structure**

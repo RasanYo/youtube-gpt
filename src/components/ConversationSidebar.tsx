@@ -1,25 +1,27 @@
-import { MessageSquare, LogOut, User } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { ThemeToggle } from "./ThemeToggle";
-import { useAuth } from "@/contexts/AuthContext";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
+import { MessageSquare, LogOut, User } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { ThemeToggle } from './ThemeToggle'
+import { useAuth } from '@/contexts/AuthContext'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { Separator } from '@/components/ui/separator'
 
 export const ConversationSidebar = () => {
-  const { user, logout } = useAuth();
+  const { user, logout } = useAuth()
 
   const conversations = [
-    { id: 1, title: "YouTube Strategy 2024", date: "Today" },
-    { id: 2, title: "Content Calendar Planning", date: "Yesterday" },
-    { id: 3, title: "SEO Optimization Tips", date: "2 days ago" },
-  ];
+    { id: 1, title: 'YouTube Strategy 2024', date: 'Today' },
+    { id: 2, title: 'Content Calendar Planning', date: 'Yesterday' },
+    { id: 3, title: 'SEO Optimization Tips', date: '2 days ago' },
+  ]
 
   return (
     <div className="flex h-screen w-64 flex-col border-r bg-sidebar">
       {/* Header */}
       <div className="flex h-14 items-center border-b px-4">
-        <h2 className="text-sm font-semibold text-sidebar-foreground">Conversations</h2>
+        <h2 className="text-sm font-semibold text-sidebar-foreground">
+          Conversations
+        </h2>
       </div>
 
       {/* Conversations List */}
@@ -37,7 +39,9 @@ export const ConversationSidebar = () => {
                   <div className="text-sm font-medium truncate text-sidebar-foreground">
                     {conv.title}
                   </div>
-                  <div className="text-xs text-muted-foreground">{conv.date}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {conv.date}
+                  </div>
                 </div>
               </div>
             </Button>
@@ -64,7 +68,7 @@ export const ConversationSidebar = () => {
               </p>
             </div>
           </div>
-          
+
           <div className="flex items-center gap-2">
             <ThemeToggle />
             <Button
@@ -80,5 +84,5 @@ export const ConversationSidebar = () => {
         </div>
       </div>
     </div>
-  );
-};
+  )
+}

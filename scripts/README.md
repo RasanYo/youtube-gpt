@@ -9,15 +9,18 @@ This directory contains utility scripts for the YouTube GPT project.
 **Purpose:** Comprehensive verification of Prisma database setup including CRUD operations and relationships.
 
 **Prerequisites:**
+
 - Database must be accessible
 - Migrations must be applied (`npm run db:migrate`)
 
 **Usage:**
+
 ```bash
 npx tsx scripts/verify-prisma-setup.ts
 ```
 
 **What it tests:**
+
 1. Database connection
 2. Table existence
 3. User model CRUD operations
@@ -28,6 +31,7 @@ npx tsx scripts/verify-prisma-setup.ts
 8. Automatic cleanup of test data
 
 **Expected output:**
+
 ```
 🔍 Verifying Prisma setup...
 ✅ Database connected successfully
@@ -49,21 +53,25 @@ npx tsx scripts/verify-prisma-setup.ts
 **Purpose:** Apply the initial Prisma migration to create database tables.
 
 **Prerequisites:**
+
 - DATABASE_URL must be set in `.env` or `.env.local`
 - Supabase database must be accessible
 
 **Usage:**
+
 ```bash
 ./scripts/apply-initial-migration.sh
 ```
 
 **What it does:**
+
 1. Checks if DATABASE_URL is set
 2. Tests database connectivity
 3. Creates and applies the initial migration
 4. Creates User, Video, Conversation tables with indexes and relationships
 
 **Use this script if:**
+
 - You're setting up the database for the first time
 - The `npm run db:migrate` command failed due to connectivity issues
 - You need to retry migration after resolving database access
@@ -77,9 +85,11 @@ npx tsx scripts/verify-prisma-setup.ts
 If scripts fail with connection errors:
 
 1. **Check DATABASE_URL:**
+
    ```bash
    echo $DATABASE_URL
    ```
+
    Should output: `postgresql://postgres:...@db...supabase.co:5432/postgres?pgbouncer=true`
 
 2. **Verify Supabase project is active:**
@@ -97,6 +107,7 @@ If scripts fail with connection errors:
 If you get TypeScript errors when running scripts:
 
 1. **Ensure tsx is installed:**
+
    ```bash
    npm install -D tsx
    ```
@@ -135,4 +146,3 @@ When adding new scripts to this directory:
 - Shell scripts should be POSIX-compliant when possible
 - All scripts should handle errors gracefully and provide helpful messages
 - Clean up any test data created during verification
-

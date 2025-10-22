@@ -1,289 +1,218 @@
-# Issue #9: Prisma Database Setup - Implementation Plan
-
-**Status**: ✅ COMPLETE
-**Branch**: `9-featureprisma-database`
-**Priority**: ⚡ High
-**Estimated Time**: ~20 minutes (Actual: ~60 minutes)
+# Implementation Plan: Issue #11 - Infrastructure & Testing
 
 ---
 
 ## >� Context about Project
 
-YouTube GPT is an intelligent video knowledge base application that transforms hours of YouTube content into an instantly searchable, AI-powered knowledge base. The platform allows users to ingest YouTube videos or entire channels, search across their personal video library, and interact with an AI assistant that provides grounded answers with citations and timestamps. The application is being built as part of the Bravi Founding Engineer technical assessment and follows a structured roadmap divided into multiple steps.
+**YouTube GPT** is an intelligent video knowledge base application that transforms hours of YouTube content into an instantly searchable, AI-powered system. The platform allows users to ingest individual videos or entire YouTube channels (latest 10 videos), search across their personal video library, ask AI questions with grounded answers including citations and timestamps, and generate content from selected videos.
 
-Currently, the project is in **Step 1 (Project Bootstrap & Skeleton Deployment)** and has successfully completed the foundational setup including: Vite + React + TypeScript configuration, Tailwind CSS with dark mode, shadcn/ui component library integration, a three-column responsive layout (conversation sidebar, chat area, knowledge base), and Supabase authentication with magic link email login. The tech stack uses Vite for the frontend build tool, React 18 for the UI framework, Supabase for authentication and PostgreSQL database, and will use Prisma as the ORM layer. The application is a single-page application (SPA) with client-side routing via React Router DOM.
+The tech stack consists of a **React 18 + TypeScript** frontend built with **Vite**, styled with **Tailwind CSS** and **shadcn/ui** components. The backend uses **Supabase** for authentication and **PostgreSQL** database, with **Prisma ORM** for type-safe database access. The application features a three-column layout: left sidebar for conversation history, center area for AI chat, and right sidebar for knowledge base management.
 
-This issue (Issue #9) focuses on establishing the database layer with Prisma ORM, which is a critical foundation for all future features including video ingestion, conversation management, and AI-powered search. The project is approximately 70% through Step 1, with deployment and UI polish remaining after this task.
+The project is currently in **Step 1 (Project Bootstrap & Skeleton Deployment)** phase, where foundational infrastructure, authentication, database, and UI layout have been established. The application is built for the Bravi Founding Engineer technical assessment and follows strict code quality guidelines defined in CLAUDE.md, emphasizing KISS principles, YAGNI, and React best practices with comprehensive testing.
 
 ---
 
 ## <� Context about Feature
 
-The Prisma database setup establishes the foundational data models and ORM layer that will power the entire YouTube GPT application. Prisma is a modern TypeScript-first ORM that provides type-safe database access, automatic migrations, and a developer-friendly schema definition language. In this architecture, Prisma will sit between the React frontend (via future API routes or server actions) and the Supabase PostgreSQL database.
+**Issue #11 (Infrastructure & Testing)** focuses on finalizing the development infrastructure for the project. This is a foundational task that ensures code quality, consistency, and maintainability across the codebase. The feature sits at the infrastructure layer, touching build configuration, code formatting, linting, and monitoring capabilities.
 
-The feature involves creating three core models that represent the application's data structure: **User** (storing user profiles from Supabase Auth), **Video** (representing ingested YouTube videos with metadata and processing status), and **Conversation** (representing chat sessions between users and the AI assistant). These models form the foundation for Phase 1 functionality and will be extended in later phases with additional models like Message, VideoChunk, and Embedding for vector search.
+The current setup already includes **ESLint** (eslint.config.js), **Vitest** for testing, and database management scripts. However, the project lacks **Prettier** for automated code formatting, **eslint-config-prettier** to prevent ESLint/Prettier conflicts, a **health check API endpoint** for monitoring and deployment verification, and a convenient **format script** for developers.
 
-The Prisma schema will use PostgreSQL as the database provider (connecting to Supabase's managed PostgreSQL instance via a `DATABASE_URL` connection string). The schema includes foreign key relationships (User � Videos, User � Conversations), an enum for video processing status (QUEUED, PROCESSING, READY, FAILED), and timestamp fields for auditing. A singleton pattern will be implemented for the PrismaClient instance to prevent connection pool exhaustion during development with hot module reloading. This setup must integrate seamlessly with the existing Supabase authentication system, where Supabase Auth manages user sessions and Prisma manages the application's business data.
+This feature is critical because it establishes the developer experience foundation, ensuring all team members follow consistent code style, can easily format code, verify application health, and maintain code quality. The implementation must be compatible with the **Vite + React** architecture (not Next.js), requiring custom API route setup for the health check endpoint. The feature has no database schema changes, no authentication requirements, and minimal UI impactit's purely infrastructure-focused.
 
 ---
 
 ## <� Feature Vision & Flow
 
-The desired end state is a fully configured Prisma ORM setup with type-safe database access throughout the application. Developers should be able to query and mutate data using Prisma's intuitive API (e.g., `prisma.user.create()`, `prisma.video.findMany()`) with full TypeScript autocompletion and compile-time type checking. The database schema should accurately represent the application's domain with proper relationships, constraints, and enums.
+**End-to-End Behavior:**
 
-The implementation flow follows this sequence: install Prisma dependencies � initialize Prisma with `npx prisma init` � configure the schema file with PostgreSQL datasource and models � create and apply the initial migration to generate database tables � generate the Prisma Client to create TypeScript types � create a singleton PrismaClient instance for use throughout the application. The migration will create all necessary tables (users, videos, conversations) with proper indexes, foreign keys, and constraints in the Supabase PostgreSQL database.
+Developers working on the codebase will have access to automated code formatting via Prettier, ensuring consistent style (single quotes, no semicolons) across all TypeScript/JavaScript files. When they run `npm run format`, all files will be automatically formatted according to the project's standards without manual intervention.
 
-From a developer experience perspective, once this feature is complete, any developer working on the project should be able to import `prisma` from `@/lib/prisma`, write type-safe queries, and have full confidence that their code matches the database schema. The Prisma Studio GUI (`npx prisma studio`) will provide a visual interface for inspecting and manipulating data during development. Future features like video ingestion will create Video records with status tracking, the chat interface will create and retrieve Conversation records, and all operations will maintain referential integrity through Prisma's relationship management. Error handling will be built on Prisma's exception types, and all timestamps will be automatically managed by the `@updatedAt` directive.
+The ESLint and Prettier integration will work harmoniouslyESLint will focus on code quality rules while Prettier handles formatting, with no conflicting rules between them. Developers can run `npm run lint` to check for code quality issues without getting formatting complaints that Prettier can auto-fix.
+
+The application will expose a `/api/health` endpoint that returns JSON with the application status and current timestamp. This endpoint can be used by deployment platforms (like Vercel), monitoring tools, or CI/CD pipelines to verify the application is running correctly. The endpoint requires no authentication and provides instant feedback on application availability.
+
+All development workflows (formatting, linting, database management) will be accessible via npm scripts with clear naming conventions. Developers can discover available scripts by checking package.json, and all scripts will execute successfully without errors in the current environment.
 
 ---
 
 ## =� Implementation Plan: Tasks & Subtasks
 
-### Task 1: Install Prisma Dependencies and Initialize Project
+**Note:** Please mark each task and subtask as complete by changing `[ ]` to `[x]` as you finish them.
 
-**Goal**: Set up Prisma in the project by installing required packages and generating the initial configuration files.
-
-- [ ] **1.1**: Install Prisma CLI and Client packages
-  - Run `npm install prisma @prisma/client` to add both the Prisma CLI (dev dependency) and the Prisma Client (runtime dependency)
-  - The `prisma` package provides CLI commands for migrations, schema management, and code generation
-  - The `@prisma/client` package provides the runtime query API that will be used in application code
-
-- [ ] **1.2**: Initialize Prisma in the project
-  - Run `npx prisma init` to generate the `prisma/` directory with a `schema.prisma` file and add `DATABASE_URL` to `.env.local`
-  - This command creates the foundational structure: `prisma/schema.prisma` (schema definition) and updates `.env.local` with a placeholder `DATABASE_URL`
-  - The generated schema will include default PostgreSQL datasource and Prisma Client generator configurations
-
-- [ ] **1.3**: Verify the generated files
-  - Confirm that `prisma/schema.prisma` exists with default datasource and generator blocks
-  - Confirm that `.env.local` has been updated with `DATABASE_URL` placeholder (if not already present)
-  - Check that `.gitignore` includes `.env.local` to prevent committing sensitive database credentials
+**Instruction:** After completing each top-level task, I will pause to confirm with you that the implementation is correct before moving to the next task.
 
 ---
 
-### Task 2: Configure Prisma Schema with Database Connection
+### **Task 1: Install and Configure Prettier** � ~5 minutes
 
-**Goal**: Configure the Prisma schema file to connect to the Supabase PostgreSQL database and set up the proper generator settings.
+This task sets up Prettier as the code formatting tool for the project. Prettier will automatically format code according to the project's style guide (single quotes, no semicolons) as defined in CLAUDE.md.
 
-- [ ] **2.1**: Update the datasource block in `prisma/schema.prisma`
-  - Open `prisma/schema.prisma` and verify/update the `datasource db` block to use PostgreSQL provider
-  - Set `provider = "postgresql"` and `url = env("DATABASE_URL")` to read connection string from environment variables
-  - This tells Prisma to use PostgreSQL (compatible with Supabase) and read credentials securely from `.env.local`
+- [ ] **Subtask 1.1: Install Prettier as dev dependency**
+  - Run `npm install --save-dev prettier` to add Prettier to the project
+  - This adds prettier to devDependencies in package.json
+  - Verify installation by checking package.json contains prettier in devDependencies
 
-- [ ] **2.2**: Verify the generator block configuration
-  - Confirm the `generator client` block is present with `provider = "prisma-client-js"`
-  - This generator creates the TypeScript-typed Prisma Client that will be imported in application code
-  - The generator runs automatically during `prisma generate` and after migrations
+- [ ] **Subtask 1.2: Create Prettier configuration file**
+  - Create `.prettierrc` file in the project root directory
+  - Add configuration: `{ "semi": false, "singleQuote": true }` (no semicolons, single quotes)
+  - This follows the project's code style conventions as specified in the issue requirements
 
-- [ ] **2.3**: Add DATABASE_URL to environment files
-  - Update `.env.local` with the Supabase PostgreSQL connection string in the format: `postgresql://postgres:[PASSWORD]@[HOST]:[PORT]/postgres?pgbouncer=true`
-  - Get the connection string from Supabase Dashboard > Project Settings > Database > Connection String (Transaction mode)
-  - Update `.env.example` with a placeholder `DATABASE_URL=postgresql://user:password@host:port/database` and instructions for developers
+- [ ] **Subtask 1.3: Create Prettier ignore file (optional but recommended)**
+  - Create `.prettierignore` file in the project root to exclude auto-generated files
+  - Add patterns: `node_modules`, `dist`, `.next`, `build`, `coverage`, `*.min.js`, `.git`
+  - This prevents Prettier from formatting files that shouldn't be touched (dependencies, build outputs)
 
----
-
-### Task 3: Define Phase 1 Database Schema Models
-
-**Goal**: Create the three core data models (User, Video, Conversation) with proper fields, relationships, and enums in the Prisma schema.
-
-- [ ] **3.1**: Define the VideoStatus enum
-  - Add an enum definition before the model blocks: `enum VideoStatus { QUEUED PROCESSING READY FAILED }`
-  - This enum represents the four states of video processing: queued for ingestion, currently being processed, ready for use, or failed with errors
-  - Enums provide type safety and prevent invalid status values in the database
-
-- [ ] **3.2**: Define the User model
-  - Create a `model User` block with fields: `id` (String, @id @default(uuid())), `email` (String, @unique), `name` (String?), `avatarUrl` (String?), `createdAt` (DateTime, @default(now())), `updatedAt` (DateTime, @updatedAt)
-  - Add relationship fields: `videos` (Video[]), `conversations` (Conversation[]) to establish one-to-many relationships
-  - The `id` should use UUID to match Supabase Auth user IDs; nullable fields (name, avatarUrl) allow gradual profile completion
-
-- [ ] **3.3**: Define the Video model
-  - Create a `model Video` block with fields: `id` (String, @id @default(uuid())), `userId` (String), `youtubeId` (String, @unique), `title` (String), `thumbnailUrl` (String?), `channelName` (String), `duration` (Int), `status` (VideoStatus, @default(QUEUED)), `error` (String?), `createdAt` (DateTime, @default(now())), `updatedAt` (DateTime, @updatedAt)
-  - Add relationship field: `user` (User, @relation(fields: [userId], references: [id], onDelete: Cascade))
-  - The `youtubeId` is unique to prevent duplicate video ingestion; `duration` is stored in seconds; cascading delete ensures videos are removed when users are deleted
-
-- [ ] **3.4**: Define the Conversation model
-  - Create a `model Conversation` block with fields: `id` (String, @id @default(uuid())), `userId` (String), `title` (String), `createdAt` (DateTime, @default(now())), `updatedAt` (DateTime, @updatedAt)
-  - Add relationship field: `user` (User, @relation(fields: [userId], references: [id], onDelete: Cascade))
-  - Keep this model simple for Phase 1; it will be extended with Message relationships in later phases
-
-- [ ] **3.5**: Add indexes for query optimization
-  - Add `@@index([userId])` to Video and Conversation models to optimize queries filtering by user
-  - Add `@@index([status])` to Video model to optimize queries filtering by processing status
-  - Indexes improve query performance for common access patterns like "get all videos for a user" or "find all queued videos"
+- [ ] **Subtask 1.4: Test Prettier configuration**
+  - Run `npx prettier --check .` to verify Prettier can scan all files
+  - Check the output to see which files would be formatted
+  - Do not format files yetjust verify the configuration is working
 
 ---
 
-### Task 4: Create and Apply Database Migration
+### **Task 2: Install and Configure ESLint + Prettier Integration** � ~3 minutes
 
-**Goal**: Generate the initial migration from the Prisma schema and apply it to the Supabase PostgreSQL database to create all tables and constraints.
+This task ensures ESLint and Prettier work together without conflicts. The `eslint-config-prettier` package disables all ESLint rules that conflict with Prettier's formatting.
 
-- [ ] **4.1**: Create the initial migration
-  - Run `npx prisma migrate dev --name init` to create the first migration based on the schema
-  - This command generates SQL files in `prisma/migrations/` that represent the schema changes needed to reach the current state
-  - The migration will create tables for User, Video, VideoStatus enum, Conversation, along with indexes and foreign key constraints
+- [ ] **Subtask 2.1: Install eslint-config-prettier**
+  - Run `npm install --save-dev eslint-config-prettier`
+  - This package disables ESLint formatting rules that conflict with Prettier
+  - Verify installation by checking package.json devDependencies
 
-- [ ] **4.2**: Verify migration was created successfully
-  - Check that `prisma/migrations/` directory contains a timestamped folder (e.g., `20250122_init/`) with a `migration.sql` file
-  - Review the generated SQL to ensure it includes CREATE TABLE statements, foreign keys, indexes, and enum definitions
-  - The migration SQL should be committed to version control so other developers can apply the same schema changes
+- [ ] **Subtask 2.2: Update ESLint configuration**
+  - Open `eslint.config.js` file (uses new ESLint flat config format)
+  - Import eslint-config-prettier: `import prettier from "eslint-config-prettier";`
+  - Add prettier config to the extends array in the configuration object
+  - The config should extend prettier after other configs to ensure it overrides formatting rules
 
-- [ ] **4.3**: Confirm migration was applied to database
-  - The `prisma migrate dev` command automatically applies the migration to the database specified in `DATABASE_URL`
-  - Check the command output for success messages confirming table creation
-  - Verify in Supabase Dashboard > Database > Tables that `User`, `Video`, `Conversation`, and `_prisma_migrations` tables exist
-
-- [ ] **4.4**: Test migration rollback capability (optional but recommended)
-  - Run `npx prisma migrate reset` in a development environment to test rollback and reapply
-  - This ensures migrations are idempotent and can be safely reset during development
-  - Reset will drop all data, so only use in development environments
+- [ ] **Subtask 2.3: Test ESLint + Prettier integration**
+  - Run `npm run lint` to verify ESLint still works correctly
+  - Check that no formatting-related errors appear (only code quality issues)
+  - Confirm ESLint and Prettier are not conflicting on formatting rules
 
 ---
 
-### Task 5: Generate Prisma Client
+### **Task 3: Add Format Script to package.json** � ~2 minutes
 
-**Goal**: Generate the TypeScript-typed Prisma Client that provides the API for querying and mutating data in the application code.
+This task adds a convenient npm script that allows developers to format all code in the project with a single command.
 
-- [ ] **5.1**: Generate the Prisma Client
-  - Run `npx prisma generate` to generate the Prisma Client based on the current schema
-  - This creates TypeScript types and API methods in `node_modules/@prisma/client` that match your schema exactly
-  - The generated client includes methods like `prisma.user.create()`, `prisma.video.findMany()`, with full type safety and autocompletion
+- [ ] **Subtask 3.1: Add format script to package.json**
+  - Open `package.json` file in the project root
+  - Add new script under "scripts" section: `"format": "prettier --write ."`
+  - This script will format all files in the project according to Prettier configuration
+  - Place it near other quality scripts (lint, test) for easy discovery
 
-- [ ] **5.2**: Verify Prisma Client generation
-  - Check that `node_modules/@prisma/client` directory exists with generated TypeScript declaration files
-  - Try importing `PrismaClient` in a test file to verify TypeScript can resolve the types
-  - Confirm no compilation errors when importing: `import { PrismaClient } from '@prisma/client'`
-
-- [ ] **5.3**: Add postinstall script to package.json
-  - Update `package.json` scripts to include `"postinstall": "prisma generate"` so the client is regenerated after `npm install`
-  - This ensures new developers or CI/CD pipelines automatically generate the client after installing dependencies
-  - The postinstall hook prevents "Cannot find module '@prisma/client'" errors in fresh environments
+- [ ] **Subtask 3.2: Test the format script**
+  - Run `npm run format` to execute the formatting script
+  - Verify that Prettier formats all relevant files in the project
+  - Check git diff to see what files were changed by the formatter
+  - Review formatted files to ensure the style matches expectations (single quotes, no semicolons)
 
 ---
 
-### Task 6: Create Prisma Client Singleton
+### **Task 4: Create Health Check API Endpoint** � ~5 minutes
 
-**Goal**: Create a singleton PrismaClient instance in `src/lib/prisma.ts` to prevent multiple client instances and connection pool exhaustion during development.
+This task creates a simple HTTP endpoint that returns application status. Since this is a Vite + React app (not Next.js), we need to create a mock API route or use a simple approach compatible with the current architecture.
 
-- [ ] **6.1**: Create the prisma.ts file
-  - Create a new file `src/lib/prisma.ts` to house the singleton PrismaClient instance
-  - This file will export a single `prisma` instance that can be imported throughout the application
-  - Using a singleton prevents hot module reloading in development from creating multiple client instances and exhausting database connections
+**Note:** Vite doesn't have built-in API routes like Next.js. We have two options:
 
-- [ ] **6.2**: Implement singleton pattern with global caching
-  - Import `PrismaClient` from `@prisma/client`
-  - Create a type for the global prisma object: `const globalForPrisma = global as unknown as { prisma: PrismaClient }`
-  - Export the singleton: `export const prisma = globalForPrisma.prisma || new PrismaClient()`
-  - Add development caching: `if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma`
-  - This pattern reuses the client instance across hot reloads in development while creating fresh instances in production
+1. Create a simple Express server for the health endpoint
+2. Use Vite's dev server proxy feature to mock the endpoint
+3. **Recommended:** Create a simple health check page component that can be accessed at a route
 
-- [ ] **6.3**: Add optional Prisma Client configuration
-  - Consider adding logging configuration to the PrismaClient constructor for development: `new PrismaClient({ log: ['query', 'error', 'warn'] })`
-  - Logging helps debug database queries during development but should be minimal in production
-  - Add a comment explaining the singleton pattern for future developers
+For this implementation, we'll create a dedicated `/health` route component that returns JSON-like information visible in the browser.
 
-- [ ] **6.4**: Create a path alias export (optional)
-  - Verify that the existing `@/` path alias in `tsconfig.json` and `vite.config.ts` resolves correctly
-  - Test importing the prisma instance: `import { prisma } from '@/lib/prisma'` in a component file
-  - Confirm TypeScript provides autocompletion for prisma methods like `prisma.user.`, `prisma.video.`
+- [ ] **Subtask 4.1: Create health check route component**
+  - Create new file `src/pages/Health.tsx` in the pages directory
+  - Export a functional component that displays health status information
+  - Include: status ("ok"), timestamp (current ISO timestamp), version (from package.json)
+  - Use a simple JSON-formatted display (pre-formatted text or code block)
 
----
+- [ ] **Subtask 4.2: Add health route to React Router**
+  - Open `src/App.tsx` file where routes are defined
+  - Import the Health component: `import Health from "./pages/Health"`
+  - Add a new route above the catch-all route: `<Route path="/health" element={<Health />} />`
+  - This creates a `/health` endpoint accessible in the browser
 
-### Task 7: Verification and Testing
+- [ ] **Subtask 4.3: Make health route public (no authentication required)**
+  - Review `src/pages/Health.tsx` to ensure it doesn't use `useAuth()` hook
+  - The health route should not check for authentication or redirect to login
+  - This allows external monitoring tools and deployment platforms to check health without auth
 
-**Goal**: Verify the entire Prisma setup works correctly by testing database operations and confirming TypeScript integration.
+- [ ] **Subtask 4.4: Test the health check endpoint**
+  - Start the dev server with `npm run dev`
+  - Navigate to `http://localhost:8080/health` in the browser
+  - Verify the page displays status information correctly (status: ok, timestamp, version)
+  - Test that the endpoint is accessible without being logged in
 
-- [ ] **7.1**: Test database connection with Prisma Studio
-  - Run `npx prisma studio` to open the Prisma Studio GUI in the browser (typically at `http://localhost:5555`)
-  - Verify all three models (User, Video, Conversation) appear in the left sidebar with correct fields
-  - Try creating a test User record manually in Prisma Studio to confirm database connectivity
-
-- [ ] **7.2**: Create a test script to verify CRUD operations
-  - Create a temporary test file (e.g., `scripts/test-prisma.ts`) that imports the prisma singleton
-  - Write a simple async function that creates a test User, creates a related Video, queries the data, and deletes it
-  - Run the script with `npx tsx scripts/test-prisma.ts` (after installing `tsx` if needed) to verify all operations work
-  - Example operations: `await prisma.user.create()`, `await prisma.video.create()`, `await prisma.user.findUnique({ include: { videos: true } })`
-
-- [ ] **7.3**: Verify TypeScript type safety
-  - Test that TypeScript catches errors like invalid field names: `prisma.user.create({ data: { invalidField: 'test' } })`
-  - Confirm autocompletion works for model fields, relations, and query options
-  - Test that relationship types are correct: creating a video should require a valid `userId`, and `user.videos` should be typed as `Video[]`
-
-- [ ] **7.4**: Update package.json with useful Prisma scripts
-  - Add convenience scripts to `package.json`: `"db:studio": "prisma studio"`, `"db:push": "prisma db push"`, `"db:reset": "prisma migrate reset"`
-  - These scripts make it easier for developers to interact with the database during development
-  - Document these scripts in the README.md under the "Development" section
-
-- [ ] **7.5**: Test integration with existing Supabase Auth
-  - Verify that the User model `id` field can store Supabase Auth user IDs (UUID format)
-  - Consider creating a utility function to sync Supabase Auth users to the Prisma User table (this may be a future task)
-  - Confirm that the `email` field from Supabase Auth can be stored in the Prisma User model without conflicts
+**Alternative Approach (if needed):**
+If a true REST API endpoint is required, we can add `express` as a dependency and create a simple API server, but this adds complexity beyond the scope of the issue. The route-based approach is simpler and sufficient for health checking.
 
 ---
 
-### Task 8: Documentation and Cleanup
+### **Task 5: Verify All Scripts and Final Testing** � ~3 minutes
 
-**Goal**: Document the Prisma setup, add helpful comments, and prepare the feature for team review.
+This task ensures all npm scripts in package.json work correctly and the infrastructure is fully functional.
 
-- [ ] **8.1**: Add JSDoc comments to the prisma singleton
-  - Add comprehensive JSDoc comments to `src/lib/prisma.ts` explaining the singleton pattern and usage
-  - Include usage examples showing how to import and use the prisma client in application code
-  - Document why the global caching is necessary (prevent connection pool exhaustion during development hot reloading)
+- [ ] **Subtask 5.1: Test all existing scripts**
+  - Run `npm run dev` to start the development server (verify it starts without errors)
+  - Run `npm run build` to create a production build (verify it completes successfully)
+  - Run `npm run lint` to check for code quality issues (verify ESLint runs correctly)
+  - Run `npm run test` to run the test suite (verify Vitest runs correctly)
 
-- [ ] **8.2**: Update README.md with Prisma setup instructions
-  - Add a "Database" section to README.md explaining the Prisma setup
-  - Document how to run migrations: `npx prisma migrate dev`, how to access Prisma Studio: `npm run db:studio`
-  - Include troubleshooting tips for common issues like connection string format or migration conflicts
+- [ ] **Subtask 5.2: Test database management scripts**
+  - Run `npm run db:studio` to open Prisma Studio (verify it launches correctly, then close it)
+  - The other db scripts (db:push, db:migrate, db:reset) require database access, so just verify they exist
+  - Check package.json to confirm all database scripts are present: db:push, db:studio, db:migrate, db:reset
 
-- [ ] **8.3**: Update .env.example with DATABASE_URL instructions
-  - Ensure `.env.example` includes `DATABASE_URL` with clear instructions on how to get the connection string from Supabase
-  - Add a comment explaining the difference between Transaction mode and Session mode connection strings (use Transaction mode for Prisma)
-  - Document the format: `postgresql://postgres:[YOUR-PASSWORD]@[HOST]:[PORT]/postgres?pgbouncer=true`
+- [ ] **Subtask 5.3: Test the new format script**
+  - Run `npm run format` to format all files in the project
+  - Verify Prettier formats code according to the configuration (single quotes, no semicolons)
+  - Check git status to see what files were changed (if any)
+  - If many files were changed, review a few to ensure formatting is correct
 
-- [ ] **8.4**: Add Prisma schema comments for future developers
-  - Add comments to `prisma/schema.prisma` explaining the purpose of each model and important fields
-  - Document the VideoStatus enum states and when each state is used in the ingestion pipeline
-  - Add TODO comments for future enhancements (e.g., "// TODO: Add Message model for chat history in Phase 2")
-
-- [ ] **8.5**: Clean up any temporary test files
-  - Remove any temporary test scripts created during verification (e.g., `scripts/test-prisma.ts`)
-  - Ensure no database test data remains in the production tables
-  - Verify all changes are committed to the feature branch with clear commit messages
+- [ ] **Subtask 5.4: Run final verification**
+  - Run `npm run lint` to ensure no linting errors after formatting
+  - Run `npm run build` to ensure the project builds successfully after all changes
+  - Start the dev server and visit `http://localhost:8080/health` to verify health endpoint
+  - Confirm all acceptance criteria from Issue #11 are met
 
 ---
 
-## =� Progress Tracking
+##  Acceptance Criteria Checklist
 
-**Started**: October 22, 2025
-**Completed**: October 22, 2025
-**Completion**: 8/8 tasks completed (100%) ✅
-
-**Final Status:**
-- ✅ All 8 tasks completed successfully
-- ✅ Database migration applied (20251022113327_init)
-- ✅ All tables created: users, videos, conversations
-- ✅ Verification script passed all tests
-- ✅ Prisma Client singleton working correctly
-- ✅ Full TypeScript type safety confirmed
-- ✅ Documentation complete
-
-**Resolution:**
-- Initial connectivity issues resolved by updating DATABASE_URL to use Supabase's new pooler format
-- Migration successfully applied after connection string fix
-- All CRUD operations, relationships, and indexes verified working
+- [ ] Health check route accessible at `/health` (returns status and timestamp)
+- [ ] eslint-config-prettier installed and configured
+- [ ] Prettier installed and configured (single quotes, no semicolons)
+- [ ] `.prettierrc` file created with correct configuration
+- [ ] Format script added to package.json (`npm run format`)
+- [ ] All scripts tested and working correctly (dev, build, lint, test, format, db:\*)
+- [ ] ESLint and Prettier work together without conflicts
+- [ ] No linting errors in the codebase after formatting
 
 ---
 
-## = Related Issues
+## = Related Information
 
-- **Depends on**: Issue #5 (Supabase Setup)  COMPLETED
-- **Blocks**: Issue #8 (Environment Variables)
+- **Issue**: #11 - Infrastructure & Testing
+- **Branch**: `11-featureinfrastructure-testing`
+- **Dependencies**: Issue #1 (Project Generation & Setup)  Completed
+- **Followed by**: Issue #10 (Vercel Deployment)
 - **Part of**: Step 1  Project Bootstrap & Skeleton Deployment
+- **Estimated Total Time**: ~18 minutes
 
 ---
 
-## =� Reference Documentation
+## =� Notes
 
-- [Prisma Documentation](https://www.prisma.io/docs)
-- [Prisma + Supabase Guide](https://www.prisma.io/docs/guides/database/supabase)
-- [Prisma Client API Reference](https://www.prisma.io/docs/reference/api-reference/prisma-client-reference)
-- [Prisma Schema Reference](https://www.prisma.io/docs/reference/api-reference/prisma-schema-reference)
-- [Supabase Connection Strings](https://supabase.com/docs/guides/database/connecting-to-postgres)
+- This is a Vite + React project, not Next.js, so traditional API routes (like Next.js App Router) are not available
+- The health check implementation uses a React Router route instead of a REST API endpoint
+- The project already has ESLint configured with the new flat config format (eslint.config.js)
+- Database management scripts (db:push, db:studio, db:migrate, db:reset) are already present in package.json
+- The lint script already exists and uses ESLint
+- Follow CLAUDE.md guidelines for code style and conventions throughout implementation
+
+---
+
+**Generated**: 2025-10-22
+**Status**: Ready for implementation

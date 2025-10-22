@@ -5,15 +5,15 @@
  * This file runs before all test suites.
  */
 
-import { expect, afterEach, vi } from 'vitest';
-import { cleanup } from '@testing-library/react';
-import '@testing-library/jest-dom';
+import { expect, afterEach, vi } from 'vitest'
+import { cleanup } from '@testing-library/react'
+import '@testing-library/jest-dom'
 
 // Cleanup after each test to prevent memory leaks
 afterEach(() => {
-  cleanup();
-  vi.clearAllMocks();
-});
+  cleanup()
+  vi.clearAllMocks()
+})
 
 // Mock window.location for navigation tests
 const mockLocation = {
@@ -26,42 +26,42 @@ const mockLocation = {
   pathname: '/',
   search: '',
   hash: '',
-};
+}
 
 Object.defineProperty(window, 'location', {
   value: mockLocation,
   writable: true,
-});
+})
 
 // Mock environment variables for Supabase
-vi.stubEnv('VITE_SUPABASE_URL', 'https://test-project.supabase.co');
-vi.stubEnv('VITE_SUPABASE_ANON_KEY', 'test-anon-key-123456789');
+vi.stubEnv('VITE_SUPABASE_URL', 'https://test-project.supabase.co')
+vi.stubEnv('VITE_SUPABASE_ANON_KEY', 'test-anon-key-123456789')
 
 // Mock localStorage
 const localStorageMock = (() => {
-  let store: Record<string, string> = {};
+  let store: Record<string, string> = {}
 
   return {
     getItem: (key: string) => store[key] || null,
     setItem: (key: string, value: string) => {
-      store[key] = value.toString();
+      store[key] = value.toString()
     },
     removeItem: (key: string) => {
-      delete store[key];
+      delete store[key]
     },
     clear: () => {
-      store = {};
+      store = {}
     },
-  };
-})();
+  }
+})()
 
 Object.defineProperty(window, 'localStorage', {
   value: localStorageMock,
-});
+})
 
 // Mock console methods to reduce noise in test output
 global.console = {
   ...console,
   error: vi.fn(),
   warn: vi.fn(),
-};
+}

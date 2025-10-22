@@ -19,4 +19,3 @@ Follow these steps:
 If no issue number is found in the branch name, ask the user to provide the issue number or check if the branch follows the expected naming convention.
 
 Remember to use the GitHub CLI (`gh`) for all GitHub-related tasks.
-

@@ -18,17 +18,20 @@ YouTube GPT helps users instantly find information hidden inside hours of video 
 ## Tech Stack
 
 ### Frontend
+
 - [Next.js 14](https://nextjs.org/) with App Router
 - [React 18](https://react.dev/) + [TypeScript](https://www.typescriptlang.org/)
 - [Tailwind CSS](https://tailwindcss.com/) + [shadcn/ui](https://ui.shadcn.com/)
 
 ### Backend
+
 - [Next.js Server Actions](https://nextjs.org/docs/app/building-your-application/data-fetching/server-actions-and-mutations)
 - [Supabase](https://supabase.com/) (Auth, PostgreSQL, Realtime, RLS)
 - [Prisma](https://www.prisma.io/) ORM
 - [Vercel](https://vercel.com/) deployment
 
 ### AI & Processing
+
 - [Anthropic Claude](https://www.anthropic.com/claude) - LLM for chat
 - [ZeroEntropy](https://zeroentropy.dev/) - Vector embeddings & search
 - [Inngest](https://www.inngest.com/) - Background jobs
@@ -45,12 +48,14 @@ YouTube GPT helps users instantly find information hidden inside hours of video 
 ### Installation
 
 1. **Clone the repository**
+
    ```bash
    git clone https://github.com/your-username/youtube-gpt.git
    cd youtube-gpt
    ```
 
 2. **Install dependencies**
+
    ```bash
    npm install
    ```
@@ -58,11 +63,13 @@ YouTube GPT helps users instantly find information hidden inside hours of video 
 3. **Set up environment variables**
 
    Copy the example environment file and configure your credentials:
+
    ```bash
    cp .env.example .env.local
    ```
 
    Open `.env.local` and fill in your Supabase credentials:
+
    ```bash
    VITE_SUPABASE_URL=https://your-project-id.supabase.co
    VITE_SUPABASE_ANON_KEY=your-anon-key-here
@@ -80,6 +87,7 @@ YouTube GPT helps users instantly find information hidden inside hours of video 
 4. **Set up the database**
 
    Run Prisma migrations to create database tables:
+
    ```bash
    npm run db:migrate
    ```
@@ -87,6 +95,7 @@ YouTube GPT helps users instantly find information hidden inside hours of video 
    This will create the User, Video, and Conversation tables in your Supabase PostgreSQL database.
 
 5. **Start the development server**
+
    ```bash
    npm run dev
    ```
@@ -203,6 +212,7 @@ DATABASE_URL=postgresql://postgres:[PASSWORD]@db.[PROJECT-ID].supabase.co:5432/p
 ```
 
 **Important Notes:**
+
 - All client-side environment variables must use the `VITE_` prefix to be accessible in the browser
 - `DATABASE_URL` uses Transaction mode for Prisma compatibility with Supabase
 - Never commit `.env.local` or `.env` to version control (both are in `.gitignore`)
@@ -211,11 +221,13 @@ DATABASE_URL=postgresql://postgres:[PASSWORD]@db.[PROJECT-ID].supabase.co:5432/p
 ### Supabase Setup
 
 The application uses Supabase for:
+
 - **Authentication**: Magic link email authentication with session management
 - **Database**: PostgreSQL database with Row Level Security (RLS)
 - **Real-time**: Live updates for video ingestion status (coming in Step 2)
 
 **Configuration Details:**
+
 - **PKCE Flow**: Enhanced security using Proof Key for Code Exchange
 - **Session Persistence**: Auth tokens stored in localStorage
 - **Auto Refresh**: Tokens automatically refresh before expiration
@@ -226,6 +238,7 @@ The application uses Supabase for:
 The application uses Prisma ORM for type-safe database access with PostgreSQL (via Supabase).
 
 **Database Schema:**
+
 - **User**: Stores user profiles synced with Supabase Auth
 - **Video**: Tracks ingested YouTube videos with processing status (QUEUED, PROCESSING, READY, FAILED)
 - **Conversation**: Represents chat sessions between users and AI
@@ -250,6 +263,7 @@ npx prisma generate
 ```
 
 **Key Features:**
+
 - **Type Safety**: Full TypeScript types generated from schema
 - **Migrations**: Version-controlled schema changes
 - **Relationships**: Foreign keys with cascade delete
@@ -257,24 +271,26 @@ npx prisma generate
 - **Singleton Pattern**: Prevents connection pool exhaustion in development
 
 **Usage Example:**
+
 ```typescript
-import { prisma } from '@/lib/prisma';
+import { prisma } from '@/lib/prisma'
 
 // Create a user
 const user = await prisma.user.create({
-  data: { email: 'user@example.com', name: 'John Doe' }
-});
+  data: { email: 'user@example.com', name: 'John Doe' },
+})
 
 // Query videos with user relation
 const videos = await prisma.video.findMany({
   where: { userId: user.id, status: 'READY' },
-  include: { user: true }
-});
+  include: { user: true },
+})
 ```
 
 **Troubleshooting:**
 
 If you encounter connection issues:
+
 1. Verify `DATABASE_URL` in `.env.local` is correct
 2. Ensure connection string uses Transaction mode (`?pgbouncer=true`)
 3. Check Supabase project is active (not paused)

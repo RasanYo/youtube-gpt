@@ -6,7 +6,7 @@
  * and configuration.
  */
 
-import { supabase } from './client';
+import { supabase } from './client'
 
 /**
  * Send a magic link to the user's email for passwordless authentication
@@ -31,10 +31,10 @@ export async function signInWithMagicLink(email: string) {
     options: {
       emailRedirectTo: `${window.location.origin}/`,
     },
-  });
+  })
 
-  if (error) throw error;
-  return data;
+  if (error) throw error
+  return data
 }
 
 /**
@@ -54,8 +54,8 @@ export async function signInWithMagicLink(email: string) {
  * ```
  */
 export async function signOut() {
-  const { error } = await supabase.auth.signOut();
-  if (error) throw error;
+  const { error } = await supabase.auth.signOut()
+  if (error) throw error
 }
 
 /**
@@ -85,10 +85,10 @@ export async function getCurrentUser() {
   const {
     data: { user },
     error,
-  } = await supabase.auth.getUser();
+  } = await supabase.auth.getUser()
 
-  if (error) throw error;
-  return user;
+  if (error) throw error
+  return user
 }
 
 /**
@@ -110,7 +110,7 @@ export async function getCurrentUser() {
 export async function getCurrentSession() {
   const {
     data: { session },
-  } = await supabase.auth.getSession();
+  } = await supabase.auth.getSession()
 
-  return session;
+  return session
 }

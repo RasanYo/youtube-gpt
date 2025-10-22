@@ -63,6 +63,7 @@ src/
 ```
 
 **Component Organization Principles:**
+
 - **Feature-based grouping**: Group related components together
 - **Separation of concerns**: Keep UI, business logic, and data separate
 - **Reusability**: Create reusable components in `components/ui/`
@@ -201,33 +202,37 @@ export const useWebSocket = (url: string) => {
 
 Use JSDoc comments for all public functions, components, and modules:
 
-```typescript
+````typescript
 /**
  * AudioPlayer Component
- * 
+ *
  * A mobile-first audio player for the museum audio guide webapp.
  * Features:
  * - Audio playback controls (play, pause, skip)
  * - Voice transcription via Google Cloud STT
  * - Real-time audio timestamp tracking
  * - Press-and-hold microphone functionality
- * 
+ *
  * @param props - Component props including audio source and event handlers
  * @returns JSX element for the audio player interface
  */
-export const AudioPlayer = ({ src, className, onTranscriptionResult }: AudioPlayerProps) => {
+export const AudioPlayer = ({
+  src,
+  className,
+  onTranscriptionResult,
+}: AudioPlayerProps) => {
   // Component implementation
-};
+}
 
 /**
  * Custom hook for WebSocket communication
- * 
+ *
  * Provides connection state management and message handling for real-time
  * communication with the AI backend.
- * 
+ *
  * @param url - WebSocket server URL
  * @returns Object containing connection state and message methods
- * 
+ *
  * @example
  * ```typescript
  * const { isConnected, sendMessage, onMessage } = useWebSocket('ws://localhost:8080');
@@ -235,8 +240,8 @@ export const AudioPlayer = ({ src, className, onTranscriptionResult }: AudioPlay
  */
 export const useWebSocket = (url: string) => {
   // Hook implementation
-};
-```
+}
+````
 
 ### Naming Conventions
 
@@ -273,11 +278,11 @@ describe('AudioPlayer', () => {
     // Arrange
     const mockOnTranscriptionResult = jest.fn();
     render(<AudioPlayer onTranscriptionResult={mockOnTranscriptionResult} />);
-    
+
     // Act
     const playButton = screen.getByRole('button', { name: /play/i });
     fireEvent.click(playButton);
-    
+
     // Assert
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /pause/i })).toBeInTheDocument();
@@ -296,7 +301,7 @@ import { useWebSocket } from '@/hooks/useWebSocket';
 describe('useWebSocket', () => {
   it('should establish connection and provide sendMessage function', () => {
     const { result } = renderHook(() => useWebSocket('ws://localhost:8080'));
-    
+
     expect(result.current.isConnected).toBe(false);
     expect(typeof result.current.sendMessage).toBe('function');
   });
@@ -387,28 +392,28 @@ export const useWebSocket = (url: string) => {
 const logger = {
   debug: (message: string, data?: any) => {
     if (import.meta.env.DEV) {
-      console.debug(`[DEBUG] ${message}`, data);
+      console.debug(`[DEBUG] ${message}`, data)
     }
   },
   info: (message: string, data?: any) => {
-    console.info(`[INFO] ${message}`, data);
+    console.info(`[INFO] ${message}`, data)
   },
   warn: (message: string, data?: any) => {
-    console.warn(`[WARN] ${message}`, data);
+    console.warn(`[WARN] ${message}`, data)
   },
   error: (message: string, error?: Error) => {
-    console.error(`[ERROR] ${message}`, error);
-  }
-};
+    console.error(`[ERROR] ${message}`, error)
+  },
+}
 
 // Usage in components
 useEffect(() => {
-  logger.debug('AudioPlayer mounted', { src });
-  
+  logger.debug('AudioPlayer mounted', { src })
+
   return () => {
-    logger.debug('AudioPlayer unmounted');
-  };
-}, [src]);
+    logger.debug('AudioPlayer unmounted')
+  }
+}, [src])
 ```
 
 ## 🔧 Configuration Management
@@ -418,11 +423,11 @@ useEffect(() => {
 ```typescript
 // Use Vite environment variables with type safety
 interface AppConfig {
-  apiUrl: string;
-  websocketUrl: string;
-  googleCloudApiKey: string;
-  elevenLabsApiKey: string;
-  isDevelopment: boolean;
+  apiUrl: string
+  websocketUrl: string
+  googleCloudApiKey: string
+  elevenLabsApiKey: string
+  isDevelopment: boolean
 }
 
 const config: AppConfig = {
@@ -431,26 +436,26 @@ const config: AppConfig = {
   googleCloudApiKey: import.meta.env.VITE_GOOGLE_CLOUD_API_KEY || '',
   elevenLabsApiKey: import.meta.env.VITE_ELEVENLABS_API_KEY || '',
   isDevelopment: import.meta.env.DEV,
-};
+}
 
 // Environment validation
 const validateConfig = () => {
-  const requiredVars = ['VITE_GOOGLE_CLOUD_API_KEY', 'VITE_ELEVENLABS_API_KEY'];
-  const missing = requiredVars.filter(key => !import.meta.env[key]);
-  
+  const requiredVars = ['VITE_GOOGLE_CLOUD_API_KEY', 'VITE_ELEVENLABS_API_KEY']
+  const missing = requiredVars.filter((key) => !import.meta.env[key])
+
   if (missing.length > 0) {
-    console.warn(`Missing environment variables: ${missing.join(', ')}`);
+    console.warn(`Missing environment variables: ${missing.join(', ')}`)
   }
-};
+}
 
 // Usage in components
 export const useConfig = () => {
   useEffect(() => {
-    validateConfig();
-  }, []);
+    validateConfig()
+  }, [])
 
-  return config;
-};
+  return config
+}
 ```
 
 ### Environment File Setup
@@ -476,7 +481,7 @@ VITE_ELEVENLABS_API_KEY=production_key
 ### TypeScript Interfaces and Zod Validation
 
 ```typescript
-import { z } from 'zod';
+import { z } from 'zod'
 
 // Define Zod schemas for runtime validation
 const ChatMessageSchema = z.object({
@@ -485,43 +490,45 @@ const ChatMessageSchema = z.object({
   isUser: z.boolean(),
   timestamp: z.date(),
   audioTimestamp: z.number().optional(),
-});
+})
 
 const EnhancedMessageSchema = z.object({
   text: z.string().min(1),
   timestamp: z.number(),
   messageType: z.literal('text'),
-  metadata: z.object({
-    audioPosition: z.number().optional(),
-    formattedTimestamp: z.string().optional(),
-    userId: z.string().optional(),
-    sessionId: z.string().optional(),
-  }).optional(),
-});
+  metadata: z
+    .object({
+      audioPosition: z.number().optional(),
+      formattedTimestamp: z.string().optional(),
+      userId: z.string().optional(),
+      sessionId: z.string().optional(),
+    })
+    .optional(),
+})
 
 // Infer TypeScript types from Zod schemas
-export type ChatMessage = z.infer<typeof ChatMessageSchema>;
-export type EnhancedMessage = z.infer<typeof EnhancedMessageSchema>;
+export type ChatMessage = z.infer<typeof ChatMessageSchema>
+export type EnhancedMessage = z.infer<typeof EnhancedMessageSchema>
 
 // Validation functions
 export const validateChatMessage = (data: unknown): ChatMessage => {
-  return ChatMessageSchema.parse(data);
-};
+  return ChatMessageSchema.parse(data)
+}
 
 export const validateEnhancedMessage = (data: unknown): EnhancedMessage => {
-  return EnhancedMessageSchema.parse(data);
-};
+  return EnhancedMessageSchema.parse(data)
+}
 
 // Component props with validation
 interface AudioPlayerProps {
-  src?: string;
-  className?: string;
-  onTranscriptionResult?: (result: STTResult) => void;
+  src?: string
+  className?: string
+  onTranscriptionResult?: (result: STTResult) => void
   config?: {
-    volume?: number;
-    playbackRate?: number;
-    autoplay?: boolean;
-  };
+    volume?: number
+    playbackRate?: number
+    autoplay?: boolean
+  }
 }
 
 // Service configuration with validation
@@ -529,14 +536,24 @@ const STTConfigSchema = z.object({
   apiKey: z.string().min(1),
   languageCode: z.string().default('fr-FR'),
   sampleRateHertz: z.number().default(16000),
-  encoding: z.enum(['LINEAR16', 'FLAC', 'MULAW', 'AMR', 'AMR_WB', 'OGG_OPUS', 'SPEEX_WITH_HEADER_BYTE']).default('LINEAR16'),
+  encoding: z
+    .enum([
+      'LINEAR16',
+      'FLAC',
+      'MULAW',
+      'AMR',
+      'AMR_WB',
+      'OGG_OPUS',
+      'SPEEX_WITH_HEADER_BYTE',
+    ])
+    .default('LINEAR16'),
   enableAutomaticPunctuation: z.boolean().default(true),
   enableWordTimeOffsets: z.boolean().default(false),
   enableWordConfidence: z.boolean().default(false),
   model: z.string().default('latest_long'),
-});
+})
 
-export type STTConfig = z.infer<typeof STTConfigSchema>;
+export type STTConfig = z.infer<typeof STTConfigSchema>
 ```
 
 ## 🔄 Git Workflow
@@ -566,6 +583,7 @@ Never include "claude code" or "written by claude code" in commit messages
 Types: feat, fix, docs, style, refactor, test, chore
 
 Example:
+
 ```
 feat(audio): add voice transcription functionality
 
@@ -591,7 +609,7 @@ Closes #123
 ```typescript
 /**
  * TranscriptionPanel Component
- * 
+ *
  * A mobile-first chat interface for the audio guide museum webapp.
  * Features:
  * - Real-time chat with AI assistant
@@ -599,15 +617,29 @@ Closes #123
  * - Text-to-speech response integration
  * - Audio timestamp context for AI responses
  * - Draggable sheet interface for mobile UX
- * 
+ *
  * @param props - Component props including connection status, message handlers, and UI state
  * @param ref - Ref to access component methods programmatically
  */
-export const TranscriptionPanel = forwardRef<TranscriptionPanelRef, TranscriptionPanelProps>(
-  ({ isVisible, className, onDragStart, isDragging, isConnected, connectionError, sendMessage }, ref) => {
+export const TranscriptionPanel = forwardRef<
+  TranscriptionPanelRef,
+  TranscriptionPanelProps
+>(
+  (
+    {
+      isVisible,
+      className,
+      onDragStart,
+      isDragging,
+      isConnected,
+      connectionError,
+      sendMessage,
+    },
+    ref,
+  ) => {
     // Component implementation
-  }
-);
+  },
+)
 ```
 
 ## 🚀 Performance Considerations
@@ -629,7 +661,7 @@ export const TranscriptionPanel = forwardRef<TranscriptionPanelRef, Transcriptio
 // ✅ Memoized component
 const AudioPlayer = React.memo(({ src, onTranscriptionResult }: AudioPlayerProps) => {
   const [isPlaying, setIsPlaying] = useState(false);
-  
+
   // ✅ Memoized expensive calculation
   const audioConfig = useMemo(() => ({
     volume: 0.8,
@@ -682,22 +714,22 @@ const routes = [
     path: '/audio/:id',
     component: React.lazy(() => import('./pages/AudioDetail')),
   },
-];
+]
 
 // ✅ Tree shaking friendly imports
-import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 
 // ❌ Avoid importing entire libraries
-import * as _ from 'lodash'; // Don't do this
-import { debounce } from 'lodash'; // Do this instead
+import * as _ from 'lodash' // Don't do this
+import { debounce } from 'lodash' // Do this instead
 ```
 
 ## 🛡️ Security Best Practices
 
 ### Frontend Security Guidelines
 
-- **Never commit API keys** - Use environment variables with VITE_ prefix
+- **Never commit API keys** - Use environment variables with VITE\_ prefix
 - **Validate all user input** with Zod schemas before processing
 - **Sanitize HTML content** to prevent XSS attacks
 - **Use HTTPS** for all external communications
@@ -714,58 +746,64 @@ const validateEnvironment = () => {
   const requiredVars = [
     'VITE_GOOGLE_CLOUD_API_KEY',
     'VITE_ELEVENLABS_API_KEY',
-    'VITE_WEBSOCKET_URL'
-  ];
-  
-  const missing = requiredVars.filter(key => !import.meta.env[key]);
+    'VITE_WEBSOCKET_URL',
+  ]
+
+  const missing = requiredVars.filter((key) => !import.meta.env[key])
   if (missing.length > 0) {
-    throw new Error(`Missing required environment variables: ${missing.join(', ')}`);
+    throw new Error(
+      `Missing required environment variables: ${missing.join(', ')}`,
+    )
   }
-};
+}
 
 // ✅ Input sanitization
-import DOMPurify from 'dompurify';
+import DOMPurify from 'dompurify'
 
 const sanitizeUserInput = (input: string): string => {
-  return DOMPurify.sanitize(input, { 
+  return DOMPurify.sanitize(input, {
     ALLOWED_TAGS: [],
-    ALLOWED_ATTR: []
-  });
-};
+    ALLOWED_ATTR: [],
+  })
+}
 
 // ✅ Secure WebSocket connection
 const createSecureWebSocket = (url: string): WebSocket => {
-  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const secureUrl = url.replace(/^ws:/, protocol);
-  return new WebSocket(secureUrl);
-};
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+  const secureUrl = url.replace(/^ws:/, protocol)
+  return new WebSocket(secureUrl)
+}
 
 // ✅ API key protection
 const getApiKey = (service: 'google' | 'elevenlabs'): string => {
-  const key = service === 'google' 
-    ? import.meta.env.VITE_GOOGLE_CLOUD_API_KEY
-    : import.meta.env.VITE_ELEVENLABS_API_KEY;
-    
+  const key =
+    service === 'google'
+      ? import.meta.env.VITE_GOOGLE_CLOUD_API_KEY
+      : import.meta.env.VITE_ELEVENLABS_API_KEY
+
   if (!key) {
-    throw new Error(`API key for ${service} not found`);
+    throw new Error(`API key for ${service} not found`)
   }
-  
-  return key;
-};
+
+  return key
+}
 ```
 
 ### Content Security Policy
 
 ```html
 <!-- Add to index.html -->
-<meta http-equiv="Content-Security-Policy" content="
+<meta
+  http-equiv="Content-Security-Policy"
+  content="
   default-src 'self';
   script-src 'self' 'unsafe-inline' 'unsafe-eval';
   style-src 'self' 'unsafe-inline';
   img-src 'self' data: https:;
   connect-src 'self' wss: https:;
   media-src 'self' blob:;
-">
+"
+/>
 ```
 
 ## 🔍 Debugging Tools
@@ -845,27 +883,27 @@ class ErrorBoundary extends React.Component {
 const debug = {
   log: (message: string, data?: any) => {
     if (import.meta.env.DEV) {
-      console.log(`[DEBUG] ${message}`, data);
+      console.log(`[DEBUG] ${message}`, data)
     }
   },
   time: (label: string) => {
     if (import.meta.env.DEV) {
-      console.time(label);
+      console.time(label)
     }
   },
   timeEnd: (label: string) => {
     if (import.meta.env.DEV) {
-      console.timeEnd(label);
+      console.timeEnd(label)
     }
-  }
-};
+  },
+}
 
 // Usage in components
 useEffect(() => {
-  debug.time('AudioPlayer mount');
+  debug.time('AudioPlayer mount')
   // Component logic
-  debug.timeEnd('AudioPlayer mount');
-}, []);
+  debug.timeEnd('AudioPlayer mount')
+}, [])
 ```
 
 ## 📊 Monitoring and Observability
@@ -876,31 +914,31 @@ useEffect(() => {
 // ✅ Structured logging for frontend
 const logger = {
   info: (message: string, metadata?: Record<string, any>) => {
-    console.info(`[INFO] ${message}`, metadata);
+    console.info(`[INFO] ${message}`, metadata)
   },
   warn: (message: string, metadata?: Record<string, any>) => {
-    console.warn(`[WARN] ${message}`, metadata);
+    console.warn(`[WARN] ${message}`, metadata)
   },
   error: (message: string, error?: Error, metadata?: Record<string, any>) => {
-    console.error(`[ERROR] ${message}`, error, metadata);
+    console.error(`[ERROR] ${message}`, error, metadata)
   },
   performance: (label: string, duration: number) => {
-    console.log(`[PERF] ${label}: ${duration}ms`);
-  }
-};
+    console.log(`[PERF] ${label}: ${duration}ms`)
+  },
+}
 
 // ✅ Performance monitoring
 export const usePerformanceMonitor = () => {
   const measureRender = useCallback((componentName: string) => {
-    const start = performance.now();
+    const start = performance.now()
     return () => {
-      const end = performance.now();
-      logger.performance(`${componentName} render`, end - start);
-    };
-  }, []);
+      const end = performance.now()
+      logger.performance(`${componentName} render`, end - start)
+    }
+  }, [])
 
-  return { measureRender };
-};
+  return { measureRender }
+}
 
 // ✅ Error tracking
 export const trackError = (error: Error, context?: Record<string, any>) => {
@@ -909,8 +947,8 @@ export const trackError = (error: Error, context?: Record<string, any>) => {
     userAgent: navigator.userAgent,
     url: window.location.href,
     timestamp: new Date().toISOString(),
-  });
-};
+  })
+}
 ```
 
 ## 📚 Useful Resources
