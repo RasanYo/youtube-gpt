@@ -67,11 +67,11 @@ export const VideoCard = ({
   // Extract and transform data from the Video object
   const videoId = video.id
   const title = video.title
-  const thumbnailUrl = video.thumbnail_url
-  const channelName = video.channel_name
+  const thumbnailUrl = video.thumbnailUrl
+  const channelName = video.channelName
   const status = convertStatus(video.status)
   const duration = formatDuration(video.duration)
-  const publishedAt = video.created_at
+  const publishedAt = video.createdAt
 
   const config = statusConfig[status]
   const Icon = config.icon
