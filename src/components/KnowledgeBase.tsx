@@ -1,10 +1,19 @@
-import { FileText, Folder, Video, Calendar } from 'lucide-react'
+import { useState } from 'react'
+import { FileText, Folder, Video, Calendar, Loader2, Cloud } from 'lucide-react'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
+import { Input } from '@/components/ui/input'
+import { processYouTubeUrl } from '@/lib/youtube'
+import { useToast } from '@/hooks/use-toast'
 
 export const KnowledgeBase = () => {
+  // State management for URL input and loading
+  const [urlInput, setUrlInput] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
+  const { toast } = useToast()
+
   // Empty documents array to show empty state
   const documents: Array<{
     id: number
@@ -18,6 +27,50 @@ export const KnowledgeBase = () => {
   const totalVideos = 0
   const lastIngestion = 'Never'
 
+  // Handle form submission
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    
+    if (!urlInput.trim()) {
+      toast({
+        title: 'Error',
+        description: 'Please enter a YouTube URL',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    setIsLoading(true)
+    
+    try {
+      const result = await processYouTubeUrl(urlInput.trim())
+      
+      if (result.success) {
+        toast({
+          title: 'Success',
+          description: `YouTube ${result.type} URL processed successfully!`,
+        })
+        // Reset form
+        setUrlInput('')
+      } else {
+        toast({
+          title: 'Error',
+          description: result.error || 'Failed to process URL',
+          variant: 'destructive',
+        })
+      }
+    } catch (error) {
+      console.error('Error processing URL:', error)
+      toast({
+        title: 'Error',
+        description: 'An unexpected error occurred',
+        variant: 'destructive',
+      })
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   return (
     <div className="flex h-screen w-96 flex-col border-l bg-card">
       {/* Header */}
@@ -27,7 +80,33 @@ export const KnowledgeBase = () => {
           <Folder className="h-4 w-4" />
         </Button>
       </div>
-
+      {/* URL Input Form - Moved to top */}
+      <div className="border-b">
+        <form onSubmit={handleSubmit} className="p-4">
+          <div className="relative">
+            <Input
+              type="url"
+              placeholder="Paste YouTube video URL"
+              value={urlInput}
+              onChange={(e) => setUrlInput(e.target.value)}
+              disabled={isLoading}
+              className="w-full pr-12"
+            />
+            <Button 
+              type="submit" 
+              size="sm"
+              className="absolute right-1 top-1 h-8 w-8 p-0" 
+              disabled={isLoading || !urlInput.trim()}
+            >
+              {isLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Cloud className="h-4 w-4" />
+              )}
+            </Button>
+          </div>
+        </form>
+      </div>
       {/* Documents */}
       <ScrollArea className="flex-1 p-4">
         {documents.length === 0 ? (
@@ -76,17 +155,8 @@ export const KnowledgeBase = () => {
         )}
       </ScrollArea>
 
-      {/* Footer with Add Button */}
+      {/* Mini-Metrics Footer */}
       <div className="border-t">
-        <div className="p-4 pb-3">
-          <Button variant="outline" className="w-full">
-            <FileText className="h-4 w-4 mr-2" />
-            Add Document
-          </Button>
-        </div>
-
-        {/* Mini-Metrics Footer */}
-        <Separator />
         <div className="bg-muted/30 px-4 py-3">
           <div className="space-y-2 text-xs">
             <div className="flex items-center justify-between">
