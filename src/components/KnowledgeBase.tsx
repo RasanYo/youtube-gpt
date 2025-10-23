@@ -8,96 +8,16 @@ import { Input } from '@/components/ui/input'
 import { useToast } from '@/hooks/use-toast'
 import { processYouTubeUrl } from '@/lib/youtube'
 import { VideoList } from './VideoList'
-import { Video } from '@/lib/supabase/types'
+import { useVideos } from '@/hooks/useVideos'
 
 export const KnowledgeBase = () => {
   const [urlInput, setUrlInput] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const [isCollapsed, setIsCollapsed] = useState(false)
   const { toast } = useToast()
 
-  // Sample video data for demonstration
-  const videos: Video[] = [
-    {
-      id: 'sample-1',
-      user_id: 'user-1',
-      youtube_id: 'sample1',
-      title: 'How to Build a Full-Stack AI Application with Next.js and Supabase',
-      thumbnail_url: 'https://img.youtube.com/vi/sample1/maxresdefault.jpg',
-      channel_name: 'AI Tutorials',
-      duration: 930, // 15:30 in seconds
-      status: 'READY',
-      error: null,
-      created_at: '2024-01-15T10:00:00Z',
-      updated_at: '2024-01-15T10:00:00Z'
-    },
-    {
-      id: 'sample-2',
-      user_id: 'user-1',
-      youtube_id: 'sample2',
-      title: 'Advanced React Patterns and Best Practices',
-      thumbnail_url: 'https://img.youtube.com/vi/sample2/maxresdefault.jpg',
-      channel_name: 'React Masters',
-      duration: 1365, // 22:45 in seconds
-      status: 'PROCESSING',
-      error: null,
-      created_at: '2024-01-14T15:30:00Z',
-      updated_at: '2024-01-14T15:30:00Z'
-    },
-    {
-      id: 'sample-3',
-      user_id: 'user-1',
-      youtube_id: 'sample3',
-      title: 'TypeScript Deep Dive: Advanced Types and Generics',
-      thumbnail_url: 'https://img.youtube.com/vi/sample3/maxresdefault.jpg',
-      channel_name: 'TypeScript Academy',
-      duration: null,
-      status: 'QUEUED',
-      error: null,
-      created_at: '2024-01-13T09:15:00Z',
-      updated_at: '2024-01-13T09:15:00Z'
-    },
-    {
-      id: 'sample-4',
-      user_id: 'user-1',
-      youtube_id: 'sample4',
-      title: 'Database Design Patterns for Scalable Applications',
-      thumbnail_url: 'https://img.youtube.com/vi/sample4/maxresdefault.jpg',
-      channel_name: 'Database Experts',
-      duration: null,
-      status: 'FAILED',
-      error: 'Failed to extract transcript',
-      created_at: '2024-01-12T14:20:00Z',
-      updated_at: '2024-01-12T14:20:00Z'
-    },
-    // Test videos with missing data to demonstrate skeleton loading
-    {
-      id: 'sample-5',
-      user_id: 'user-1',
-      youtube_id: 'sample5',
-      title: null, // Missing title
-      thumbnail_url: null, // Missing thumbnail
-      channel_name: 'Loading Channel...', // Has name
-      duration: null, // Missing duration
-      status: 'PROCESSING',
-      error: null,
-      created_at: '2024-01-11T08:00:00Z',
-      updated_at: '2024-01-11T08:00:00Z'
-    },
-    {
-      id: 'sample-6',
-      user_id: 'user-1',
-      youtube_id: 'sample6',
-      title: 'Video with Missing Channel Info',
-      thumbnail_url: 'https://img.youtube.com/vi/sample6/maxresdefault.jpg',
-      channel_name: null, // Missing channel name
-      duration: 630, // 10:30 in seconds
-      status: 'QUEUED',
-      error: null,
-      created_at: '2024-01-10T08:00:00Z',
-      updated_at: '2024-01-10T08:00:00Z'
-    }
-  ]
+  // Use the useVideos hook for real-time data
+  const { videos, isLoading, error } = useVideos()
 
   const totalVideos = videos.length
   const lastIngestion = videos.length > 0 
@@ -133,7 +53,7 @@ export const KnowledgeBase = () => {
       return
     }
 
-    setIsLoading(true)
+    setIsSubmitting(true)
     
     try {
       const result = await processYouTubeUrl(urlInput.trim())
@@ -171,7 +91,7 @@ export const KnowledgeBase = () => {
         variant: 'destructive',
       })
     } finally {
-      setIsLoading(false)
+      setIsSubmitting(false)
     }
   }
 
@@ -221,16 +141,16 @@ export const KnowledgeBase = () => {
                   placeholder="Paste YouTube video/channel URL"
                   value={urlInput}
                   onChange={(e) => setUrlInput(e.target.value)}
-                  disabled={isLoading}
+                  disabled={isSubmitting}
                   className="w-full pr-12"
                 />
                 <Button 
                   type="submit" 
                   size="sm"
                   className="absolute right-1 top-1 h-8 w-8 p-0" 
-                  disabled={isLoading || !urlInput.trim()}
+                  disabled={isSubmitting || !urlInput.trim()}
                 >
-                  {isLoading ? (
+                  {isSubmitting ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
                     <Cloud className="h-4 w-4" />
