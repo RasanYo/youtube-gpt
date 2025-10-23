@@ -48,14 +48,25 @@ export const KnowledgeBase = () => {
       if (result.success) {
         toast({
           title: 'Success',
-          description: `YouTube ${result.type} URL processed successfully!`,
+          description: `YouTube ${result.type} queued for processing! Video ID: ${result.data?.id}`,
         })
         // Reset form
         setUrlInput('')
       } else {
+        // Handle different error types with specific messages
+        let errorMessage = result.error || 'Failed to process URL'
+        
+        if (result.type === 'auth_required') {
+          errorMessage = 'Please sign in to add videos to your knowledge base'
+        } else if (result.type === 'auth_error') {
+          errorMessage = 'Authentication failed. Please sign in and try again'
+        } else if (result.type === 'processing_error') {
+          errorMessage = 'Failed to queue video for processing. Please try again'
+        }
+
         toast({
           title: 'Error',
-          description: result.error || 'Failed to process URL',
+          description: errorMessage,
           variant: 'destructive',
         })
       }
@@ -86,7 +97,7 @@ export const KnowledgeBase = () => {
           <div className="relative">
             <Input
               type="url"
-              placeholder="Paste YouTube video URL"
+              placeholder="Paste YouTube video/channel URL"
               value={urlInput}
               onChange={(e) => setUrlInput(e.target.value)}
               disabled={isLoading}

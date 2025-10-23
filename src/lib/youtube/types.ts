@@ -22,5 +22,5 @@ export interface YouTubeProcessResult {
   success: boolean
   data?: VideoMetadata | ChannelMetadata
   error?: string
-  type: 'video' | 'channel' | 'playlist' | 'invalid'
+  type: 'video' | 'channel' | 'playlist' | 'invalid' | 'auth_required' | 'auth_error' | 'processing_error'
 }
