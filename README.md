@@ -19,15 +19,16 @@ YouTube GPT helps users instantly find information hidden inside hours of video 
 
 ### Frontend
 
-- [Next.js 14](https://nextjs.org/) with App Router
+- [Vite](https://vitejs.dev/) - Fast build tool and dev server
 - [React 18](https://react.dev/) + [TypeScript](https://www.typescriptlang.org/)
+- [React Router](https://reactrouter.com/) - Client-side routing
 - [Tailwind CSS](https://tailwindcss.com/) + [shadcn/ui](https://ui.shadcn.com/)
 
 ### Backend
 
-- [Next.js Server Actions](https://nextjs.org/docs/app/building-your-application/data-fetching/server-actions-and-mutations)
 - [Supabase](https://supabase.com/) (Auth, PostgreSQL, Realtime, RLS)
 - [Prisma](https://www.prisma.io/) ORM
+- [API Routes](https://vitejs.dev/guide/features.html#api-routes) - Server-side endpoints
 - [Vercel](https://vercel.com/) deployment
 
 ### AI & Processing
@@ -43,7 +44,7 @@ YouTube GPT helps users instantly find information hidden inside hours of video 
 
 - [Node.js 18+](https://nodejs.org/) installed
 - [Supabase account](https://supabase.com) (free tier available)
-- npm or your preferred package manager
+- [pnpm](https://pnpm.io/) package manager (recommended)
 
 ### Installation
 
@@ -57,7 +58,7 @@ YouTube GPT helps users instantly find information hidden inside hours of video 
 2. **Install dependencies**
 
    ```bash
-   npm install
+   pnpm install
    ```
 
 3. **Set up environment variables**
@@ -89,7 +90,7 @@ YouTube GPT helps users instantly find information hidden inside hours of video 
    Run Prisma migrations to create database tables:
 
    ```bash
-   npm run db:migrate
+   pnpm run db:migrate
    ```
 
    This will create the User, Video, and Conversation tables in your Supabase PostgreSQL database.
@@ -97,7 +98,7 @@ YouTube GPT helps users instantly find information hidden inside hours of video 
 5. **Start the development server**
 
    ```bash
-   npm run dev
+   pnpm run dev
    ```
 
    The app will be available at `http://localhost:8080`
@@ -107,9 +108,9 @@ YouTube GPT helps users instantly find information hidden inside hours of video 
 - [ ] Node.js 18+ installed
 - [ ] Supabase account created
 - [ ] Environment variables configured in `.env.local`
-- [ ] Dependencies installed (`npm install`)
-- [ ] Database migration run (`npm run db:migrate`)
-- [ ] Dev server running (`npm run dev`)
+- [ ] Dependencies installed (`pnpm install`)
+- [ ] Database migration run (`pnpm run db:migrate`)
+- [ ] Dev server running (`pnpm run dev`)
 - [ ] App accessible at `http://localhost:8080`
 
 ## Features
@@ -161,7 +162,7 @@ youtube-gpt/
 │   │   ├── ConversationSidebar.tsx
 │   │   ├── KnowledgeBase.tsx
 │   │   ├── ThemeToggle.tsx
-│   │   └── ui/         # shadcn/ui components
+│   │   └── ui/         # shadcn/ui components (40+ components)
 │   ├── contexts/       # React Context providers
 │   │   └── AuthContext.tsx
 │   ├── hooks/          # Custom React hooks
@@ -169,22 +170,33 @@ youtube-gpt/
 │   │   └── use-toast.ts
 │   ├── lib/            # Utilities & integrations
 │   │   ├── prisma.ts   # Prisma Client singleton
-│   │   └── utils.ts
+│   │   ├── utils.ts
+│   │   ├── supabase/   # Supabase client & auth
+│   │   ├── inngest/    # Background job client
+│   │   └── youtube/    # YouTube API integration
 │   ├── pages/          # Route-level components
 │   │   ├── Index.tsx
 │   │   ├── Login.tsx
 │   │   └── NotFound.tsx
-│   ├── index.css
-│   ├── main.tsx
-│   └── vite-env.d.ts
+│   ├── App.tsx         # Main app component with routing
+│   ├── main.tsx        # React entry point
+│   ├── index.css       # Global styles
+│   └── vite-env.d.ts   # Vite type definitions
 ├── tests/              # Test files
-│   ├── setup/
-│   └── unit/
+│   ├── setup/          # Test configuration
+│   ├── unit/           # Unit tests
+│   ├── integration/    # Integration tests
+│   └── youtube/        # YouTube-specific tests
+├── api/                # API routes
+│   └── inngest.ts      # Inngest webhook endpoint
+├── scripts/            # Utility scripts
+├── docs/               # Documentation
 ├── .env.local          # Local environment variables (not committed)
 ├── .env.example        # Template for environment variables
-├── package.json
-├── tsconfig.json
-└── vite.config.ts
+├── package.json        # Dependencies and scripts
+├── pnpm-lock.yaml      # pnpm lock file
+├── vite.config.ts      # Vite configuration
+└── tsconfig.json       # TypeScript configuration
 ```
 
 ## Configuration
@@ -247,19 +259,19 @@ The application uses Prisma ORM for type-safe database access with PostgreSQL (v
 
 ```bash
 # Run migrations (apply schema changes to database)
-npm run db:migrate
+pnpm run db:migrate
 
 # Open Prisma Studio (visual database editor)
-npm run db:studio
+pnpm run db:studio
 
 # Push schema changes without creating migration files
-npm run db:push
+pnpm run db:push
 
 # Reset database (⚠️ deletes all data)
-npm run db:reset
+pnpm run db:reset
 
 # Generate Prisma Client types (runs automatically after install)
-npx prisma generate
+pnpm exec prisma generate
 ```
 
 **Key Features:**
@@ -300,30 +312,30 @@ If you encounter connection issues:
 
 ```bash
 # Development server
-npm run dev          # Start Vite dev server (http://localhost:8080)
+pnpm run dev          # Start Vite dev server (http://localhost:8080)
 
 # Building
-npm run build        # Build for production
-npm run build:dev    # Build in development mode
+pnpm run build        # Build for production
+pnpm run build:dev    # Build in development mode
 
 # Code quality
-npm run lint         # Run ESLint
-npx tsc --noEmit     # Type check without emitting files
+pnpm run lint         # Run ESLint
+pnpm exec tsc --noEmit     # Type check without emitting files
 
 # Testing
-npm run test         # Run tests in watch mode
-npm run test:ui      # Run tests with UI
-npm run test:run     # Run tests once
-npm run test:coverage # Run tests with coverage
+pnpm run test         # Run tests in watch mode
+pnpm run test:ui      # Run tests with UI
+pnpm run test:run     # Run tests once
+pnpm run test:coverage # Run tests with coverage
 
 # Database
-npm run db:studio    # Open Prisma Studio (visual database editor)
-npm run db:migrate   # Create and apply migrations
-npm run db:push      # Push schema without migrations
-npm run db:reset     # Reset database (⚠️ deletes all data)
+pnpm run db:studio    # Open Prisma Studio (visual database editor)
+pnpm run db:migrate   # Create and apply migrations
+pnpm run db:push      # Push schema without migrations
+pnpm run db:reset     # Reset database (⚠️ deletes all data)
 
 # Future tools
-npx inngest-cli dev  # Start Inngest dev server (Step 3+)
+pnpm exec inngest-cli dev  # Start Inngest dev server (Step 3+)
 ```
 
 ## Retrieval Strategy
@@ -333,6 +345,34 @@ _To be documented as implementation progresses_
 ## Design Decisions
 
 _To be documented as implementation progresses_
+
+## Current Implementation Status
+
+### ✅ Implemented Features
+
+- **Authentication**: Supabase Auth with magic link login
+- **UI Components**: Complete shadcn/ui component library (40+ components)
+- **Database Schema**: Prisma schema with User, Video, and Conversation models
+- **Routing**: React Router with protected routes
+- **YouTube URL Detection**: Sophisticated URL parsing for videos and channels
+- **Testing**: Comprehensive test suite with Vitest (80%+ coverage target)
+- **Development Tools**: ESLint, Prettier, TypeScript, Vite dev server
+
+### 🚧 In Progress / Placeholder
+
+- **YouTube API Integration**: `src/lib/youtube/api.ts` is empty (needs implementation)
+- **Video Processing Pipeline**: Background job processing not yet implemented
+- **AI Chat Interface**: ChatArea component shows placeholder UI
+- **Knowledge Base**: KnowledgeBase component shows empty state
+- **Vector Search**: Embeddings and search functionality not implemented
+
+### 📋 Planned Features
+
+- Video ingestion and transcript extraction
+- AI-powered chat with video context
+- Vector search across video content
+- Real-time processing status updates
+- Multi-video selection and scoped chat
 
 ## Known Limitations
 
