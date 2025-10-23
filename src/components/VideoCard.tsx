@@ -4,22 +4,28 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { Loader2, AlertCircle, Check, Clock, Video } from 'lucide-react'
+import { Loader2, AlertCircle, Check, Clock, Video as VideoIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { Video, VideoStatus } from '@/lib/supabase/types'
 
 export type ProcessingStatus = 'queued' | 'processing' | 'ready' | 'failed'
 
+// Helper function to convert database status to UI status
+const convertStatus = (dbStatus: VideoStatus | null): ProcessingStatus => {
+  if (!dbStatus) return 'queued'
+  return dbStatus.toLowerCase() as ProcessingStatus
+}
+
+// Helper function to format duration from seconds to MM:SS
+const formatDuration = (seconds: number | null): string | null => {
+  if (!seconds) return null
+  const mins = Math.floor(seconds / 60)
+  const secs = seconds % 60
+  return `${mins}:${secs.toString().padStart(2, '0')}`
+}
+
 export interface VideoCardProps {
-  videoId: string
-  title?: string | null
-  thumbnailUrl?: string | null
-  channel: {
-    name?: string | null
-    thumbnailUrl?: string | null
-  }
-  status: ProcessingStatus
-  duration?: string | null
-  publishedAt?: string | null
+  video: Video
   onClick?: (videoId: string) => void
   onRetry?: (videoId: string) => void
   className?: string
@@ -53,17 +59,20 @@ const statusConfig = {
 }
 
 export const VideoCard = ({
-  videoId,
-  title,
-  thumbnailUrl,
-  channel,
-  status,
-  duration,
-  publishedAt,
+  video,
   onClick,
   onRetry,
   className
 }: VideoCardProps) => {
+  // Extract and transform data from the Video object
+  const videoId = video.id
+  const title = video.title
+  const thumbnailUrl = video.thumbnail_url
+  const channelName = video.channel_name
+  const status = convertStatus(video.status)
+  const duration = formatDuration(video.duration)
+  const publishedAt = video.created_at
+
   const config = statusConfig[status]
   const Icon = config.icon
 
@@ -118,16 +127,13 @@ export const VideoCard = ({
               {/* Channel */}
               <div className="flex items-center gap-2">
                 <Avatar className="h-4 w-4">
-                  {!isEmpty(channel.thumbnailUrl) ? (
-                    <AvatarImage src={channel.thumbnailUrl!} alt={channel.name || 'Channel'} />
-                  ) : null}
                   <AvatarFallback className="text-xs">
-                    {!isEmpty(channel.name) ? channel.name!.charAt(0).toUpperCase() : '?'}
+                    {!isEmpty(channelName) ? channelName!.charAt(0).toUpperCase() : '?'}
                   </AvatarFallback>
                 </Avatar>
-                {!isEmpty(channel.name) ? (
+                {!isEmpty(channelName) ? (
                   <span className="text-xs text-muted-foreground truncate">
-                    {channel.name}
+                    {channelName}
                   </span>
                 ) : (
                   <Skeleton className="h-3 w-20" />

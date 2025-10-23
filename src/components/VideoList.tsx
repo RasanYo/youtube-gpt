@@ -1,25 +1,13 @@
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { VideoCard, VideoCardProps, VideoCardSkeleton } from './VideoCard'
-import { Video, Search } from 'lucide-react'
+import { VideoCard, VideoCardSkeleton } from './VideoCard'
+import { Video as VideoIcon, Search } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useMemo } from 'react'
-
-export interface VideoItem {
-  videoId: string
-  title?: string | null
-  thumbnailUrl?: string | null
-  channel: {
-    name?: string | null
-    thumbnailUrl?: string | null
-  }
-  status: VideoCardProps['status']
-  duration?: string | null
-  publishedAt?: string | null
-}
+import { Video } from '@/lib/supabase/types'
 
 export interface VideoListProps {
-  videos: VideoItem[]
+  videos: Video[]
   isLoading?: boolean
   onVideoClick?: (videoId: string) => void
   onRetry?: (videoId: string) => void
@@ -60,7 +48,7 @@ export const VideoList = ({
       <ScrollArea className={cn('flex-1', className)}>
         <div className="flex flex-col items-center justify-center h-full text-center px-4 py-8">
           <div className="mb-4">
-            <Video className="h-12 w-12 text-muted-foreground/50" />
+            <VideoIcon className="h-12 w-12 text-muted-foreground/50" />
           </div>
           <Alert className="max-w-sm border-none shadow-none">
             <Search className="h-4 w-4" />
@@ -83,14 +71,8 @@ export const VideoList = ({
         <div className="grid grid-cols-2 gap-3">
           {sortedVideos.map((video) => (
             <VideoCard
-              key={video.videoId}
-              videoId={video.videoId}
-              title={video.title}
-              thumbnailUrl={video.thumbnailUrl}
-              channel={video.channel}
-              status={video.status}
-              duration={video.duration}
-              publishedAt={video.publishedAt}
+              key={video.id}
+              video={video}
               onClick={onVideoClick}
               onRetry={onRetry}
             />
@@ -103,12 +85,12 @@ export const VideoList = ({
 
 // Utility function for sorting videos by date
 export const sortVideosByDate = (
-  videos: VideoItem[],
+  videos: Video[],
   order: 'asc' | 'desc' = 'desc'
-): VideoItem[] => {
+): Video[] => {
   return [...videos].sort((a, b) => {
-    const dateA = new Date(a.publishedAt || 0).getTime()
-    const dateB = new Date(b.publishedAt || 0).getTime()
+    const dateA = new Date(a.created_at || 0).getTime()
+    const dateB = new Date(b.created_at || 0).getTime()
     return order === 'desc' ? dateB - dateA : dateA - dateB
   })
 }

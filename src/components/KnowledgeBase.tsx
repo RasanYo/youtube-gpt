@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { FileText, Folder, Video, Calendar, Loader2, Cloud, ChevronLeft, ChevronRight } from 'lucide-react'
+import { FileText, Folder, Video as VideoIcon, Calendar, Loader2, Cloud, ChevronLeft, ChevronRight } from 'lucide-react'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -7,8 +7,8 @@ import { Separator } from '@/components/ui/separator'
 import { Input } from '@/components/ui/input'
 import { useToast } from '@/hooks/use-toast'
 import { processYouTubeUrl } from '@/lib/youtube'
-import { VideoList, VideoItem } from './VideoList'
-import { VideoCardProps } from './VideoCard'
+import { VideoList } from './VideoList'
+import { Video } from '@/lib/supabase/types'
 
 export const KnowledgeBase = () => {
   const [urlInput, setUrlInput] = useState('')
@@ -17,82 +17,92 @@ export const KnowledgeBase = () => {
   const { toast } = useToast()
 
   // Sample video data for demonstration
-  const videos: VideoItem[] = [
+  const videos: Video[] = [
     {
-      videoId: 'sample-1',
+      id: 'sample-1',
+      user_id: 'user-1',
+      youtube_id: 'sample1',
       title: 'How to Build a Full-Stack AI Application with Next.js and Supabase',
-      thumbnailUrl: 'https://img.youtube.com/vi/sample1/maxresdefault.jpg',
-      channel: {
-        name: 'AI Tutorials',
-        thumbnailUrl: 'https://img.youtube.com/vi/sample1/maxresdefault.jpg'
-      },
-      status: 'ready',
-      duration: '15:30',
-      publishedAt: '2024-01-15T10:00:00Z'
+      thumbnail_url: 'https://img.youtube.com/vi/sample1/maxresdefault.jpg',
+      channel_name: 'AI Tutorials',
+      duration: 930, // 15:30 in seconds
+      status: 'READY',
+      error: null,
+      created_at: '2024-01-15T10:00:00Z',
+      updated_at: '2024-01-15T10:00:00Z'
     },
     {
-      videoId: 'sample-2',
+      id: 'sample-2',
+      user_id: 'user-1',
+      youtube_id: 'sample2',
       title: 'Advanced React Patterns and Best Practices',
-      thumbnailUrl: 'https://img.youtube.com/vi/sample2/maxresdefault.jpg',
-      channel: {
-        name: 'React Masters',
-        thumbnailUrl: 'https://img.youtube.com/vi/sample2/maxresdefault.jpg'
-      },
-      status: 'processing',
-      duration: '22:45',
-      publishedAt: '2024-01-14T15:30:00Z'
+      thumbnail_url: 'https://img.youtube.com/vi/sample2/maxresdefault.jpg',
+      channel_name: 'React Masters',
+      duration: 1365, // 22:45 in seconds
+      status: 'PROCESSING',
+      error: null,
+      created_at: '2024-01-14T15:30:00Z',
+      updated_at: '2024-01-14T15:30:00Z'
     },
     {
-      videoId: 'sample-3',
+      id: 'sample-3',
+      user_id: 'user-1',
+      youtube_id: 'sample3',
       title: 'TypeScript Deep Dive: Advanced Types and Generics',
-      thumbnailUrl: 'https://img.youtube.com/vi/sample3/maxresdefault.jpg',
-      channel: {
-        name: 'TypeScript Academy',
-        thumbnailUrl: 'https://img.youtube.com/vi/sample3/maxresdefault.jpg'
-      },
-      status: 'queued',
-      publishedAt: '2024-01-13T09:15:00Z'
+      thumbnail_url: 'https://img.youtube.com/vi/sample3/maxresdefault.jpg',
+      channel_name: 'TypeScript Academy',
+      duration: null,
+      status: 'QUEUED',
+      error: null,
+      created_at: '2024-01-13T09:15:00Z',
+      updated_at: '2024-01-13T09:15:00Z'
     },
     {
-      videoId: 'sample-4',
+      id: 'sample-4',
+      user_id: 'user-1',
+      youtube_id: 'sample4',
       title: 'Database Design Patterns for Scalable Applications',
-      thumbnailUrl: 'https://img.youtube.com/vi/sample4/maxresdefault.jpg',
-      channel: {
-        name: 'Database Experts',
-        thumbnailUrl: 'https://img.youtube.com/vi/sample4/maxresdefault.jpg'
-      },
-      status: 'failed',
-      publishedAt: '2024-01-12T14:20:00Z'
+      thumbnail_url: 'https://img.youtube.com/vi/sample4/maxresdefault.jpg',
+      channel_name: 'Database Experts',
+      duration: null,
+      status: 'FAILED',
+      error: 'Failed to extract transcript',
+      created_at: '2024-01-12T14:20:00Z',
+      updated_at: '2024-01-12T14:20:00Z'
     },
     // Test videos with missing data to demonstrate skeleton loading
     {
-      videoId: 'sample-5',
+      id: 'sample-5',
+      user_id: 'user-1',
+      youtube_id: 'sample5',
       title: null, // Missing title
-      thumbnailUrl: null, // Missing thumbnail
-      channel: {
-        name: 'Loading Channel...', // Has name
-        thumbnailUrl: null // Missing channel thumbnail
-      },
-      status: 'processing',
+      thumbnail_url: null, // Missing thumbnail
+      channel_name: 'Loading Channel...', // Has name
       duration: null, // Missing duration
-      publishedAt: null // Missing date
+      status: 'PROCESSING',
+      error: null,
+      created_at: '2024-01-11T08:00:00Z',
+      updated_at: '2024-01-11T08:00:00Z'
     },
     {
-      videoId: 'sample-6',
+      id: 'sample-6',
+      user_id: 'user-1',
+      youtube_id: 'sample6',
       title: 'Video with Missing Channel Info',
-      thumbnailUrl: 'https://img.youtube.com/vi/sample6/maxresdefault.jpg',
-      channel: {
-        name: null, // Missing channel name
-        thumbnailUrl: null // Missing channel thumbnail
-      },
-      status: 'queued',
-      duration: '10:30',
-      publishedAt: '2024-01-11T08:00:00Z'
+      thumbnail_url: 'https://img.youtube.com/vi/sample6/maxresdefault.jpg',
+      channel_name: null, // Missing channel name
+      duration: 630, // 10:30 in seconds
+      status: 'QUEUED',
+      error: null,
+      created_at: '2024-01-10T08:00:00Z',
+      updated_at: '2024-01-10T08:00:00Z'
     }
   ]
 
   const totalVideos = videos.length
-  const lastIngestion = '2 hours ago'
+  const lastIngestion = videos.length > 0 
+    ? new Date(videos[0].created_at || '').toLocaleDateString()
+    : 'Never'
 
   // Handle video click
   const handleVideoClick = (videoId: string) => {
@@ -243,7 +253,7 @@ export const KnowledgeBase = () => {
               <div className="space-y-2 text-xs">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 text-muted-foreground">
-                    <Video className="h-3.5 w-3.5" />
+                    <VideoIcon className="h-3.5 w-3.5" />
                     <span>Total videos:</span>
                   </div>
                   <span className="font-medium text-foreground">{totalVideos}</span>
