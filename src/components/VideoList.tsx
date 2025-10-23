@@ -7,15 +7,15 @@ import { useMemo } from 'react'
 
 export interface VideoItem {
   videoId: string
-  title: string
-  thumbnailUrl: string
+  title?: string | null
+  thumbnailUrl?: string | null
   channel: {
-    name: string
-    thumbnailUrl?: string
+    name?: string | null
+    thumbnailUrl?: string | null
   }
   status: VideoCardProps['status']
-  duration?: string
-  publishedAt?: string
+  duration?: string | null
+  publishedAt?: string | null
 }
 
 export interface VideoListProps {

@@ -11,15 +11,15 @@ export type ProcessingStatus = 'queued' | 'processing' | 'ready' | 'failed'
 
 export interface VideoCardProps {
   videoId: string
-  title: string
-  thumbnailUrl: string
+  title?: string | null
+  thumbnailUrl?: string | null
   channel: {
-    name: string
-    thumbnailUrl?: string
+    name?: string | null
+    thumbnailUrl?: string | null
   }
   status: ProcessingStatus
-  duration?: string
-  publishedAt?: string
+  duration?: string | null
+  publishedAt?: string | null
   onClick?: (videoId: string) => void
   onRetry?: (videoId: string) => void
   className?: string
@@ -71,13 +71,18 @@ export const VideoCard = ({
     onClick?.(videoId)
   }
 
-  const formatDate = (dateString?: string) => {
+  const formatDate = (dateString?: string | null) => {
     if (!dateString) return ''
     try {
       return new Date(dateString).toLocaleDateString()
     } catch {
       return ''
     }
+  }
+
+  // Helper function to check if a value is empty or null
+  const isEmpty = (value: string | null | undefined): boolean => {
+    return !value || value.trim() === ''
   }
 
   return (
@@ -95,51 +100,63 @@ export const VideoCard = ({
             {/* Left side - Text content (70%) */}
             <div className="flex-1 min-w-0 space-y-1">
               {/* Title */}
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <h3 className="text-sm font-medium leading-tight truncate">
-                    {title}
-                  </h3>
-                </TooltipTrigger>
-                <TooltipContent side="top" className="max-w-xs">
-                  <p>{title}</p>
-                </TooltipContent>
-              </Tooltip>
+              {!isEmpty(title) ? (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <h3 className="text-sm font-medium leading-tight truncate">
+                      {title}
+                    </h3>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="max-w-xs">
+                    <p>{title}</p>
+                  </TooltipContent>
+                </Tooltip>
+              ) : (
+                <Skeleton className="h-4 w-full" />
+              )}
 
               {/* Channel */}
               <div className="flex items-center gap-2">
                 <Avatar className="h-4 w-4">
-                  <AvatarImage src={channel.thumbnailUrl} alt={channel.name} />
+                  {!isEmpty(channel.thumbnailUrl) ? (
+                    <AvatarImage src={channel.thumbnailUrl!} alt={channel.name || 'Channel'} />
+                  ) : null}
                   <AvatarFallback className="text-xs">
-                    {channel.name.charAt(0).toUpperCase()}
+                    {!isEmpty(channel.name) ? channel.name!.charAt(0).toUpperCase() : '?'}
                   </AvatarFallback>
                 </Avatar>
-                <span className="text-xs text-muted-foreground truncate">
-                  {channel.name}
-                </span>
+                {!isEmpty(channel.name) ? (
+                  <span className="text-xs text-muted-foreground truncate">
+                    {channel.name}
+                  </span>
+                ) : (
+                  <Skeleton className="h-3 w-20" />
+                )}
               </div>
 
               {/* Date */}
-              <span className="text-xs text-muted-foreground">
-                {formatDate(publishedAt)}
-              </span>
+              {!isEmpty(publishedAt) ? (
+                <span className="text-xs text-muted-foreground">
+                  {formatDate(publishedAt)}
+                </span>
+              ) : (
+                <Skeleton className="h-3 w-16" />
+              )}
             </div>
 
             {/* Right side - Thumbnail (30%) */}
             <div className="flex-shrink-0 w-16">
               {/* Thumbnail */}
               <div className="w-16 h-12 relative overflow-hidden rounded-md">
-                {thumbnailUrl ? (
+                {!isEmpty(thumbnailUrl) ? (
                   <img
-                    src={thumbnailUrl}
-                    alt={title}
+                    src={thumbnailUrl!}
+                    alt={title || 'Video thumbnail'}
                     className="w-full h-full object-cover"
                     loading="lazy"
                   />
                 ) : (
-                  <div className="w-full h-full bg-muted flex items-center justify-center">
-                    <Video className="h-4 w-4 text-muted-foreground" />
-                  </div>
+                  <Skeleton className="w-full h-full" />
                 )}
                 
                 {/* Status overlay - top right corner */}
@@ -175,7 +192,7 @@ export const VideoCard = ({
                 </div>
                 
                 {/* Duration overlay for ready videos */}
-                {duration && status === 'ready' && (
+                {!isEmpty(duration) && status === 'ready' && (
                   <div className="absolute bottom-0 right-0 left-0 bg-black/70 text-white text-xs px-1 py-0.5 text-center">
                     {duration}
                   </div>

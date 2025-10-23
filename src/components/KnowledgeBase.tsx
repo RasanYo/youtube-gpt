@@ -63,6 +63,31 @@ export const KnowledgeBase = () => {
       },
       status: 'failed',
       publishedAt: '2024-01-12T14:20:00Z'
+    },
+    // Test videos with missing data to demonstrate skeleton loading
+    {
+      videoId: 'sample-5',
+      title: null, // Missing title
+      thumbnailUrl: null, // Missing thumbnail
+      channel: {
+        name: 'Loading Channel...', // Has name
+        thumbnailUrl: null // Missing channel thumbnail
+      },
+      status: 'processing',
+      duration: null, // Missing duration
+      publishedAt: null // Missing date
+    },
+    {
+      videoId: 'sample-6',
+      title: 'Video with Missing Channel Info',
+      thumbnailUrl: 'https://img.youtube.com/vi/sample6/maxresdefault.jpg',
+      channel: {
+        name: null, // Missing channel name
+        thumbnailUrl: null // Missing channel thumbnail
+      },
+      status: 'queued',
+      duration: '10:30',
+      publishedAt: '2024-01-11T08:00:00Z'
     }
   ]
 
