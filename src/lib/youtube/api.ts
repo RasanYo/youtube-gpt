@@ -1,7 +1,7 @@
 import { detectYouTubeType, type YoutubeUrlInfo } from './detector'
 import { type VideoMetadata, type ChannelMetadata, type YouTubeProcessResult } from './types'
-import { inngest } from '../inngest/client'
 import { getCurrentUser } from '../supabase/auth'
+import { supabase } from '../supabase/client'
 
 /**
  * Process a YouTube URL and extract video ID
@@ -55,27 +55,45 @@ export async function processYouTubeUrl(url: string): Promise<YouTubeProcessResu
     console.log('URL type:', urlInfo.type)
     console.log('User ID:', user.id)
 
-    // Send event to Inngest for background processing
+    // Call Supabase Edge function to create video record
     try {
-      await inngest.send({
-        name: 'youtube.process',
-        data: {
-          type: urlInfo.type,
+      const { data, error } = await supabase.functions.invoke('fetch-video-metadata', {
+        body: {
           id: urlInfo.id,
+          type: urlInfo.type,
           userId: user.id
         }
       })
 
+      if (error) {
+        console.error('Edge function error:', error)
+        return {
+          success: false,
+          error: 'Failed to queue video for processing. Please try again.',
+          type: 'processing_error'
+        }
+      }
+
+      if (!data.success) {
+        console.error('Edge function returned error:', data.error)
+        return {
+          success: false,
+          error: data.error || 'Failed to queue video for processing.',
+          type: 'processing_error'
+        }
+      }
+
       console.log(`Successfully queued ${urlInfo.type} for processing:`, urlInfo.id)
-    } catch (inngestError) {
-      console.error('Inngest event sending failed:', inngestError)
+      console.log('Video ID:', data.videoId)
+    } catch (edgeFunctionError) {
+      console.error('Edge function call failed:', edgeFunctionError)
       
-      // Handle specific Inngest errors
+      // Handle specific errors
       let errorMessage = 'Failed to queue video for processing. Please try again.'
-      if (inngestError instanceof Error) {
-        if (inngestError.message.includes('network') || inngestError.message.includes('timeout')) {
+      if (edgeFunctionError instanceof Error) {
+        if (edgeFunctionError.message.includes('network') || edgeFunctionError.message.includes('timeout')) {
           errorMessage = 'Service temporarily unavailable. Please try again in a moment.'
-        } else if (inngestError.message.includes('unauthorized')) {
+        } else if (edgeFunctionError.message.includes('unauthorized')) {
           errorMessage = 'Service authentication failed. Please contact support.'
         }
       }
