@@ -18,6 +18,16 @@ function requestHasValidYouTubeVideoId(requestData: VideoQueueRequest): boolean 
   return /^[a-zA-Z0-9_-]{11}$/.test(requestData.id);
 }
 
+function requestHasValidYouTubeChannelId(requestData: VideoQueueRequest): boolean {
+  // YouTube channel IDs can be:
+  // - UC followed by 22 characters (e.g., UCxxxxxxxxxxxxxxxxxxxxxx)
+  // - Custom channel handles (e.g., @channelname)
+  // - Channel usernames
+  return /^UC[a-zA-Z0-9_-]{22}$/.test(requestData.id) || 
+         /^@[a-zA-Z0-9_-]+$/.test(requestData.id) ||
+         /^[a-zA-Z0-9_-]+$/.test(requestData.id);
+}
+
 /**
  * Parses ISO 8601 duration format (e.g., "PT4M13S") to seconds
  * @param duration ISO 8601 duration string
@@ -87,116 +97,106 @@ async function getVideoMetadata(videoId: string, apiKey: string): Promise<youtub
   }
 }
 
-Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, {
-      status: 200,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS',
-        'Access-Control-Max-Age': '86400',
-      },
-    })
-  }
-
-  // Only allow POST requests
-  if (req.method !== 'POST') {
-    return new Response(
-      JSON.stringify({ success: false, error: 'Method not allowed' }),
-      { 
-        status: 405,
-        headers: { 
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
-        }
-      }
-    )
-  }
+/**
+ * Fetches the latest video IDs from a YouTube channel using search API
+ * @param channelIdentifier The ID or handle of the YouTube channel
+ * @param apiKey Your YouTube Data API key
+ * @param maxResults Maximum number of videos to fetch (default: 10)
+ * @returns A Promise that resolves with an array of video IDs
+ */
+async function getChannelLatestVideoIds(channelIdentifier: string, apiKey: string, maxResults: number = 10): Promise<string[]> {
   try {
-    // Initialize Supabase client with types
-    const supabase = createClient<Database>(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false
-        }
+    const youtube = google.youtube({
+      version: 'v3',
+      auth: apiKey,
+    });
+
+    let channelId: string;
+
+    // Check if it's a handle (starts with @) or channel ID (starts with UC)
+    if (channelIdentifier.startsWith('@')) {
+      // It's a handle, resolve it to channel ID first
+      const handle = channelIdentifier.substring(1); // Remove the @
+      
+      const channelResponse = await youtube.channels.list({
+        forHandle: handle, // Use the forHandle parameter to search by custom handle
+        part: ['id'], // We only need the channel ID
+      });
+
+      if (!channelResponse.data.items || channelResponse.data.items.length === 0) {
+        throw new Error('Channel not found');
       }
-    )
 
-    const requestData: VideoQueueRequest = await req.json();
-    // Validate required fields
-    if (!requestHasAllRequiredFields(requestData)) {
-      return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: 'Missing required fields: id, type, userId' 
-        }),
-        { 
-          status: 400,
-          headers: { 
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*',
-          }
-        }
-      )
+      channelId = channelResponse.data.items[0].id!;
+    } else if (channelIdentifier.startsWith('UC')) {
+      // It's already a channel ID
+      channelId = channelIdentifier;
+    } else {
+      throw new Error('Invalid channel identifier format');
     }
 
-    // Validate YouTube ID format for videos
-    if (requestData.type === 'video' && !requestHasValidYouTubeVideoId(requestData)) {
-      return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: 'Invalid YouTube video ID format' 
-        }),
-        { 
-          status: 400,
-          headers: { 
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*',
-          }
+    // Now search for videos using the resolved channel ID
+    const response = await youtube.search.list({
+      channelId: channelId,
+      order: 'date', // Order results by publication date
+      type: 'video', // Only search for videos
+      maxResults: maxResults, // Limit the results to the latest videos
+      part: ['id'], // We only need the video ID
+    });
+
+    const videoIds: string[] = [];
+    if (response.data.items) {
+      response.data.items.forEach(item => {
+        if (item.id?.videoId) {
+          videoIds.push(item.id.videoId);
         }
-      )
+      });
     }
 
-    // For now, only handle video types
-    if (requestData.type === 'channel') {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: 'Channel processing is not yet implemented'
-        }),
-        { 
-          status: 501,
-          headers: { 
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*',
-          }
-        }
-      )
-    }
+    return videoIds;
+  } catch (error) {
+    console.error('Error fetching channel video IDs:', error);
+    throw error;
+  }
+}
 
-    // Get YouTube API key from environment
-    const youtubeApiKey = Deno.env.get('YOUTUBE_API_KEY')
-    if (!youtubeApiKey) {
-      console.error('YouTube API key not found in environment variables')
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: 'YouTube API configuration error'
-        }),
-        { 
-          status: 500,
-          headers: { 
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*',
-          }
-        }
-      )
+/**
+ * Creates a standardized HTTP response
+ * @param result Object containing success status, data, and optional error
+ * @returns HTTP Response object
+ */
+function createResponse(result: { success: boolean; data?: Record<string, unknown>; error?: string }): Response {
+  const status = result.success ? 200 : (result.error?.includes('not found') ? 404 : 400);
+  
+  return new Response(
+    JSON.stringify({
+      success: result.success,
+      ...(result.data && { ...result.data }),
+      ...(result.error && { error: result.error })
+    }),
+    { 
+      status,
+      headers: { 
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+      }
     }
+  );
+}
 
+/**
+ * Processes a single video - creates database entry, fetches metadata, and updates status
+ * @param requestData Video queue request data
+ * @param youtubeApiKey YouTube API key
+ * @param supabase Supabase client instance
+ * @returns Promise resolving to processing result
+ */
+async function processSingleVideo(
+  requestData: VideoQueueRequest, 
+  youtubeApiKey: string, 
+  supabase: ReturnType<typeof createClient<Database>>
+): Promise<{ success: boolean; data?: Record<string, unknown>; error?: string }> {
+  try {
     // Create video record with minimal required fields first
     const { data: video, error: insertError } = await supabase
       .from('videos')
@@ -213,34 +213,10 @@ Deno.serve(async (req) => {
       
       // Handle duplicate youtubeId error
       if (insertError.code === '23505' && insertError.message.includes('youtubeId')) {
-        return new Response(
-          JSON.stringify({
-            success: false,
-            error: 'This video has already been added to your knowledge base'
-          }),
-          { 
-            status: 400,
-            headers: { 
-              'Content-Type': 'application/json',
-              'Access-Control-Allow-Origin': '*',
-            }
-          }
-        )
+        return { success: false, error: 'This video has already been added to your knowledge base' }
       }
 
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: 'Database error: ' + insertError.message
-        }),
-        { 
-          status: 500,
-          headers: { 
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*',
-          }
-        }
-      )
+      return { success: false, error: 'Database error: ' + insertError.message }
     }
 
     // Update status to PROCESSING
@@ -268,19 +244,7 @@ Deno.serve(async (req) => {
           })
           .eq('id', video.id)
 
-        return new Response(
-          JSON.stringify({
-            success: false,
-            error: 'Video not found on YouTube'
-          }),
-          { 
-            status: 404,
-            headers: { 
-              'Content-Type': 'application/json',
-              'Access-Control-Allow-Origin': '*',
-            }
-          }
-        )
+        return { success: false, error: 'Video not found on YouTube' }
       }
 
       // Extract metadata from YouTube API response
@@ -299,6 +263,7 @@ Deno.serve(async (req) => {
           channelName: snippet?.channelTitle || null,
           thumbnailUrl: snippet?.thumbnails?.high?.url || snippet?.thumbnails?.medium?.url || snippet?.thumbnails?.default?.url || null,
           duration: duration,
+          status: 'PROCESSING'
         })
         .eq('id', video.id)
 
@@ -313,24 +278,12 @@ Deno.serve(async (req) => {
           })
           .eq('id', video.id)
 
-        return new Response(
-          JSON.stringify({
-            success: false,
-            error: 'Failed to save video metadata'
-          }),
-          { 
-            status: 500,
-            headers: { 
-              'Content-Type': 'application/json',
-              'Access-Control-Allow-Origin': '*',
-            }
-          }
-        )
+        return { success: false, error: 'Failed to save video metadata' }
       }
 
-      return new Response(
-        JSON.stringify({
-          success: true,
+      return {
+        success: true,
+        data: {
           videoId: video.id,
           message: 'Video metadata fetched and saved successfully',
           metadata: {
@@ -338,15 +291,8 @@ Deno.serve(async (req) => {
             channel: snippet?.channelTitle,
             duration: duration
           }
-        }),
-        { 
-          status: 200,
-          headers: { 
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*',
-          }
         }
-      )
+      }
 
     } catch (apiError) {
       console.error('YouTube API error:', apiError)
@@ -360,36 +306,145 @@ Deno.serve(async (req) => {
         })
         .eq('id', video.id)
 
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: 'Failed to fetch video metadata from YouTube'
-        }),
-        { 
-          status: 500,
-          headers: { 
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*',
-          }
+      return { success: false, error: 'Failed to fetch video metadata from YouTube' }
+    }
+
+  } catch (err) {
+    console.error('Video processing error:', err)
+    return { success: false, error: 'Database error: ' + (err.message || 'Unknown error') }
+  }
+}
+
+/**
+ * Processes a channel by fetching latest 10 videos and processing them in parallel
+ * @param requestData Video queue request data
+ * @param youtubeApiKey YouTube API key
+ * @param supabase Supabase client instance
+ * @returns Promise resolving to processing result
+ */
+async function processChannel(
+  requestData: VideoQueueRequest, 
+  youtubeApiKey: string, 
+  supabase: ReturnType<typeof createClient<Database>>
+): Promise<{ success: boolean; data?: Record<string, unknown>; error?: string }> {
+  try {
+    // Get latest 10 video IDs from channel using search API
+    const videoIds = await getChannelLatestVideoIds(requestData.id, youtubeApiKey, 10);
+    
+    if (videoIds.length === 0) {
+      return { success: false, error: 'No videos found in channel' };
+    }
+
+    // Process all videos in parallel
+    const videoPromises = videoIds.map(async (videoId) => {
+      const videoRequest: VideoQueueRequest = {
+        id: videoId,
+        type: 'video',
+        userId: requestData.userId
+      };
+
+      try {
+        return await processSingleVideo(videoRequest, youtubeApiKey, supabase);
+      } catch (error) {
+        console.error(`Error processing video ${videoId}:`, error);
+        return { success: false, error: error.message, videoId };
+      }
+    });
+
+    // Wait for all videos to complete
+    const results = await Promise.allSettled(videoPromises);
+    
+    // Process results
+    const successful = results.filter(r => r.status === 'fulfilled' && r.value?.success);
+    const failed = results.filter(r => r.status === 'rejected' || !r.value?.success);
+
+    return {
+      success: true,
+      data: {
+        message: `Processed ${successful.length} videos from channel`,
+        successful: successful.length,
+        failed: failed.length,
+        videos: successful.map(s => s.value?.data),
+        errors: failed.map(f => f.status === 'rejected' ? f.reason : f.value?.error).filter(Boolean)
+      }
+    };
+
+  } catch (error) {
+    console.error('Channel processing error:', error);
+    return { success: false, error: 'Failed to process channel videos' + error.message };
+  }
+}
+
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, {
+      status: 200,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Max-Age': '86400',
+      },
+    })
+  }
+
+  // Only allow POST requests
+  if (req.method !== 'POST') {
+    return createResponse({ success: false, error: 'Method not allowed' })
+  }
+
+  try {
+    // Initialize Supabase client with types
+    const supabase = createClient<Database>(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
         }
-      )
+      }
+    )
+
+    const requestData: VideoQueueRequest = await req.json();
+    
+    // Validate required fields
+    if (!requestHasAllRequiredFields(requestData)) {
+      return createResponse({ success: false, error: 'Missing required fields: id, type, userId' })
+    }
+
+    // Validate YouTube ID format based on type
+    if (requestData.type === 'video' && !requestHasValidYouTubeVideoId(requestData)) {
+      return createResponse({ success: false, error: 'Invalid YouTube video ID format' })
+    }
+
+    if (requestData.type === 'channel' && !requestHasValidYouTubeChannelId(requestData)) {
+      return createResponse({ success: false, error: 'Invalid YouTube channel ID format' })
+    }
+
+    // Get YouTube API key from environment
+    const youtubeApiKey = Deno.env.get('YOUTUBE_API_KEY')
+    if (!youtubeApiKey) {
+      console.error('YouTube API key not found in environment variables')
+      return createResponse({ success: false, error: 'YouTube API configuration error' })
+    }
+
+    // Process based on request type
+    if (requestData.type === 'video') {
+      const result = await processSingleVideo(requestData, youtubeApiKey, supabase);
+      return createResponse(result);
+    } else if (requestData.type === 'channel') {
+      const result = await processChannel(requestData, youtubeApiKey, supabase);
+      return createResponse(result);
+    } else {
+      return createResponse({ success: false, error: 'Invalid request type' });
     }
 
   } catch (err) {
     console.error('Function error:', err)
-    return new Response(
-      JSON.stringify({ 
-        success: false,
-        error: 'Invalid request body or server error' ,
-        error: 'Database error: ' + (err.message || 'Unknown error')
-      }),
-      { 
-        status: 500,
-        headers: { 
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
-        }
-      }
-    )
+    return createResponse({ 
+      success: false,
+      error: 'Invalid request body or server error: ' + (err.message || 'Unknown error')
+    })
   }
 })
