@@ -4,7 +4,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { Loader2, AlertCircle, Check, Clock } from 'lucide-react'
+import { Loader2, AlertCircle, Check, Clock, Video } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export type ProcessingStatus = 'queued' | 'processing' | 'ready' | 'failed'
@@ -138,7 +138,7 @@ export const VideoCard = ({
                   />
                 ) : (
                   <div className="w-full h-full bg-muted flex items-center justify-center">
-                    <Play className="h-4 w-4 text-muted-foreground" />
+                    <Video className="h-4 w-4 text-muted-foreground" />
                   </div>
                 )}
                 

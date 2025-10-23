@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { FileText, Folder, Video, Calendar, Loader2, Cloud } from 'lucide-react'
+import { FileText, Folder, Video, Calendar, Loader2, Cloud, ChevronLeft, ChevronRight } from 'lucide-react'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -13,6 +13,7 @@ import { VideoCardProps } from './VideoCard'
 export const KnowledgeBase = () => {
   const [urlInput, setUrlInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [isCollapsed, setIsCollapsed] = useState(false)
   const { toast } = useToast()
 
   // Sample video data for demonstration
@@ -140,72 +141,100 @@ export const KnowledgeBase = () => {
   }
 
   return (
-    <div className="flex h-screen w-[480px] flex-col border-l bg-card">
+    <div className={`flex h-screen flex-col border-l bg-card transition-all duration-300 ${
+      isCollapsed ? 'w-12' : 'w-[480px]'
+    }`}>
       {/* Header */}
-      <div className="flex h-14 items-center justify-between border-b px-4">
-        <h2 className="text-sm font-semibold">Knowledge Base</h2>
-        <Button variant="ghost" size="sm">
-          <Folder className="h-4 w-4" />
-        </Button>
-      </div>
-      {/* URL Input Form - Moved to top */}
-      <div className="border-b">
-        <form onSubmit={handleSubmit} className="p-4">
-          <div className="relative">
-            <Input
-              type="url"
-              placeholder="Paste YouTube video/channel URL"
-              value={urlInput}
-              onChange={(e) => setUrlInput(e.target.value)}
-              disabled={isLoading}
-              className="w-full pr-12"
-            />
+      <div className="flex h-14 items-center border-b px-4">
+        {!isCollapsed ? (
+          <>
+            <h2 className="text-sm font-semibold">Knowledge Base</h2>
+            <div className="flex items-center gap-2 ml-auto">
+              <Button variant="ghost" size="sm">
+                <Folder className="h-4 w-4" />
+              </Button>
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={() => setIsCollapsed(!isCollapsed)}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </>
+        ) : (
+          <div className="flex justify-center w-full">
             <Button 
-              type="submit" 
+              variant="ghost" 
               size="sm"
-              className="absolute right-1 top-1 h-8 w-8 p-0" 
-              disabled={isLoading || !urlInput.trim()}
+              onClick={() => setIsCollapsed(!isCollapsed)}
             >
-              {isLoading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Cloud className="h-4 w-4" />
-              )}
+              <ChevronLeft className="h-4 w-4" />
             </Button>
           </div>
-        </form>
+        )}
       </div>
-      {/* Video List */}
-      <VideoList
-        videos={videos}
-        onVideoClick={handleVideoClick}
-        onRetry={handleVideoRetry}
-        isLoading={isLoading}
-        showSearch={false}
-        showFilters={false}
-      />
+      {/* Collapsible Content */}
+      {!isCollapsed && (
+        <>
+          {/* URL Input Form - Moved to top */}
+          <div className="border-b">
+            <form onSubmit={handleSubmit} className="p-4">
+              <div className="relative">
+                <Input
+                  type="url"
+                  placeholder="Paste YouTube video/channel URL"
+                  value={urlInput}
+                  onChange={(e) => setUrlInput(e.target.value)}
+                  disabled={isLoading}
+                  className="w-full pr-12"
+                />
+                <Button 
+                  type="submit" 
+                  size="sm"
+                  className="absolute right-1 top-1 h-8 w-8 p-0" 
+                  disabled={isLoading || !urlInput.trim()}
+                >
+                  {isLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Cloud className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+            </form>
+          </div>
+          {/* Video List */}
+          <VideoList
+            videos={videos}
+            onVideoClick={handleVideoClick}
+            onRetry={handleVideoRetry}
+            isLoading={isLoading}
+          />
 
-      {/* Footer with Metrics */}
-      <div className="border-t">
-        <div className="bg-muted/30 px-4 py-3">
-          <div className="space-y-2 text-xs">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <Video className="h-3.5 w-3.5" />
-                <span>Total videos:</span>
+          {/* Footer with Metrics */}
+          <div className="border-t">
+            <div className="bg-muted/30 px-4 py-3">
+              <div className="space-y-2 text-xs">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Video className="h-3.5 w-3.5" />
+                    <span>Total videos:</span>
+                  </div>
+                  <span className="font-medium text-foreground">{totalVideos}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Calendar className="h-3.5 w-3.5" />
+                    <span>Last ingestion:</span>
+                  </div>
+                  <span className="font-medium text-foreground">{lastIngestion}</span>
+                </div>
               </div>
-              <span className="font-medium text-foreground">{totalVideos}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <Calendar className="h-3.5 w-3.5" />
-                <span>Last ingestion:</span>
-              </div>
-              <span className="font-medium text-foreground">{lastIngestion}</span>
             </div>
           </div>
-        </div>
-      </div>
+        </>
+      )}
     </div>
   )
 }
