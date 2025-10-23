@@ -1,4 +1,5 @@
 import { FileText, Folder, Video, Calendar } from 'lucide-react'
+import { FileText, Folder, Video, Calendar } from 'lucide-react'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -158,7 +159,17 @@ export const KnowledgeBase = () => {
       </ScrollArea>
 
       {/* Footer with Add Button */}
+      {/* Footer with Add Button */}
       <div className="border-t">
+        <div className="p-4 pb-3">
+          <Button variant="outline" className="w-full">
+            <FileText className="h-4 w-4 mr-2" />
+            Add Document
+          </Button>
+        </div>
+
+        {/* Mini-Metrics Footer */}
+        <Separator />
         <div className="p-4 pb-3">
           <Button variant="outline" className="w-full">
             <FileText className="h-4 w-4 mr-2" />
