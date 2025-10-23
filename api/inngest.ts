@@ -1,5 +1,6 @@
 import { serve } from "inngest/next";
 import { inngest } from "../src/lib/inngest/client";
+import { processYouTubeVideo } from "../src/lib/inngest/functions/video-processing";
 
 /**
  * Inngest Webhook Handler
@@ -11,13 +12,13 @@ import { inngest } from "../src/lib/inngest/client";
  * The `serve` function handles GET, POST, and PUT requests from Inngest,
  * providing automatic function registration and event routing.
  *
- * Functions will be added in Issue #16 (Video Ingestion Function).
- *
  * @see https://www.inngest.com/docs/sdk/serve
  */
 
-// Placeholder - will add actual functions in Issue #16
-const functions: any[] = [];
+// Register all Inngest functions
+const functions = [
+  processYouTubeVideo,
+];
 
 export default serve({
   client: inngest,

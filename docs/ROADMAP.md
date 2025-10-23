@@ -65,7 +65,7 @@ Set up YouTube Data API v3 integration to fetch video and channel metadata. This
 - [ ] Add `YOUTUBE_API_KEY` to Vercel environment variables
 - [ ] Install YouTube package:
   ```bash
-  npm install youtube-sr
+  npm install youtube-transcript
   ```
 - [ ] Verify API key works by testing a simple API call
 
@@ -158,14 +158,15 @@ Create utility functions to detect YouTube URL types (video vs channel) and extr
   ```
 - [ ] Create `lib/youtube/api.ts` for fetching metadata:
   ```typescript
-  import { youtube } from 'youtube-sr'
+  // Note: This will use YouTube Data API v3 directly instead of youtube-sr
+  // The youtube-transcript package is used for transcription only
 
   export async function getVideoMetadata(videoId: string) {
-    // Fetch title, thumbnail, duration, channelName
+    // Fetch title, thumbnail, duration, channelName using YouTube Data API v3
   }
 
   export async function getChannelVideos(channelId: string, limit = 10) {
-    // Fetch latest N videos from channel
+    // Fetch latest N videos from channel using YouTube Data API v3
   }
   ```
 - [ ] Test detection functions with various YouTube URLs:

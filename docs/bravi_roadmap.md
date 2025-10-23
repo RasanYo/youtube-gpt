@@ -347,7 +347,7 @@
 - [ ] Ajouter `YOUTUBE_API_KEY` dans `.env.local` et Vercel
 - [ ] Installer package YouTube
   ```bash
-  npm install youtube-sr
+  npm install youtube-transcript
   ```
 
 #### 2.2 Inngest Setup
@@ -396,14 +396,15 @@
 - [ ] Créer `lib/youtube/api.ts` pour fetch metadata
 
   ```typescript
-  import { youtube } from 'youtube-sr'
+  // Note: This will use YouTube Data API v3 directly instead of youtube-sr
+  // The youtube-transcript package is used for transcription only
 
   export async function getVideoMetadata(videoId: string) {
-    // Fetch title, thumbnail, duration, channelName
+    // Fetch title, thumbnail, duration, channelName using YouTube Data API v3
   }
 
   export async function getChannelVideos(channelId: string, limit = 10) {
-    // Fetch latest N videos from channel
+    // Fetch latest N videos from channel using YouTube Data API v3
   }
   ```
 
@@ -772,7 +773,7 @@
 - Supabase Realtime
 - Prisma ORM
 - YouTube Data API v3
-- youtube-sr (npm package)
+- youtube-transcript (npm package)
 - shadcn/ui (VideoCard, Input, Button)
 
 ### ✅ Expected Outcome

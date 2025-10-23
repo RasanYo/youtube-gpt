@@ -8,19 +8,15 @@
  * @example
  * ```typescript
  * import { prisma } from '@/lib/prisma';
+ * import { getCurrentUser } from '@/lib/supabase/auth';
  *
- * // Create a user
- * const user = await prisma.user.create({
- *   data: {
- *     email: 'user@example.com',
- *     name: 'John Doe'
- *   }
- * });
+ * // Get current user from Supabase Auth
+ * const user = await getCurrentUser();
+ * if (!user) throw new Error('User not authenticated');
  *
  * // Query videos for a user
  * const videos = await prisma.video.findMany({
- *   where: { userId: user.id },
- *   include: { user: true }
+ *   where: { userId: user.id }
  * });
  *
  * // Create a conversation
