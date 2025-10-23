@@ -16,11 +16,12 @@
     "test:run": "vitest run",
     "test:watch": "vitest --watch",
     "test:coverage": "vitest run --coverage",
-    "postinstall": "prisma generate",
-    "db:studio": "prisma studio",
-    "db:push": "prisma db push",
-    "db:migrate": "prisma migrate dev",
-    "db:reset": "prisma migrate reset"
+    "db:reset": "node scripts/db-utils.js reset",
+    "db:push": "node scripts/db-utils.js push", 
+    "db:types": "node scripts/db-utils.js types",
+    "db:types:remote": "node scripts/db-utils.js types:remote",
+    "db:studio": "node scripts/db-utils.js studio",
+    "db:help": "node scripts/db-utils.js help"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

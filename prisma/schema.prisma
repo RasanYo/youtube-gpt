@@ -7,26 +7,12 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-/// User model - represents authenticated users
-/// Synced with Supabase Auth (id matches auth.users.id)
-model User {
-  id            String         @id @default(uuid())
-  email         String         @unique
-  name          String?
-  avatarUrl     String?
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-  conversations Conversation[]
-  videos        Video[]
-
-  @@map("users")
-}
-
 /// Video model - represents ingested YouTube videos
 /// Each video belongs to a user and tracks processing status
+/// userId references auth.users.id directly
 model Video {
   id           String      @id @default(uuid())
-  userId       String
+  userId       String      // References auth.users.id directly
   youtubeId    String      @unique
   title        String
   thumbnailUrl String?
@@ -36,7 +22,6 @@ model Video {
   error        String?
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
-  user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([status])
@@ -45,14 +30,14 @@ model Video {
 
 /// Conversation model - represents chat sessions
 /// Each conversation belongs to a user and contains multiple messages
+/// userId references auth.users.id directly
 /// TODO: Add Message model in Phase 2 for chat history
 model Conversation {
   id        String   @id @default(uuid())
-  userId    String
+  userId    String   // References auth.users.id directly
   title     String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@map("conversations")

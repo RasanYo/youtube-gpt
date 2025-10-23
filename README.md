@@ -251,9 +251,9 @@ The application uses Prisma ORM for type-safe database access with PostgreSQL (v
 
 **Database Schema:**
 
-- **User**: Stores user profiles synced with Supabase Auth
 - **Video**: Tracks ingested YouTube videos with processing status (QUEUED, PROCESSING, READY, FAILED)
 - **Conversation**: Represents chat sessions between users and AI
+- **User Data**: Retrieved directly from Supabase Auth (auth.users table)
 
 **Prisma Commands:**
 

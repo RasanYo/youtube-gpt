@@ -1,6 +1,7 @@
 // Setup type definitions for built-in Supabase Runtime APIs
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from 'jsr:@supabase/supabase-js@2'
+import type { Database } from '../../lib/database/types.ts'
 
 interface VideoQueueRequest {
   id: string
@@ -43,14 +44,17 @@ Deno.serve(async (req) => {
     )
   }
   try {
-    // Initialize Prisma client with proper configuration for Edge Functions
-    const prisma = new PrismaClient({
-      datasources: {
-        db: {
-          url: Deno.env.get('DATABASE_URL')
+    // Initialize Supabase client with types
+    const supabase = createClient<Database>(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
         }
       }
-    })
+    )
 
     const requestData: VideoQueueRequest = await req.json();
     // Validate required fields
@@ -104,16 +108,12 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Create video record with required fields
+    // Create video record with minimal required fields
     const { data: video, error } = await supabase
       .from('videos')
       .insert({
         youtubeId: requestData.id,
-        userId: requestData.userId,
-        title: 'Processing...', // Placeholder
-        channelName: 'Unknown', // Placeholder
-        duration: 0, // Placeholder
-        status: 'QUEUED'
+        userId: requestData.userId
       })
       .select('id')
       .single()
@@ -121,8 +121,8 @@ Deno.serve(async (req) => {
     if (error) {
       console.error('Database error:', error)
       
-      // Handle duplicate youtubeId error
-      if (error.code === '23505' && error.message.includes('youtubeId')) {
+      // Handle duplicate youtube_id error
+      if (error.code === '23505' && error.message.includes('youtube_id')) {
         return new Response(
           JSON.stringify({
             success: false,
@@ -173,7 +173,8 @@ Deno.serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         success: false,
-        error: 'Invalid request body or server error' 
+        error: 'Invalid request body or server error' ,
+        error: 'Database error: ' + (err.message || 'Unknown error')
       }),
       { 
         status: 500,
