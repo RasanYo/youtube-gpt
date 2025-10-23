@@ -1,81 +1,53 @@
-# Inngest Function for Video Database Entry Creation - Implementation Plan
+# VideoList and VideoCard Components Implementation Plan
 
 ## 🧠 Context about Project
-This is a YouTube-GPT application that helps users search and extract information from YouTube videos. The system uses Next.js with Prisma for database operations, Supabase for authentication, Inngest for background job processing, and is designed to create a searchable knowledge base from YouTube content. Currently, the application has a working URL detection system that can identify video and channel URLs, but only logs the extracted IDs to the console.
+
+YouTube-GPT is a full-stack AI-powered YouTube search application that helps users instantly find information hidden inside hours of video content. Users can add individual videos or full channels to create a searchable personal knowledge base, search across multiple videos, ask AI questions, and get grounded answers with citations and timestamps. The application uses Next.js with Supabase for backend services, shadcn/ui for components, and implements a three-column ChatGPT-style interface with a Knowledge Base Explorer in the right column. The system is currently in development with basic URL processing functionality implemented.
 
 ## 🏗️ Context about Feature
-The current implementation in `src/lib/youtube/api.ts` successfully detects YouTube URLs and extracts video/channel IDs, but lacks database persistence. We need to create an Inngest function that handles the background processing of video database entry creation. The Video model in the Prisma schema requires a userId, youtubeId, title, channelName, and duration - but we only have the youtubeId from URL detection. We need to create a minimal video record with just the ID and QUEUED status, with placeholder values for required fields that will be populated later during the full ingestion process.
+
+The Knowledge Base Explorer currently has a URL input form and placeholder document display, but lacks proper video listing functionality. The new VideoList and VideoCard components will replace the current generic document display with a specialized video-focused interface. These components will integrate with the existing YouTube URL processing workflow and display video metadata including thumbnails, titles, channel information, and processing status. The components will be positioned between the URL input form and the footer metrics, providing a dedicated space for video management within the Knowledge Base column.
 
 ## 🎯 Feature Vision & Flow
-When a user submits a YouTube URL through the KnowledgeBase component, the system should:
-1. Detect and extract the YouTube ID (already working)
-2. Get the current authenticated user ID from Supabase
-3. Trigger an Inngest function with type (video/channel) and ID
-4. The Inngest function creates a new Video record in the database with:
-   - youtubeId: extracted from URL
-   - userId: current authenticated user
-   - status: QUEUED
-   - placeholder values for required fields (title, channelName, duration)
-5. Return success/failure to the UI
-6. The record will be updated later during full ingestion with real metadata
-7. For channel types, the function should ignore and do nothing for now
+
+The VideoList component will render a scrollable list of VideoCard components, each displaying essential video information in a card format. Each VideoCard will show a YouTube thumbnail image, video title, channel name, and processing status badge. The cards will be clickable and provide visual feedback for different processing states (queued, processing, ready, failed). The list will be responsive and integrate seamlessly with the existing Knowledge Base layout, replacing the current generic document display. Users will be able to see their uploaded videos at a glance and understand their processing status.
 
 ## 📋 Implementation Plan: Tasks & Subtasks
 
-### Task 1: Create Database Service Function
-- [ ] Create `src/lib/database/video.ts` with `createQueuedVideo` function
-  - [ ] Import Prisma client and VideoStatus enum
-  - [ ] Accept parameters: youtubeId (string), userId (string)
-  - [ ] Create video record with placeholder values for required fields
-  - [ ] Handle duplicate youtubeId errors gracefully
-  - [ ] Return success/error result object
+### Task 1: Create VideoCard Component using shadcn/ui
+- [ ] Create `src/components/VideoCard.tsx` file using shadcn/ui Card component as base
+- [ ] Define VideoCardProps interface with title, thumbnailUrl, channel, status, and videoId properties
+- [ ] Implement card layout using Card, CardContent, and CardHeader components from shadcn/ui
+- [ ] Use Badge component for processing status with appropriate variants (default, secondary, destructive)
+- [ ] Add Avatar component for channel thumbnails and proper image handling with fallbacks
+- [ ] Include Skeleton component for loading states and placeholder content
 
-### Task 2: Create Inngest Function for Video Processing
-- [ ] Create `src/lib/inngest/functions/video-processing.ts`
-  - [ ] Import Inngest client and database service function
-  - [ ] Define function with event name `youtube.process`
-  - [ ] Accept event data: `{ type: 'video' | 'channel', id: string, userId: string }`
-  - [ ] Handle video type: call `createQueuedVideo` with id and userId
-  - [ ] Handle channel type: log and do nothing (ignore for now)
-  - [ ] Add proper error handling and logging
-  - [ ] Return success/error status
+### Task 2: Create VideoList Component with shadcn/ui patterns
+- [ ] Create `src/components/VideoList.tsx` file using ScrollArea component from shadcn/ui
+- [ ] Define VideoListProps interface accepting array of video objects with proper typing
+- [ ] Implement scrollable container using ScrollArea with proper spacing and layout
+- [ ] Add empty state using Alert component with AlertDescription for "no videos" message
+- [ ] Use Separator component to divide video cards and maintain visual hierarchy
+- [ ] Include proper TypeScript types and shadcn/ui component composition
 
-### Task 3: Update Inngest Configuration
-- [ ] Modify `api/inngest.ts` to register the new function
-  - [ ] Import the new video processing function
-  - [ ] Add function to the Inngest client configuration
-  - [ ] Ensure proper error handling for function registration
+### Task 3: Integrate Components into KnowledgeBase with shadcn/ui
+- [ ] Import VideoList and VideoCard components into KnowledgeBase.tsx
+- [ ] Replace existing document display section with VideoList component using proper shadcn/ui layout
+- [ ] Update video data structure to match VideoCard props requirements with proper typing
+- [ ] Add placeholder video data using shadcn/ui Skeleton components for loading states
+- [ ] Ensure proper positioning between URL input and footer metrics using shadcn/ui spacing utilities
 
-### Task 4: Update YouTube API to Trigger Inngest Function
-- [ ] Modify `src/lib/youtube/api.ts` to trigger Inngest function
-  - [ ] Import Inngest client
-  - [ ] Import `getCurrentUser` from Supabase auth
-  - [ ] Update `processYouTubeUrl` to send event to Inngest after URL detection
-  - [ ] Handle authentication errors (user not logged in)
-  - [ ] Handle Inngest event sending errors
-  - [ ] Maintain existing console logging for debugging
+### Task 4: Add Processing Status Logic with shadcn/ui components
+- [ ] Define processing status types (queued, processing, ready, failed) with proper TypeScript enums
+- [ ] Implement status badges using Badge component with appropriate variants and colors
+- [ ] Add status-specific visual indicators using Loader2 icon for processing and AlertCircle for errors
+- [ ] Use Progress component to show processing progress when available
+- [ ] Ensure status updates are reflected in the UI components with proper state management
 
-### Task 5: Update UI to Handle Inngest Results
-- [ ] Modify `src/components/KnowledgeBase.tsx` to show Inngest-specific feedback
-  - [ ] Update success message to indicate video was queued for processing
-  - [ ] Update error handling to show Inngest-specific errors
-  - [ ] Add loading state during Inngest event sending
-  - [ ] Consider showing video ID in success message
-
-### Task 6: Add Error Handling and Validation
-- [ ] Add proper error handling for edge cases
-  - [ ] Handle case where user is not authenticated
-  - [ ] Handle Inngest service unavailability
-  - [ ] Add input validation for youtubeId format
-  - [ ] Add database connection error handling in Inngest function
-  - [ ] Handle duplicate video submissions (same youtubeId for same user)
-
-### Task 7: Testing and Verification
-- [ ] Test the complete flow with valid YouTube URLs
-  - [ ] Test with authenticated user
-  - [ ] Test with unauthenticated user (should show error)
-  - [ ] Test duplicate video submission
-  - [ ] Verify Inngest function processes events correctly
-  - [ ] Verify database records are created correctly
-  - [ ] Test error scenarios and UI feedback
-  - [ ] Test channel type handling (should be ignored)
+### Task 5: Style and Polish Components with shadcn/ui design system
+- [ ] Apply consistent styling using shadcn/ui design tokens and CSS variables
+- [ ] Add hover states using Button component variants (ghost, hover) for interactive video cards
+- [ ] Use Tooltip component for additional video information on hover
+- [ ] Ensure responsive design works within the Knowledge Base column using shadcn/ui responsive utilities
+- [ ] Add proper spacing using shadcn/ui spacing system and typography using shadcn/ui text utilities
+- [ ] Test component appearance with different video data scenarios and edge cases

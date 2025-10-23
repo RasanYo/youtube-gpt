@@ -7,24 +7,82 @@ import { Separator } from '@/components/ui/separator'
 import { Input } from '@/components/ui/input'
 import { useToast } from '@/hooks/use-toast'
 import { processYouTubeUrl } from '@/lib/youtube'
+import { VideoList, VideoItem } from './VideoList'
+import { VideoCardProps } from './VideoCard'
 
 export const KnowledgeBase = () => {
   const [urlInput, setUrlInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const { toast } = useToast()
 
-  // Empty documents array to show empty state
-  const documents: Array<{
-    id: number
-    title: string
-    type: string
-    pages?: number
-    duration?: string
-    date: string
-  }> = []
+  // Sample video data for demonstration
+  const videos: VideoItem[] = [
+    {
+      videoId: 'sample-1',
+      title: 'How to Build a Full-Stack AI Application with Next.js and Supabase',
+      thumbnailUrl: 'https://img.youtube.com/vi/sample1/maxresdefault.jpg',
+      channel: {
+        name: 'AI Tutorials',
+        thumbnailUrl: 'https://img.youtube.com/vi/sample1/maxresdefault.jpg'
+      },
+      status: 'ready',
+      duration: '15:30',
+      publishedAt: '2024-01-15T10:00:00Z'
+    },
+    {
+      videoId: 'sample-2',
+      title: 'Advanced React Patterns and Best Practices',
+      thumbnailUrl: 'https://img.youtube.com/vi/sample2/maxresdefault.jpg',
+      channel: {
+        name: 'React Masters',
+        thumbnailUrl: 'https://img.youtube.com/vi/sample2/maxresdefault.jpg'
+      },
+      status: 'processing',
+      duration: '22:45',
+      publishedAt: '2024-01-14T15:30:00Z'
+    },
+    {
+      videoId: 'sample-3',
+      title: 'TypeScript Deep Dive: Advanced Types and Generics',
+      thumbnailUrl: 'https://img.youtube.com/vi/sample3/maxresdefault.jpg',
+      channel: {
+        name: 'TypeScript Academy',
+        thumbnailUrl: 'https://img.youtube.com/vi/sample3/maxresdefault.jpg'
+      },
+      status: 'queued',
+      publishedAt: '2024-01-13T09:15:00Z'
+    },
+    {
+      videoId: 'sample-4',
+      title: 'Database Design Patterns for Scalable Applications',
+      thumbnailUrl: 'https://img.youtube.com/vi/sample4/maxresdefault.jpg',
+      channel: {
+        name: 'Database Experts',
+        thumbnailUrl: 'https://img.youtube.com/vi/sample4/maxresdefault.jpg'
+      },
+      status: 'failed',
+      publishedAt: '2024-01-12T14:20:00Z'
+    }
+  ]
 
-  const totalVideos = 0
-  const lastIngestion = 'Never'
+  const totalVideos = videos.length
+  const lastIngestion = '2 hours ago'
+
+  // Handle video click
+  const handleVideoClick = (videoId: string) => {
+    console.log('Video clicked:', videoId)
+    // TODO: Implement video selection logic for chat context
+  }
+
+  // Handle video retry
+  const handleVideoRetry = (videoId: string) => {
+    console.log('Retry video:', videoId)
+    // TODO: Implement retry logic for failed videos
+    toast({
+      title: 'Retry Requested',
+      description: `Retrying processing for video ${videoId}`,
+    })
+  }
 
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
@@ -82,7 +140,7 @@ export const KnowledgeBase = () => {
   }
 
   return (
-    <div className="flex h-screen w-96 flex-col border-l bg-card">
+    <div className="flex h-screen w-[480px] flex-col border-l bg-card">
       {/* Header */}
       <div className="flex h-14 items-center justify-between border-b px-4">
         <h2 className="text-sm font-semibold">Knowledge Base</h2>
@@ -117,53 +175,15 @@ export const KnowledgeBase = () => {
           </div>
         </form>
       </div>
-      {/* Documents */}
-      <ScrollArea className="flex-1 p-4">
-        {documents.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-center px-4 py-8">
-            <Video className="h-12 w-12 text-muted-foreground/50 mb-3" />
-            <p className="text-sm text-muted-foreground mb-1 font-medium">
-              No documents yet
-            </p>
-            <p className="text-xs text-muted-foreground/70">
-              Add videos to build your knowledge base
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {documents.map((doc) => (
-              <Button
-                key={doc.id}
-                variant="ghost"
-                className="w-full justify-start text-left h-auto py-3 px-3 hover:bg-accent"
-              >
-                <div className="flex items-start gap-3 w-full">
-                  <div className="flex-shrink-0 mt-0.5">
-                    {doc.type === 'video' ? (
-                      <Video className="h-5 w-5 text-primary" />
-                    ) : (
-                      <FileText className="h-5 w-5 text-muted-foreground" />
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium mb-1 line-clamp-2">
-                      {doc.title}
-                    </div>
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <Badge variant="secondary" className="text-xs px-1.5 py-0">
-                        {doc.type === 'video'
-                          ? doc.duration
-                          : `${doc.pages} pages`}
-                      </Badge>
-                      <span>{doc.date}</span>
-                    </div>
-                  </div>
-                </div>
-              </Button>
-            ))}
-          </div>
-        )}
-      </ScrollArea>
+      {/* Video List */}
+      <VideoList
+        videos={videos}
+        onVideoClick={handleVideoClick}
+        onRetry={handleVideoRetry}
+        isLoading={isLoading}
+        showSearch={false}
+        showFilters={false}
+      />
 
       {/* Footer with Metrics */}
       <div className="border-t">
