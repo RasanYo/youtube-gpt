@@ -1,19 +1,10 @@
-import { useState } from 'react'
-import { FileText, Folder, Video, Calendar, Loader2, Cloud } from 'lucide-react'
+import { FileText, Folder, Video, Calendar } from 'lucide-react'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
-import { Input } from '@/components/ui/input'
-import { processYouTubeUrl } from '@/lib/youtube'
-import { useToast } from '@/hooks/use-toast'
 
 export const KnowledgeBase = () => {
-  // State management for URL input and loading
-  const [urlInput, setUrlInput] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
-  const { toast } = useToast()
-
   // Empty documents array to show empty state
   const documents: Array<{
     id: number
@@ -166,8 +157,17 @@ export const KnowledgeBase = () => {
         )}
       </ScrollArea>
 
-      {/* Mini-Metrics Footer */}
+      {/* Footer with Add Button */}
       <div className="border-t">
+        <div className="p-4 pb-3">
+          <Button variant="outline" className="w-full">
+            <FileText className="h-4 w-4 mr-2" />
+            Add Document
+          </Button>
+        </div>
+
+        {/* Mini-Metrics Footer */}
+        <Separator />
         <div className="bg-muted/30 px-4 py-3">
           <div className="space-y-2 text-xs">
             <div className="flex items-center justify-between">
