@@ -29,6 +29,7 @@ export function useVideos() {
         
         if (error) throw error
         setVideos(data || [])
+        console.log('Videos:', data)
       } catch (err) {
         console.error('Error fetching videos:', err)
         setError(err instanceof Error ? err.message : 'Failed to fetch videos')
