@@ -6,7 +6,7 @@ YouTube-GPT is an AI-powered YouTube knowledge base that transforms hours of vid
 
 ## 🏗️ Context about Feature
 
-The auto-trigger transcript jobs feature sits at the critical junction between video ingestion and AI processing in the YouTube-GPT pipeline. Currently, when users add YouTube videos or channels, the system successfully fetches metadata (title, thumbnail, duration, channel info) and stores it in the `videos` table with status tracking (PENDING → QUEUED → PROCESSING → READY/FAILED). The PENDING → QUEUED transition is fully implemented and working correctly. However, there's a gap between the QUEUED status and the next processing step - transcript extraction and vector embedding generation. The feature must integrate with the existing Supabase database schema, leverage the current Inngest background job system, and work alongside the real-time status updates already implemented in the frontend. The system needs to detect when a video transitions to 'QUEUED' status and automatically queue it for transcript processing without manual intervention, creating a seamless event-driven pipeline that scales with user activity.
+The auto-trigger transcript jobs feature sits at the critical junction between video ingestion and AI processing in the YouTube-GPT pipeline. Currently, when users add YouTube videos or channels, the system successfully fetches metadata (title, thumbnail, duration, channel info) and stores it in the `videos` table with status tracking (PENDING → QUEUED → PROCESSING → READY/FAILED). The PENDING → QUEUED transition is fully implemented and working correctly. However, there's a gap between the QUEUED status and the next processing step - transcript extraction and vector embedding generation. The feature must integrate with the existing Supabase database schema, leverage the current Inngest background job system, and work alongside the real-time status updates already implemented in the frontend. The system needs to detect when a video transitions TO 'QUEUED' status and automatically queue it for transcript processing without manual intervention, creating a seamless event-driven pipeline that scales with user activity.
 
 ## 🎯 Feature Vision & Flow
 
@@ -33,17 +33,28 @@ The system currently stops at `QUEUED` status. The following components need to 
 - Transcript extraction and vector embedding generation
 - Webhook triggers for status transitions
 
+### Status Flow Diagram
+```
+PENDING → QUEUED → PROCESSING → READY
+   ↓         ↓         ↓         ↓
+[Created] [Metadata] [Transcript] [AI Ready]
+           Fetched   Processing
+           
+Webhook triggers here ↑
+(When status changes TO 'QUEUED')
+```
+
 ## 📋 Implementation Plan: Tasks & Subtasks
 
 ### Phase 1: Database Trigger Setup
 - [ ] **1.1 Create Supabase Database Webhook**
   - Set up webhook trigger on `videos` table for status changes
-  - Configure webhook to fire when status changes to 'QUEUED' (after metadata fetch)
+  - Configure webhook to fire when status changes TO 'QUEUED' (after metadata fetch)
   - Add webhook authentication and security headers
   - Test webhook with sample video status updates
 
 - [ ] **1.2 Create Webhook Endpoint**
-  - Create `/api/webhooks/process-transcript` endpoint in Next.js API routes
+  - Create `/api/webhooks/process-transcript` endpoint
   - Implement webhook signature verification for security
   - Add request validation and error handling
   - Set up proper logging for webhook calls and failures
@@ -69,7 +80,7 @@ The system currently stops at `QUEUED` status. The following components need to 
 
 - [ ] **2.3 Update Video Status Pipeline**
   - Modify job to update video status throughout processing stages
-  - Add 'TRANSCRIPT_EXTRACTING', 'EMBEDDING_GENERATING', 'READY' statuses
+  - Add 'PROCESSING' status for transcript extraction and embedding generation
   - Implement proper error handling and status rollback on failures
   - Add processing metrics and timing information to video records
 

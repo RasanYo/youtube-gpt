@@ -1,5 +1,6 @@
-import { serve } from "inngest/next";
+import { serve } from "inngest/vercel";
 import { inngest } from "../src/lib/inngest/client";
+  import { processVideo } from "../src/lib/inngest/functions";
 
 /**
  * Inngest Webhook Handler
@@ -16,6 +17,7 @@ import { inngest } from "../src/lib/inngest/client";
 
 // Register all Inngest functions
 const functions = [
+  processVideo,
 ];
 
 export default serve({
