@@ -30,6 +30,26 @@ jest.mock('@/lib/supabase/client', () => ({
 describe('Authentication Helper Functions', () => {
   beforeEach(() => {
     jest.clearAllMocks()
+    
+    // Reset all mock implementations
+    (supabase.auth.signInWithOtp as jest.Mock).mockResolvedValue({
+      data: { user: null, session: null },
+      error: null,
+    })
+    
+    (supabase.auth.signOut as jest.Mock).mockResolvedValue({
+      error: null,
+    })
+    
+    (supabase.auth.getUser as jest.Mock).mockResolvedValue({
+      data: { user: null },
+      error: null,
+    })
+    
+    (supabase.auth.getSession as jest.Mock).mockResolvedValue({
+      data: { session: null },
+      error: null,
+    })
   })
 
   describe('signInWithMagicLink', () => {

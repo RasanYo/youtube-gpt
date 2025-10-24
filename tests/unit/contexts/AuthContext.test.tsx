@@ -27,10 +27,28 @@ describe('AuthContext', () => {
   let mockSubscription: { unsubscribe: () => void }
 
   beforeEach(() => {
+    // Clear all mocks before each test
+    jest.clearAllMocks()
+    
     mockSubscription = { unsubscribe: jest.fn() }
+
+    // Set up default mock implementations
+    ;(supabase.auth.getSession as jest.Mock).mockResolvedValue({
+      data: { session: null },
+      error: null,
+    })
 
     ;(supabase.auth.onAuthStateChange as jest.Mock).mockReturnValue({
       data: { subscription: mockSubscription },
+    })
+
+    ;(supabase.auth.signInWithOtp as jest.Mock).mockResolvedValue({
+      data: {},
+      error: null,
+    })
+
+    ;(supabase.auth.signOut as jest.Mock).mockResolvedValue({
+      error: null,
     })
   })
 
@@ -49,11 +67,6 @@ describe('AuthContext', () => {
     })
 
     it('should provide auth context when inside AuthProvider', async () => {
-      (supabase.auth.getSession as jest.Mock).mockResolvedValue({
-        data: { session: null },
-        error: null,
-      })
-
       const { result } = renderHook(() => useAuth(), {
         wrapper: AuthProvider,
       })
@@ -72,6 +85,7 @@ describe('AuthContext', () => {
 
   describe('Initial session loading', () => {
     it('should start with isLoading true', () => {
+      // Override the default mock to never resolve
       (supabase.auth.getSession as jest.Mock).mockImplementation(
         () =>
           new Promise(() => {
@@ -99,6 +113,7 @@ describe('AuthContext', () => {
         user: mockUser as User,
       }
 
+      // Override the default mock for this test
       (supabase.auth.getSession as jest.Mock).mockResolvedValue({
         data: { session: mockSession as Session },
         error: null,
@@ -117,10 +132,7 @@ describe('AuthContext', () => {
     })
 
     it('should handle null session on mount', async () => {
-      (supabase.auth.getSession as jest.Mock).mockResolvedValue({
-        data: { session: null },
-        error: null,
-      })
+      // Using default mock setup from beforeEach
 
       const { result } = renderHook(() => useAuth(), {
         wrapper: AuthProvider,
@@ -135,10 +147,7 @@ describe('AuthContext', () => {
     })
 
     it('should set isLoading to false after session loads', async () => {
-      (supabase.auth.getSession as jest.Mock).mockResolvedValue({
-        data: { session: null },
-        error: null,
-      })
+      // Using default mock setup from beforeEach
 
       const { result } = renderHook(() => useAuth(), {
         wrapper: AuthProvider,
@@ -154,10 +163,7 @@ describe('AuthContext', () => {
 
   describe('Auth state change listener', () => {
     it('should subscribe to auth state changes on mount', () => {
-      (supabase.auth.getSession as jest.Mock).mockResolvedValue({
-        data: { session: null },
-        error: null,
-      })
+      // Using default mock setup from beforeEach
 
       renderHook(() => useAuth(), {
         wrapper: AuthProvider,
@@ -170,10 +176,7 @@ describe('AuthContext', () => {
     })
 
     it('should unsubscribe on unmount', async () => {
-      (supabase.auth.getSession as jest.Mock).mockResolvedValue({
-        data: { session: null },
-        error: null,
-      })
+      // Using default mock setup from beforeEach
 
       const { unmount } = renderHook(() => useAuth(), {
         wrapper: AuthProvider,
@@ -191,11 +194,7 @@ describe('AuthContext', () => {
     it('should update user state when auth state changes to signed in', async () => {
       let authStateCallback: (event: string, session: Session | null) => void
 
-      (supabase.auth.getSession as jest.Mock).mockResolvedValue({
-        data: { session: null },
-        error: null,
-      })
-
+      // Override the default mock for this test
       (supabase.auth.onAuthStateChange as jest.Mock).mockImplementation(
         (callback) => {
           authStateCallback = callback
@@ -248,6 +247,7 @@ describe('AuthContext', () => {
         user: mockUser as User,
       }
 
+      // Override the default mock for this test
       (supabase.auth.getSession as jest.Mock).mockResolvedValue({
         data: { session: mockSession as Session },
         error: null,
@@ -279,15 +279,7 @@ describe('AuthContext', () => {
 
   describe('login method', () => {
     it('should call supabase signInWithOtp with correct parameters', async () => {
-      (supabase.auth.getSession as jest.Mock).mockResolvedValue({
-        data: { session: null },
-        error: null,
-      })
-
-      (supabase.auth.signInWithOtp as jest.Mock).mockResolvedValue({
-        data: {},
-        error: null,
-      })
+      // Using default mock setup from beforeEach
 
       const { result } = renderHook(() => useAuth(), {
         wrapper: AuthProvider,
@@ -310,12 +302,8 @@ describe('AuthContext', () => {
     })
 
     it('should throw error when login fails', async () => {
-      (supabase.auth.getSession as jest.Mock).mockResolvedValue({
-        data: { session: null },
-        error: null,
-      })
-
       const mockError = new Error('Login failed')
+      // Override the default mock for this test
       (supabase.auth.signInWithOtp as jest.Mock).mockResolvedValue({
         data: {},
         error: mockError,
@@ -337,15 +325,7 @@ describe('AuthContext', () => {
     })
 
     it('should not update state immediately after login call', async () => {
-      (supabase.auth.getSession as jest.Mock).mockResolvedValue({
-        data: { session: null },
-        error: null,
-      })
-
-      (supabase.auth.signInWithOtp as jest.Mock).mockResolvedValue({
-        data: {},
-        error: null,
-      })
+      // Using default mock setup from beforeEach
 
       const { result } = renderHook(() => useAuth(), {
         wrapper: AuthProvider,
@@ -366,12 +346,7 @@ describe('AuthContext', () => {
 
   describe('logout method', () => {
     it('should call supabase signOut', async () => {
-      (supabase.auth.getSession as jest.Mock).mockResolvedValue({
-        data: { session: null },
-        error: null,
-      })
-
-      (supabase.auth.signOut as jest.Mock).mockResolvedValue({ error: null })
+      // Using default mock setup from beforeEach
 
       const { result } = renderHook(() => useAuth(), {
         wrapper: AuthProvider,
@@ -389,12 +364,8 @@ describe('AuthContext', () => {
     })
 
     it('should throw error when logout fails', async () => {
-      (supabase.auth.getSession as jest.Mock).mockResolvedValue({
-        data: { session: null },
-        error: null,
-      })
-
       const mockError = new Error('Logout failed')
+      // Override the default mock for this test
       (supabase.auth.signOut as jest.Mock).mockResolvedValue({ error: mockError })
 
       const { result } = renderHook(() => useAuth(), {
