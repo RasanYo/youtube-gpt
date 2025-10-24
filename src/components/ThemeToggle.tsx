@@ -5,9 +5,14 @@ import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 
 export const ThemeToggle = () => {
-  const [theme, setTheme] = useState<'light' | 'dark'>('light')
+  const [theme, setTheme] = useState<'light' | 'dark' | undefined>(undefined)
+  const [isHydrated, setIsHydrated] = useState(false)
 
   useEffect(() => {
+    // Mark as hydrated
+    setIsHydrated(true)
+    
+    // Get theme from localStorage
     const stored = localStorage.getItem('bravi_theme') as
       | 'light'
       | 'dark'
@@ -22,6 +27,13 @@ export const ThemeToggle = () => {
     setTheme(newTheme)
     localStorage.setItem('bravi_theme', newTheme)
     document.documentElement.classList.toggle('dark', newTheme === 'dark')
+  }
+
+  // Show placeholder during hydration to prevent mismatch
+  if (!isHydrated || theme === undefined) {
+    return (
+      <div className="h-9 w-9" />
+    )
   }
 
   return (

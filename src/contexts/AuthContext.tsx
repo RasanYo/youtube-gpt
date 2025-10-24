@@ -20,8 +20,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const [user, setUser] = useState<User | null>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [isHydrated, setIsHydrated] = useState(false)
 
   useEffect(() => {
+    // Mark as hydrated
+    setIsHydrated(true)
+    
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session)
@@ -62,7 +66,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   }
 
   return (
-    <AuthContext.Provider value={{ user, session, login, logout, isLoading }}>
+    <AuthContext.Provider value={{ user, session, login, logout, isLoading: isLoading || !isHydrated }}>
       {children}
     </AuthContext.Provider>
   )

@@ -152,9 +152,13 @@ var _s = __turbopack_context__.k.signature();
 ;
 const ThemeToggle = ()=>{
     _s();
-    const [theme, setTheme] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$0$2e$0_$40$opentelemetry$2b$api$40$1$2e$9$2e$0_react$2d$dom$40$18$2e$3$2e$1_react$40$18$2e$3$2e$1_$5f$react$40$18$2e$3$2e$1$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])('light');
+    const [theme, setTheme] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$0$2e$0_$40$opentelemetry$2b$api$40$1$2e$9$2e$0_react$2d$dom$40$18$2e$3$2e$1_react$40$18$2e$3$2e$1_$5f$react$40$18$2e$3$2e$1$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(undefined);
+    const [isHydrated, setIsHydrated] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$0$2e$0_$40$opentelemetry$2b$api$40$1$2e$9$2e$0_react$2d$dom$40$18$2e$3$2e$1_react$40$18$2e$3$2e$1_$5f$react$40$18$2e$3$2e$1$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(false);
     (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$0$2e$0_$40$opentelemetry$2b$api$40$1$2e$9$2e$0_react$2d$dom$40$18$2e$3$2e$1_react$40$18$2e$3$2e$1_$5f$react$40$18$2e$3$2e$1$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useEffect"])({
         "ThemeToggle.useEffect": ()=>{
+            // Mark as hydrated
+            setIsHydrated(true);
+            // Get theme from localStorage
             const stored = localStorage.getItem('bravi_theme');
             const initial = stored || 'light';
             setTheme(initial);
@@ -167,6 +171,16 @@ const ThemeToggle = ()=>{
         localStorage.setItem('bravi_theme', newTheme);
         document.documentElement.classList.toggle('dark', newTheme === 'dark');
     };
+    // Show placeholder during hydration to prevent mismatch
+    if (!isHydrated || theme === undefined) {
+        return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$0$2e$0_$40$opentelemetry$2b$api$40$1$2e$9$2e$0_react$2d$dom$40$18$2e$3$2e$1_react$40$18$2e$3$2e$1_$5f$react$40$18$2e$3$2e$1$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+            className: "h-9 w-9"
+        }, void 0, false, {
+            fileName: "[project]/src/components/ThemeToggle.tsx",
+            lineNumber: 35,
+            columnNumber: 7
+        }, ("TURBOPACK compile-time value", void 0));
+    }
     return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$0$2e$0_$40$opentelemetry$2b$api$40$1$2e$9$2e$0_react$2d$dom$40$18$2e$3$2e$1_react$40$18$2e$3$2e$1_$5f$react$40$18$2e$3$2e$1$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$button$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Button"], {
         variant: "ghost",
         size: "icon",
@@ -177,13 +191,13 @@ const ThemeToggle = ()=>{
                 className: "h-4 w-4"
             }, void 0, false, {
                 fileName: "[project]/src/components/ThemeToggle.tsx",
-                lineNumber: 35,
+                lineNumber: 47,
                 columnNumber: 9
             }, ("TURBOPACK compile-time value", void 0)) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$0$2e$0_$40$opentelemetry$2b$api$40$1$2e$9$2e$0_react$2d$dom$40$18$2e$3$2e$1_react$40$18$2e$3$2e$1_$5f$react$40$18$2e$3$2e$1$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$lucide$2d$react$40$0$2e$462$2e$0_react$40$18$2e$3$2e$1$2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$sun$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__Sun$3e$__["Sun"], {
                 className: "h-4 w-4"
             }, void 0, false, {
                 fileName: "[project]/src/components/ThemeToggle.tsx",
-                lineNumber: 37,
+                lineNumber: 49,
                 columnNumber: 9
             }, ("TURBOPACK compile-time value", void 0)),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$0$2e$0_$40$opentelemetry$2b$api$40$1$2e$9$2e$0_react$2d$dom$40$18$2e$3$2e$1_react$40$18$2e$3$2e$1_$5f$react$40$18$2e$3$2e$1$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -191,17 +205,17 @@ const ThemeToggle = ()=>{
                 children: "Toggle theme"
             }, void 0, false, {
                 fileName: "[project]/src/components/ThemeToggle.tsx",
-                lineNumber: 39,
+                lineNumber: 51,
                 columnNumber: 7
             }, ("TURBOPACK compile-time value", void 0))
         ]
     }, void 0, true, {
         fileName: "[project]/src/components/ThemeToggle.tsx",
-        lineNumber: 28,
+        lineNumber: 40,
         columnNumber: 5
     }, ("TURBOPACK compile-time value", void 0));
 };
-_s(ThemeToggle, "Z8UCD9KudyQA62DCQ9e5cf9+m5k=");
+_s(ThemeToggle, "Jlae2ojH5npHTCXLC7ClAJ4kjSM=");
 _c = ThemeToggle;
 var _c;
 __turbopack_context__.k.register(_c, "ThemeToggle");
@@ -1605,7 +1619,11 @@ const VideoCard = ({ video, onClick, onRetry, className })=>{
     const formatDate = (dateString)=>{
         if (!dateString) return '';
         try {
-            return new Date(dateString).toLocaleDateString();
+            return new Date(dateString).toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+            });
         } catch  {
             return '';
         }
@@ -1635,12 +1653,12 @@ const VideoCard = ({ video, onClick, onRetry, className })=>{
                                                 children: title
                                             }, void 0, false, {
                                                 fileName: "[project]/src/components/VideoCard.tsx",
-                                                lineNumber: 123,
+                                                lineNumber: 127,
                                                 columnNumber: 21
                                             }, ("TURBOPACK compile-time value", void 0))
                                         }, void 0, false, {
                                             fileName: "[project]/src/components/VideoCard.tsx",
-                                            lineNumber: 122,
+                                            lineNumber: 126,
                                             columnNumber: 19
                                         }, ("TURBOPACK compile-time value", void 0)),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$0$2e$0_$40$opentelemetry$2b$api$40$1$2e$9$2e$0_react$2d$dom$40$18$2e$3$2e$1_react$40$18$2e$3$2e$1_$5f$react$40$18$2e$3$2e$1$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$tooltip$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["TooltipContent"], {
@@ -1650,24 +1668,24 @@ const VideoCard = ({ video, onClick, onRetry, className })=>{
                                                 children: title
                                             }, void 0, false, {
                                                 fileName: "[project]/src/components/VideoCard.tsx",
-                                                lineNumber: 128,
+                                                lineNumber: 132,
                                                 columnNumber: 21
                                             }, ("TURBOPACK compile-time value", void 0))
                                         }, void 0, false, {
                                             fileName: "[project]/src/components/VideoCard.tsx",
-                                            lineNumber: 127,
+                                            lineNumber: 131,
                                             columnNumber: 19
                                         }, ("TURBOPACK compile-time value", void 0))
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/components/VideoCard.tsx",
-                                    lineNumber: 121,
+                                    lineNumber: 125,
                                     columnNumber: 17
                                 }, ("TURBOPACK compile-time value", void 0)) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$0$2e$0_$40$opentelemetry$2b$api$40$1$2e$9$2e$0_react$2d$dom$40$18$2e$3$2e$1_react$40$18$2e$3$2e$1_$5f$react$40$18$2e$3$2e$1$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$skeleton$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Skeleton"], {
                                     className: "h-4 w-full"
                                 }, void 0, false, {
                                     fileName: "[project]/src/components/VideoCard.tsx",
-                                    lineNumber: 132,
+                                    lineNumber: 136,
                                     columnNumber: 17
                                 }, ("TURBOPACK compile-time value", void 0)),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$0$2e$0_$40$opentelemetry$2b$api$40$1$2e$9$2e$0_react$2d$dom$40$18$2e$3$2e$1_react$40$18$2e$3$2e$1_$5f$react$40$18$2e$3$2e$1$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1680,12 +1698,12 @@ const VideoCard = ({ video, onClick, onRetry, className })=>{
                                                 children: !isEmpty(channelName) ? channelName.charAt(0).toUpperCase() : '?'
                                             }, void 0, false, {
                                                 fileName: "[project]/src/components/VideoCard.tsx",
-                                                lineNumber: 138,
+                                                lineNumber: 142,
                                                 columnNumber: 19
                                             }, ("TURBOPACK compile-time value", void 0))
                                         }, void 0, false, {
                                             fileName: "[project]/src/components/VideoCard.tsx",
-                                            lineNumber: 137,
+                                            lineNumber: 141,
                                             columnNumber: 17
                                         }, ("TURBOPACK compile-time value", void 0)),
                                         !isEmpty(channelName) ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$0$2e$0_$40$opentelemetry$2b$api$40$1$2e$9$2e$0_react$2d$dom$40$18$2e$3$2e$1_react$40$18$2e$3$2e$1_$5f$react$40$18$2e$3$2e$1$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -1693,19 +1711,19 @@ const VideoCard = ({ video, onClick, onRetry, className })=>{
                                             children: channelName
                                         }, void 0, false, {
                                             fileName: "[project]/src/components/VideoCard.tsx",
-                                            lineNumber: 143,
+                                            lineNumber: 147,
                                             columnNumber: 19
                                         }, ("TURBOPACK compile-time value", void 0)) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$0$2e$0_$40$opentelemetry$2b$api$40$1$2e$9$2e$0_react$2d$dom$40$18$2e$3$2e$1_react$40$18$2e$3$2e$1_$5f$react$40$18$2e$3$2e$1$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$skeleton$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Skeleton"], {
                                             className: "h-3 w-20"
                                         }, void 0, false, {
                                             fileName: "[project]/src/components/VideoCard.tsx",
-                                            lineNumber: 147,
+                                            lineNumber: 151,
                                             columnNumber: 19
                                         }, ("TURBOPACK compile-time value", void 0))
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/components/VideoCard.tsx",
-                                    lineNumber: 136,
+                                    lineNumber: 140,
                                     columnNumber: 15
                                 }, ("TURBOPACK compile-time value", void 0)),
                                 !isEmpty(publishedAt) ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$0$2e$0_$40$opentelemetry$2b$api$40$1$2e$9$2e$0_react$2d$dom$40$18$2e$3$2e$1_react$40$18$2e$3$2e$1_$5f$react$40$18$2e$3$2e$1$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -1713,19 +1731,19 @@ const VideoCard = ({ video, onClick, onRetry, className })=>{
                                     children: formatDate(publishedAt)
                                 }, void 0, false, {
                                     fileName: "[project]/src/components/VideoCard.tsx",
-                                    lineNumber: 153,
+                                    lineNumber: 157,
                                     columnNumber: 17
                                 }, ("TURBOPACK compile-time value", void 0)) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$0$2e$0_$40$opentelemetry$2b$api$40$1$2e$9$2e$0_react$2d$dom$40$18$2e$3$2e$1_react$40$18$2e$3$2e$1_$5f$react$40$18$2e$3$2e$1$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$skeleton$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Skeleton"], {
                                     className: "h-3 w-16"
                                 }, void 0, false, {
                                     fileName: "[project]/src/components/VideoCard.tsx",
-                                    lineNumber: 157,
+                                    lineNumber: 161,
                                     columnNumber: 17
                                 }, ("TURBOPACK compile-time value", void 0))
                             ]
                         }, void 0, true, {
                             fileName: "[project]/src/components/VideoCard.tsx",
-                            lineNumber: 118,
+                            lineNumber: 122,
                             columnNumber: 13
                         }, ("TURBOPACK compile-time value", void 0)),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$0$2e$0_$40$opentelemetry$2b$api$40$1$2e$9$2e$0_react$2d$dom$40$18$2e$3$2e$1_react$40$18$2e$3$2e$1_$5f$react$40$18$2e$3$2e$1$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1740,13 +1758,13 @@ const VideoCard = ({ video, onClick, onRetry, className })=>{
                                         loading: "lazy"
                                     }, void 0, false, {
                                         fileName: "[project]/src/components/VideoCard.tsx",
-                                        lineNumber: 166,
+                                        lineNumber: 170,
                                         columnNumber: 19
                                     }, ("TURBOPACK compile-time value", void 0)) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$0$2e$0_$40$opentelemetry$2b$api$40$1$2e$9$2e$0_react$2d$dom$40$18$2e$3$2e$1_react$40$18$2e$3$2e$1_$5f$react$40$18$2e$3$2e$1$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$skeleton$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Skeleton"], {
                                         className: "w-full h-full"
                                     }, void 0, false, {
                                         fileName: "[project]/src/components/VideoCard.tsx",
-                                        lineNumber: 173,
+                                        lineNumber: 177,
                                         columnNumber: 19
                                     }, ("TURBOPACK compile-time value", void 0)),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$0$2e$0_$40$opentelemetry$2b$api$40$1$2e$9$2e$0_react$2d$dom$40$18$2e$3$2e$1_react$40$18$2e$3$2e$1_$5f$react$40$18$2e$3$2e$1$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1765,13 +1783,13 @@ const VideoCard = ({ video, onClick, onRetry, className })=>{
                                                     className: "h-3 w-3"
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/components/VideoCard.tsx",
-                                                    lineNumber: 189,
+                                                    lineNumber: 193,
                                                     columnNumber: 23
                                                 }, ("TURBOPACK compile-time value", void 0))
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/src/components/VideoCard.tsx",
-                                            lineNumber: 179,
+                                            lineNumber: 183,
                                             columnNumber: 21
                                         }, ("TURBOPACK compile-time value", void 0)) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$0$2e$0_$40$opentelemetry$2b$api$40$1$2e$9$2e$0_react$2d$dom$40$18$2e$3$2e$1_react$40$18$2e$3$2e$1_$5f$react$40$18$2e$3$2e$1$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$tooltip$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Tooltip"], {
                                             children: [
@@ -1783,17 +1801,17 @@ const VideoCard = ({ video, onClick, onRetry, className })=>{
                                                             className: (0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$utils$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["cn"])('h-2.5 w-2.5 text-white', (status === 'processing' || status === 'queued') && 'animate-spin')
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/components/VideoCard.tsx",
-                                                            lineNumber: 198,
+                                                            lineNumber: 202,
                                                             columnNumber: 27
                                                         }, ("TURBOPACK compile-time value", void 0))
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/components/VideoCard.tsx",
-                                                        lineNumber: 194,
+                                                        lineNumber: 198,
                                                         columnNumber: 25
                                                     }, ("TURBOPACK compile-time value", void 0))
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/components/VideoCard.tsx",
-                                                    lineNumber: 193,
+                                                    lineNumber: 197,
                                                     columnNumber: 23
                                                 }, ("TURBOPACK compile-time value", void 0)),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$0$2e$0_$40$opentelemetry$2b$api$40$1$2e$9$2e$0_react$2d$dom$40$18$2e$3$2e$1_react$40$18$2e$3$2e$1_$5f$react$40$18$2e$3$2e$1$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$tooltip$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["TooltipContent"], {
@@ -1802,23 +1820,23 @@ const VideoCard = ({ video, onClick, onRetry, className })=>{
                                                         children: config.label
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/components/VideoCard.tsx",
-                                                        lineNumber: 202,
+                                                        lineNumber: 206,
                                                         columnNumber: 25
                                                     }, ("TURBOPACK compile-time value", void 0))
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/components/VideoCard.tsx",
-                                                    lineNumber: 201,
+                                                    lineNumber: 205,
                                                     columnNumber: 23
                                                 }, ("TURBOPACK compile-time value", void 0))
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/src/components/VideoCard.tsx",
-                                            lineNumber: 192,
+                                            lineNumber: 196,
                                             columnNumber: 21
                                         }, ("TURBOPACK compile-time value", void 0))
                                     }, void 0, false, {
                                         fileName: "[project]/src/components/VideoCard.tsx",
-                                        lineNumber: 177,
+                                        lineNumber: 181,
                                         columnNumber: 17
                                     }, ("TURBOPACK compile-time value", void 0)),
                                     !isEmpty(duration) && status === 'ready' && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$0$2e$0_$40$opentelemetry$2b$api$40$1$2e$9$2e$0_react$2d$dom$40$18$2e$3$2e$1_react$40$18$2e$3$2e$1_$5f$react$40$18$2e$3$2e$1$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1826,39 +1844,39 @@ const VideoCard = ({ video, onClick, onRetry, className })=>{
                                         children: duration
                                     }, void 0, false, {
                                         fileName: "[project]/src/components/VideoCard.tsx",
-                                        lineNumber: 210,
+                                        lineNumber: 214,
                                         columnNumber: 19
                                     }, ("TURBOPACK compile-time value", void 0))
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/components/VideoCard.tsx",
-                                lineNumber: 164,
+                                lineNumber: 168,
                                 columnNumber: 15
                             }, ("TURBOPACK compile-time value", void 0))
                         }, void 0, false, {
                             fileName: "[project]/src/components/VideoCard.tsx",
-                            lineNumber: 162,
+                            lineNumber: 166,
                             columnNumber: 13
                         }, ("TURBOPACK compile-time value", void 0))
                     ]
                 }, void 0, true, {
                     fileName: "[project]/src/components/VideoCard.tsx",
-                    lineNumber: 116,
+                    lineNumber: 120,
                     columnNumber: 11
                 }, ("TURBOPACK compile-time value", void 0))
             }, void 0, false, {
                 fileName: "[project]/src/components/VideoCard.tsx",
-                lineNumber: 115,
+                lineNumber: 119,
                 columnNumber: 9
             }, ("TURBOPACK compile-time value", void 0))
         }, void 0, false, {
             fileName: "[project]/src/components/VideoCard.tsx",
-            lineNumber: 107,
+            lineNumber: 111,
             columnNumber: 7
         }, ("TURBOPACK compile-time value", void 0))
     }, void 0, false, {
         fileName: "[project]/src/components/VideoCard.tsx",
-        lineNumber: 106,
+        lineNumber: 110,
         columnNumber: 5
     }, ("TURBOPACK compile-time value", void 0));
 };
@@ -1878,7 +1896,7 @@ const VideoCardSkeleton = ({ className })=>{
                                 className: "h-4 w-full"
                             }, void 0, false, {
                                 fileName: "[project]/src/components/VideoCard.tsx",
-                                lineNumber: 231,
+                                lineNumber: 235,
                                 columnNumber: 13
                             }, ("TURBOPACK compile-time value", void 0)),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$0$2e$0_$40$opentelemetry$2b$api$40$1$2e$9$2e$0_react$2d$dom$40$18$2e$3$2e$1_react$40$18$2e$3$2e$1_$5f$react$40$18$2e$3$2e$1$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1888,33 +1906,33 @@ const VideoCardSkeleton = ({ className })=>{
                                         className: "h-4 w-4 rounded-full"
                                     }, void 0, false, {
                                         fileName: "[project]/src/components/VideoCard.tsx",
-                                        lineNumber: 233,
+                                        lineNumber: 237,
                                         columnNumber: 15
                                     }, ("TURBOPACK compile-time value", void 0)),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$0$2e$0_$40$opentelemetry$2b$api$40$1$2e$9$2e$0_react$2d$dom$40$18$2e$3$2e$1_react$40$18$2e$3$2e$1_$5f$react$40$18$2e$3$2e$1$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$skeleton$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Skeleton"], {
                                         className: "h-3 w-20"
                                     }, void 0, false, {
                                         fileName: "[project]/src/components/VideoCard.tsx",
-                                        lineNumber: 234,
+                                        lineNumber: 238,
                                         columnNumber: 15
                                     }, ("TURBOPACK compile-time value", void 0))
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/components/VideoCard.tsx",
-                                lineNumber: 232,
+                                lineNumber: 236,
                                 columnNumber: 13
                             }, ("TURBOPACK compile-time value", void 0)),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$0$2e$0_$40$opentelemetry$2b$api$40$1$2e$9$2e$0_react$2d$dom$40$18$2e$3$2e$1_react$40$18$2e$3$2e$1_$5f$react$40$18$2e$3$2e$1$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$skeleton$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Skeleton"], {
                                 className: "h-3 w-16"
                             }, void 0, false, {
                                 fileName: "[project]/src/components/VideoCard.tsx",
-                                lineNumber: 236,
+                                lineNumber: 240,
                                 columnNumber: 13
                             }, ("TURBOPACK compile-time value", void 0))
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/components/VideoCard.tsx",
-                        lineNumber: 230,
+                        lineNumber: 234,
                         columnNumber: 11
                     }, ("TURBOPACK compile-time value", void 0)),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$0$2e$0_$40$opentelemetry$2b$api$40$1$2e$9$2e$0_react$2d$dom$40$18$2e$3$2e$1_react$40$18$2e$3$2e$1_$5f$react$40$18$2e$3$2e$1$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1924,36 +1942,36 @@ const VideoCardSkeleton = ({ className })=>{
                                 className: "w-16 h-12 rounded-md"
                             }, void 0, false, {
                                 fileName: "[project]/src/components/VideoCard.tsx",
-                                lineNumber: 240,
+                                lineNumber: 244,
                                 columnNumber: 13
                             }, ("TURBOPACK compile-time value", void 0)),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$0$2e$0_$40$opentelemetry$2b$api$40$1$2e$9$2e$0_react$2d$dom$40$18$2e$3$2e$1_react$40$18$2e$3$2e$1_$5f$react$40$18$2e$3$2e$1$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$skeleton$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Skeleton"], {
                                 className: "h-5 w-full rounded-full"
                             }, void 0, false, {
                                 fileName: "[project]/src/components/VideoCard.tsx",
-                                lineNumber: 241,
+                                lineNumber: 245,
                                 columnNumber: 13
                             }, ("TURBOPACK compile-time value", void 0))
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/components/VideoCard.tsx",
-                        lineNumber: 239,
+                        lineNumber: 243,
                         columnNumber: 11
                     }, ("TURBOPACK compile-time value", void 0))
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/components/VideoCard.tsx",
-                lineNumber: 228,
+                lineNumber: 232,
                 columnNumber: 9
             }, ("TURBOPACK compile-time value", void 0))
         }, void 0, false, {
             fileName: "[project]/src/components/VideoCard.tsx",
-            lineNumber: 227,
+            lineNumber: 231,
             columnNumber: 7
         }, ("TURBOPACK compile-time value", void 0))
     }, void 0, false, {
         fileName: "[project]/src/components/VideoCard.tsx",
-        lineNumber: 226,
+        lineNumber: 230,
         columnNumber: 5
     }, ("TURBOPACK compile-time value", void 0));
 };
@@ -2323,7 +2341,11 @@ const KnowledgeBase = ()=>{
     // Use the useVideos hook for real-time data
     const { videos, isLoading, error } = (0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$hooks$2f$useVideos$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useVideos"])();
     const totalVideos = videos.length;
-    const lastIngestion = videos.length > 0 ? new Date(videos[0].createdAt || '').toLocaleDateString() : 'Never';
+    const lastIngestion = videos.length > 0 ? new Date(videos[0].createdAt || '').toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+    }) : 'Never';
     // Handle video click
     const handleVideoClick = (videoId)=>{
         console.log('Video clicked:', videoId);
@@ -2398,7 +2420,7 @@ const KnowledgeBase = ()=>{
                             children: "Knowledge Base"
                         }, void 0, false, {
                             fileName: "[project]/src/components/KnowledgeBase.tsx",
-                            lineNumber: 108,
+                            lineNumber: 112,
                             columnNumber: 13
                         }, ("TURBOPACK compile-time value", void 0)),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$0$2e$0_$40$opentelemetry$2b$api$40$1$2e$9$2e$0_react$2d$dom$40$18$2e$3$2e$1_react$40$18$2e$3$2e$1_$5f$react$40$18$2e$3$2e$1$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2411,12 +2433,12 @@ const KnowledgeBase = ()=>{
                                         className: "h-4 w-4"
                                     }, void 0, false, {
                                         fileName: "[project]/src/components/KnowledgeBase.tsx",
-                                        lineNumber: 111,
+                                        lineNumber: 115,
                                         columnNumber: 17
                                     }, ("TURBOPACK compile-time value", void 0))
                                 }, void 0, false, {
                                     fileName: "[project]/src/components/KnowledgeBase.tsx",
-                                    lineNumber: 110,
+                                    lineNumber: 114,
                                     columnNumber: 15
                                 }, ("TURBOPACK compile-time value", void 0)),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$0$2e$0_$40$opentelemetry$2b$api$40$1$2e$9$2e$0_react$2d$dom$40$18$2e$3$2e$1_react$40$18$2e$3$2e$1_$5f$react$40$18$2e$3$2e$1$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$button$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Button"], {
@@ -2427,18 +2449,18 @@ const KnowledgeBase = ()=>{
                                         className: "h-4 w-4"
                                     }, void 0, false, {
                                         fileName: "[project]/src/components/KnowledgeBase.tsx",
-                                        lineNumber: 118,
+                                        lineNumber: 122,
                                         columnNumber: 17
                                     }, ("TURBOPACK compile-time value", void 0))
                                 }, void 0, false, {
                                     fileName: "[project]/src/components/KnowledgeBase.tsx",
-                                    lineNumber: 113,
+                                    lineNumber: 117,
                                     columnNumber: 15
                                 }, ("TURBOPACK compile-time value", void 0))
                             ]
                         }, void 0, true, {
                             fileName: "[project]/src/components/KnowledgeBase.tsx",
-                            lineNumber: 109,
+                            lineNumber: 113,
                             columnNumber: 13
                         }, ("TURBOPACK compile-time value", void 0))
                     ]
@@ -2452,22 +2474,22 @@ const KnowledgeBase = ()=>{
                             className: "h-4 w-4"
                         }, void 0, false, {
                             fileName: "[project]/src/components/KnowledgeBase.tsx",
-                            lineNumber: 129,
+                            lineNumber: 133,
                             columnNumber: 15
                         }, ("TURBOPACK compile-time value", void 0))
                     }, void 0, false, {
                         fileName: "[project]/src/components/KnowledgeBase.tsx",
-                        lineNumber: 124,
+                        lineNumber: 128,
                         columnNumber: 13
                     }, ("TURBOPACK compile-time value", void 0))
                 }, void 0, false, {
                     fileName: "[project]/src/components/KnowledgeBase.tsx",
-                    lineNumber: 123,
+                    lineNumber: 127,
                     columnNumber: 11
                 }, ("TURBOPACK compile-time value", void 0))
             }, void 0, false, {
                 fileName: "[project]/src/components/KnowledgeBase.tsx",
-                lineNumber: 105,
+                lineNumber: 109,
                 columnNumber: 7
             }, ("TURBOPACK compile-time value", void 0)),
             !isCollapsed && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$0$2e$0_$40$opentelemetry$2b$api$40$1$2e$9$2e$0_react$2d$dom$40$18$2e$3$2e$1_react$40$18$2e$3$2e$1_$5f$react$40$18$2e$3$2e$1$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$0$2e$0_$40$opentelemetry$2b$api$40$1$2e$9$2e$0_react$2d$dom$40$18$2e$3$2e$1_react$40$18$2e$3$2e$1_$5f$react$40$18$2e$3$2e$1$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Fragment"], {
@@ -2489,7 +2511,7 @@ const KnowledgeBase = ()=>{
                                         className: "w-full pr-12"
                                     }, void 0, false, {
                                         fileName: "[project]/src/components/KnowledgeBase.tsx",
-                                        lineNumber: 141,
+                                        lineNumber: 145,
                                         columnNumber: 17
                                     }, ("TURBOPACK compile-time value", void 0)),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$0$2e$0_$40$opentelemetry$2b$api$40$1$2e$9$2e$0_react$2d$dom$40$18$2e$3$2e$1_react$40$18$2e$3$2e$1_$5f$react$40$18$2e$3$2e$1$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$button$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Button"], {
@@ -2501,34 +2523,34 @@ const KnowledgeBase = ()=>{
                                             className: "h-4 w-4 animate-spin"
                                         }, void 0, false, {
                                             fileName: "[project]/src/components/KnowledgeBase.tsx",
-                                            lineNumber: 156,
+                                            lineNumber: 160,
                                             columnNumber: 21
                                         }, ("TURBOPACK compile-time value", void 0)) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$0$2e$0_$40$opentelemetry$2b$api$40$1$2e$9$2e$0_react$2d$dom$40$18$2e$3$2e$1_react$40$18$2e$3$2e$1_$5f$react$40$18$2e$3$2e$1$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$lucide$2d$react$40$0$2e$462$2e$0_react$40$18$2e$3$2e$1$2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$cloud$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__Cloud$3e$__["Cloud"], {
                                             className: "h-4 w-4"
                                         }, void 0, false, {
                                             fileName: "[project]/src/components/KnowledgeBase.tsx",
-                                            lineNumber: 158,
+                                            lineNumber: 162,
                                             columnNumber: 21
                                         }, ("TURBOPACK compile-time value", void 0))
                                     }, void 0, false, {
                                         fileName: "[project]/src/components/KnowledgeBase.tsx",
-                                        lineNumber: 149,
+                                        lineNumber: 153,
                                         columnNumber: 17
                                     }, ("TURBOPACK compile-time value", void 0))
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/components/KnowledgeBase.tsx",
-                                lineNumber: 140,
+                                lineNumber: 144,
                                 columnNumber: 15
                             }, ("TURBOPACK compile-time value", void 0))
                         }, void 0, false, {
                             fileName: "[project]/src/components/KnowledgeBase.tsx",
-                            lineNumber: 139,
+                            lineNumber: 143,
                             columnNumber: 13
                         }, ("TURBOPACK compile-time value", void 0))
                     }, void 0, false, {
                         fileName: "[project]/src/components/KnowledgeBase.tsx",
-                        lineNumber: 138,
+                        lineNumber: 142,
                         columnNumber: 11
                     }, ("TURBOPACK compile-time value", void 0)),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$0$2e$0_$40$opentelemetry$2b$api$40$1$2e$9$2e$0_react$2d$dom$40$18$2e$3$2e$1_react$40$18$2e$3$2e$1_$5f$react$40$18$2e$3$2e$1$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$VideoList$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["VideoList"], {
@@ -2538,7 +2560,7 @@ const KnowledgeBase = ()=>{
                         isLoading: isLoading
                     }, void 0, false, {
                         fileName: "[project]/src/components/KnowledgeBase.tsx",
-                        lineNumber: 165,
+                        lineNumber: 169,
                         columnNumber: 11
                     }, ("TURBOPACK compile-time value", void 0)),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$0$2e$0_$40$opentelemetry$2b$api$40$1$2e$9$2e$0_react$2d$dom$40$18$2e$3$2e$1_react$40$18$2e$3$2e$1_$5f$react$40$18$2e$3$2e$1$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2558,20 +2580,20 @@ const KnowledgeBase = ()=>{
                                                         className: "h-3.5 w-3.5"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/components/KnowledgeBase.tsx",
-                                                        lineNumber: 178,
+                                                        lineNumber: 182,
                                                         columnNumber: 21
                                                     }, ("TURBOPACK compile-time value", void 0)),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$0$2e$0_$40$opentelemetry$2b$api$40$1$2e$9$2e$0_react$2d$dom$40$18$2e$3$2e$1_react$40$18$2e$3$2e$1_$5f$react$40$18$2e$3$2e$1$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
                                                         children: "Total videos:"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/components/KnowledgeBase.tsx",
-                                                        lineNumber: 179,
+                                                        lineNumber: 183,
                                                         columnNumber: 21
                                                     }, ("TURBOPACK compile-time value", void 0))
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/components/KnowledgeBase.tsx",
-                                                lineNumber: 177,
+                                                lineNumber: 181,
                                                 columnNumber: 19
                                             }, ("TURBOPACK compile-time value", void 0)),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$0$2e$0_$40$opentelemetry$2b$api$40$1$2e$9$2e$0_react$2d$dom$40$18$2e$3$2e$1_react$40$18$2e$3$2e$1_$5f$react$40$18$2e$3$2e$1$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -2579,13 +2601,13 @@ const KnowledgeBase = ()=>{
                                                 children: totalVideos
                                             }, void 0, false, {
                                                 fileName: "[project]/src/components/KnowledgeBase.tsx",
-                                                lineNumber: 181,
+                                                lineNumber: 185,
                                                 columnNumber: 19
                                             }, ("TURBOPACK compile-time value", void 0))
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/components/KnowledgeBase.tsx",
-                                        lineNumber: 176,
+                                        lineNumber: 180,
                                         columnNumber: 17
                                     }, ("TURBOPACK compile-time value", void 0)),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$0$2e$0_$40$opentelemetry$2b$api$40$1$2e$9$2e$0_react$2d$dom$40$18$2e$3$2e$1_react$40$18$2e$3$2e$1_$5f$react$40$18$2e$3$2e$1$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2598,20 +2620,20 @@ const KnowledgeBase = ()=>{
                                                         className: "h-3.5 w-3.5"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/components/KnowledgeBase.tsx",
-                                                        lineNumber: 185,
+                                                        lineNumber: 189,
                                                         columnNumber: 21
                                                     }, ("TURBOPACK compile-time value", void 0)),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$0$2e$0_$40$opentelemetry$2b$api$40$1$2e$9$2e$0_react$2d$dom$40$18$2e$3$2e$1_react$40$18$2e$3$2e$1_$5f$react$40$18$2e$3$2e$1$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
                                                         children: "Last ingestion:"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/components/KnowledgeBase.tsx",
-                                                        lineNumber: 186,
+                                                        lineNumber: 190,
                                                         columnNumber: 21
                                                     }, ("TURBOPACK compile-time value", void 0))
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/components/KnowledgeBase.tsx",
-                                                lineNumber: 184,
+                                                lineNumber: 188,
                                                 columnNumber: 19
                                             }, ("TURBOPACK compile-time value", void 0)),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$0$2e$0_$40$opentelemetry$2b$api$40$1$2e$9$2e$0_react$2d$dom$40$18$2e$3$2e$1_react$40$18$2e$3$2e$1_$5f$react$40$18$2e$3$2e$1$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -2619,29 +2641,29 @@ const KnowledgeBase = ()=>{
                                                 children: lastIngestion
                                             }, void 0, false, {
                                                 fileName: "[project]/src/components/KnowledgeBase.tsx",
-                                                lineNumber: 188,
+                                                lineNumber: 192,
                                                 columnNumber: 19
                                             }, ("TURBOPACK compile-time value", void 0))
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/components/KnowledgeBase.tsx",
-                                        lineNumber: 183,
+                                        lineNumber: 187,
                                         columnNumber: 17
                                     }, ("TURBOPACK compile-time value", void 0))
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/components/KnowledgeBase.tsx",
-                                lineNumber: 175,
+                                lineNumber: 179,
                                 columnNumber: 15
                             }, ("TURBOPACK compile-time value", void 0))
                         }, void 0, false, {
                             fileName: "[project]/src/components/KnowledgeBase.tsx",
-                            lineNumber: 174,
+                            lineNumber: 178,
                             columnNumber: 13
                         }, ("TURBOPACK compile-time value", void 0))
                     }, void 0, false, {
                         fileName: "[project]/src/components/KnowledgeBase.tsx",
-                        lineNumber: 173,
+                        lineNumber: 177,
                         columnNumber: 11
                     }, ("TURBOPACK compile-time value", void 0))
                 ]
@@ -2649,7 +2671,7 @@ const KnowledgeBase = ()=>{
         ]
     }, void 0, true, {
         fileName: "[project]/src/components/KnowledgeBase.tsx",
-        lineNumber: 101,
+        lineNumber: 105,
         columnNumber: 5
     }, ("TURBOPACK compile-time value", void 0));
 };

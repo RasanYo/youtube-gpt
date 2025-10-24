@@ -23,7 +23,11 @@ export const KnowledgeBase = () => {
 
   const totalVideos = videos.length
   const lastIngestion = videos.length > 0 
-    ? new Date(videos[0].createdAt || '').toLocaleDateString()
+    ? new Date(videos[0].createdAt || '').toLocaleDateString('en-US', { 
+        year: 'numeric', 
+        month: 'short', 
+        day: 'numeric' 
+      })
     : 'Never'
 
   // Handle video click
