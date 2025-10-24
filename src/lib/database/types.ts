@@ -108,7 +108,7 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      video_status: "PENDING" | "QUEUED" | "PROCESSING" | "READY" | "FAILED"
+      video_status: "PENDING" | "QUEUED" | "PROCESSING" | "TRANSCRIPT_EXTRACTING" | "READY" | "FAILED"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -239,7 +239,7 @@ export const Constants = {
   },
   public: {
     Enums: {
-      video_status: ["PENDING", "QUEUED", "PROCESSING", "READY", "FAILED"],
+      video_status: ["PENDING", "QUEUED", "PROCESSING", "TRANSCRIPT_EXTRACTING", "READY", "FAILED"],
     },
   },
 } as const
