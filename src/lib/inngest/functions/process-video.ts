@@ -1,4 +1,4 @@
-import { inngest } from '../client'
+import { inngest } from '@/lib/inngest/client'
 import { supabase } from '@/lib/supabase/client'
 import type { Video, VideoStatus } from '@/lib/supabase/types'
 

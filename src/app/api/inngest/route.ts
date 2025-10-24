@@ -1,6 +1,6 @@
 import { serve } from "inngest/next";
-import { inngest } from "../src/lib/inngest/client";
-  import { processVideo } from "../src/lib/inngest/functions";
+import { inngest } from "@/lib/inngest/client";
+import { processVideo } from "@/lib/inngest/functions";
 
 /**
  * Inngest Webhook Handler
@@ -20,7 +20,7 @@ const functions = [
   processVideo,
 ];
 
-export default serve({
+export const { GET, POST, PUT } = serve({
   client: inngest,
   functions,
 });
