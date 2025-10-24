@@ -64,7 +64,7 @@ The user can:
 - **Next.js (App Router)**
 - **Server Actions**
 - **Supabase** (Auth, DB, Storage, Realtime, RLS)
-- **Prisma** or another ORM
+- **Supabase Database** (PostgreSQL with built-in ORM)
 - **Vercel** (deployment)
 - **shadcn/ui** + **Tailwind CSS**
 - **Inngest** (background jobs)

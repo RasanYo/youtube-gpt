@@ -15,5 +15,9 @@ import { Inngest } from "inngest";
  */
 export const inngest = new Inngest({
   id: "youtube-gpt",
-  eventKey: import.meta.env.INNGEST_EVENT_KEY,
+  eventKey: process.env.INNGEST_EVENT_KEY,
+  signingKey: process.env.INNGEST_SIGNING_KEY,
+  onError: ({ error, event, step }) => {
+    console.error('Inngest function error:', error);
+  },
 });

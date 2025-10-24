@@ -1,7 +1,7 @@
 # 🚀 Bravi YouTube AI - Roadmap Détaillée
 
 **Temps total estimé:** 12-14 heures  
-**Stack:** Next.js 14 (App Router) • Supabase • Prisma • Inngest • ZeroEntropy • Claude API • shadcn/ui
+**Stack:** Next.js 14 (App Router) • Supabase • Inngest • ZeroEntropy • Claude API • shadcn/ui
 
 ---
 
@@ -152,90 +152,52 @@
   ```
 - [ ] Persister theme preference dans localStorage
 
-#### 1.7 Prisma & Database Setup
+#### 1.7 Database Setup (Supabase)
 
-- [ ] Installer Prisma
-  ```bash
-  npm install prisma @prisma/client
-  npx prisma init
-  ```
-- [ ] Configurer `prisma/schema.prisma` avec Supabase connection
+- [ ] Configurer Supabase database avec les tables nécessaires
+- [ ] Créer les tables dans Supabase SQL Editor ou via migrations
 
-  ```prisma
-  datasource db {
-    provider = "postgresql"
-    url      = env("DATABASE_URL")
-  }
+- [ ] Définir schéma minimal Phase 1 dans Supabase
 
-  generator client {
-    provider = "prisma-client-js"
-  }
-  ```
+  ```sql
+  -- Table des vidéos
+  CREATE TABLE videos (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    youtube_id TEXT UNIQUE NOT NULL,
+    title TEXT NOT NULL,
+    thumbnail_url TEXT,
+    channel_name TEXT,
+    duration INTEGER,
+    status TEXT DEFAULT 'QUEUED' CHECK (status IN ('QUEUED', 'PROCESSING', 'READY', 'FAILED')),
+    error TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  );
 
-- [ ] Définir schéma minimal Phase 1
+  -- Table des conversations
+  CREATE TABLE conversations (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    title TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  );
 
-  ```prisma
-  model User {
-    id            String    @id @default(uuid())
-    email         String    @unique
-    name          String?
-    avatarUrl     String?
-    createdAt     DateTime  @default(now())
-    updatedAt     DateTime  @updatedAt
-    videos        Video[]
-    conversations Conversation[]
-  }
-
-  model Video {
-    id           String   @id @default(cuid())
-    userId       String
-    youtubeId    String   @unique
-    title        String
-    thumbnailUrl String?
-    channelName  String?
-    duration     Int?
-    status       VideoStatus @default(QUEUED)
-    error        String?
-    createdAt    DateTime @default(now())
-    updatedAt    DateTime @updatedAt
-    user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-    @@index([userId, status])
-  }
-
-  enum VideoStatus {
-    QUEUED
-    PROCESSING
-    READY
-    FAILED
-  }
-
-  model Conversation {
-    id        String   @id @default(cuid())
-    userId    String
-    title     String?
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
-    user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-    @@index([userId])
-  }
+  -- Index pour les performances
+  CREATE INDEX idx_videos_user_id ON videos(user_id);
+  CREATE INDEX idx_videos_status ON videos(status);
+  CREATE INDEX idx_conversations_user_id ON conversations(user_id);
   ```
 
-- [ ] Créer et appliquer migration
-  ```bash
-  npx prisma migrate dev --name init
-  ```
-- [ ] Générer Prisma Client
-  ```bash
-  npx prisma generate
-  ```
-- [ ] Créer `lib/prisma.ts` avec singleton
+- [ ] Créer `lib/supabase/client.ts` avec configuration
   ```typescript
-  import { PrismaClient } from '@prisma/client'
-  const globalForPrisma = global as unknown as { prisma: PrismaClient }
-  export const prisma = globalForPrisma.prisma || new PrismaClient()
-  if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
+  import { createClient } from '@supabase/supabase-js'
+  
+  const supabaseUrl = process.env.VITE_SUPABASE_URL
+  const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY
+  
+  export const supabase = createClient(supabaseUrl, supabaseAnonKey)
   ```
 
 #### 1.8 Environment Variables
@@ -281,8 +243,8 @@
 - [ ] Ajouter scripts dans `package.json`
   ```json
   "scripts": {
-    "db:push": "prisma db push",
-    "db:studio": "prisma studio",
+    "db:studio": "npx supabase studio",
+    "db:start": "npx supabase start",
     "format": "prettier --write .",
     "lint": "next lint"
   }
@@ -313,7 +275,7 @@
 - Next.js 14 (App Router)
 - TypeScript
 - Supabase (Auth + Postgres)
-- Prisma ORM
+- Supabase Database
 - shadcn/ui + Tailwind CSS
 - next-themes (dark mode)
 - Vercel (deployment)
@@ -325,7 +287,7 @@
 - ✅ Layout 3 colonnes responsive
 - ✅ Dark/light mode toggle persisté
 - ✅ Profile section avec user info
-- ✅ Base de données Prisma connectée
+- ✅ Base de données Supabase connectée
 - ✅ Variables d'environnement configurées
 - ✅ Codebase propre prêt pour Step 2
 
@@ -420,7 +382,7 @@
   import { inngest } from '@/lib/inngest/client'
   import { detectYouTubeType } from '@/lib/youtube/detector'
   import { getChannelVideos } from '@/lib/youtube/api'
-  import { prisma } from '@/lib/prisma'
+  import { supabase } from '@/lib/supabase/client'
   import { auth } from '@/lib/auth'
 
   export async function addYouTubeContent(url: string) {
@@ -496,7 +458,7 @@
 
   ```typescript
   import { inngest } from '../client'
-  import { prisma } from '@/lib/prisma'
+  import { supabase } from '@/lib/supabase/client'
   import { getVideoMetadata } from '@/lib/youtube/api'
 
   export const handleVideoIngestion = inngest.createFunction(
@@ -771,7 +733,7 @@
 - Next.js Server Actions
 - Inngest (background jobs)
 - Supabase Realtime
-- Prisma ORM
+- Supabase Database
 - YouTube Data API v3
 - youtube-transcript (npm package)
 - shadcn/ui (VideoCard, Input, Button)
@@ -795,7 +757,7 @@
 
 ### ✅ TODO List
 
-#### 3.1 Extend Prisma Schema (Phase 2)
+#### 3.1 Extend Database Schema (Phase 2)
 
 - [ ] Ajouter models pour transcripts et embeddings
 
@@ -1171,7 +1133,7 @@
 - youtube-transcript (npm package)
 - ZeroEntropy API (embeddings)
 - Inngest (orchestration)
-- Prisma (extended schema)
+- Supabase Database (extended schema)
 - Supabase Realtime (status updates)
 
 ### ✅ Expected Outcome
@@ -1194,7 +1156,7 @@
 
 ### ✅ TODO List
 
-#### 4.1 Prisma Schema Updates
+#### 4.1 Database Schema Updates
 
 - [ ] Ajouter models pour conversations et messages
 
@@ -1797,7 +1759,7 @@
 - ZeroEntropy (vector search)
 - Server-Sent Events (SSE)
 - Next.js Route Handlers
-- Prisma (conversations & messages)
+- Supabase Database (conversations & messages)
 - shadcn/ui (Chat components)
 
 ### ✅ Expected Outcome

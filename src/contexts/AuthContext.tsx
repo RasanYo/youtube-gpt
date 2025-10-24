@@ -1,3 +1,5 @@
+'use client'
+
 import React, { createContext, useContext, useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase/client'
 import type { User, Session } from '@supabase/supabase-js'
@@ -18,12 +20,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const [user, setUser] = useState<User | null>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [isHydrated, setIsHydrated] = useState(false)
 
   useEffect(() => {
+    // Mark as hydrated
+    setIsHydrated(true)
+    
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session)
       setUser(session?.user ?? null)
+      setIsLoading(false)
+    }).catch((error) => {
+      console.error('Error getting session:', error)
+      setSession(null)
+      setUser(null)
       setIsLoading(false)
     })
 
@@ -43,7 +54,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {
-        emailRedirectTo: `${window.location.origin}/`,
+        emailRedirectTo: typeof window !== 'undefined' ? `${window.location.origin}/` : undefined,
       },
     })
 
@@ -57,6 +68,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     if (error) {
       throw error
     }
+  }
+
+  // Prevent hydration mismatch by not rendering until hydrated
+  if (!isHydrated) {
+    return (
+      <AuthContext.Provider value={{ user: null, session: null, login, logout, isLoading: true }}>
+        {children}
+      </AuthContext.Provider>
+    )
   }
 
   return (

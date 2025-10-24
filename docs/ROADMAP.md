@@ -9,7 +9,7 @@ This document contains actionable GitHub issues for **Step 2 – YouTube Ingesti
 **Tech Stack**:
 
 - Frontend: Next.js 14 (App Router), React 18, TypeScript, Tailwind CSS, shadcn/ui
-- Backend: Next.js Server Actions, Supabase (Auth + PostgreSQL + Realtime), Prisma ORM
+- Backend: Next.js Server Actions, Supabase (Auth + PostgreSQL + Realtime)
 - Background Jobs: Inngest
 - APIs: YouTube Data API v3
 - Deployment: Vercel
@@ -208,7 +208,7 @@ Create a Server Action that handles adding YouTube videos or channels to the use
 - [ ] Create `app/actions/youtube.ts` with `addYouTubeContent` function that:
   - Authenticates the user
   - Detects URL type (video or channel)
-  - For videos: Creates Video record with status QUEUED and emits Inngest event
+  - For videos: Creates Video record with status PENDING, fetches metadata, then updates to QUEUED
   - For channels: Fetches latest 10 videos, creates records for each, and emits events
   - Returns success with video count
 - [ ] Add input validation with zod to ensure valid YouTube URLs
@@ -248,9 +248,9 @@ Create the Inngest function that processes video ingestion in the background. Th
 
 - [ ] Create `lib/inngest/functions/video-ingestion.ts` with `handleVideoIngestion` function that:
   - Listens for `video.ingest.requested` events
-  - Step 1: Updates video status to PROCESSING
-  - Step 2: Fetches video metadata from YouTube API
-  - Step 3: Saves metadata to database (title, thumbnail, channelName, duration)
+  - Step 1: Updates video status to PROCESSING (from QUEUED)
+  - Step 2: Fetches video transcript from YouTube
+  - Step 3: Generates vector embeddings from transcript
   - Step 4: Updates status to READY on success or FAILED on error
   - Includes proper error handling and logging
 - [ ] Create `lib/inngest/functions/index.ts` to export all functions
@@ -291,12 +291,18 @@ Implement retry functionality for failed video ingestions. Users should be able 
   ```typescript
   'use server'
   export async function retryVideoIngestion(videoId: string) {
-    const video = await prisma.video.findUnique({ where: { id: videoId } })
-    if (!video) throw new Error('Video not found')
+  const { data: video, error: fetchError } = await supabase
+    .from('videos')
+    .select('*')
+    .eq('id', videoId)
+    .single()
+  
+  if (fetchError || !video) throw new Error('Video not found')
 
-    await prisma.video.update({
-      where: { id: videoId },
-      data: { status: 'QUEUED', error: null },
+  const { error: updateError } = await supabase
+    .from('videos')
+    .update({ status: 'QUEUED', error: null })
+    .eq('id', videoId)
     })
 
     await inngest.send({
@@ -344,7 +350,7 @@ Set up Supabase Realtime to enable real-time video status updates in the UI. Use
   - Cleans up subscription on unmount
 - [ ] Test real-time updates by:
   - Adding a new video and seeing it appear immediately
-  - Watching status change from QUEUED → PROCESSING → READY
+  - Watching status change from PENDING → QUEUED → PROCESSING → READY
   - Verifying multiple browser tabs stay in sync
 - [ ] Verify subscription cleanup prevents memory leaks
 
@@ -380,7 +386,7 @@ Build the Knowledge Base UI components in the right column, including video inpu
 - [ ] Create `components/kb/VideoCard.tsx` with:
   - Video thumbnail
   - Title and channel name
-  - Status badge with color coding (QUEUED=yellow, PROCESSING=blue, READY=green, FAILED=red)
+  - Status badge with color coding (PENDING=yellow, QUEUED=gray, PROCESSING=blue, READY=green, FAILED=red)
   - Retry button for failed videos
   - Duration and creation date
 - [ ] Create `components/kb/VideoList.tsx` with:
@@ -459,7 +465,7 @@ Perform comprehensive testing of the complete ingestion flow and deploy Step 2 f
 - [ ] **Local Testing:**
   - [ ] Test adding a single video URL
   - [ ] Test adding a channel URL (should add 10 videos)
-  - [ ] Verify status updates in real-time (QUEUED → PROCESSING → READY)
+  - [ ] Verify status updates in real-time (PENDING → QUEUED → PROCESSING → READY)
   - [ ] Test retry on a failed video
   - [ ] Verify thumbnails and metadata display correctly
   - [ ] Test with different YouTube URL formats

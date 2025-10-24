@@ -203,7 +203,7 @@ async function processSingleVideo(
       .insert({
         youtubeId: requestData.id,
         userId: requestData.userId,
-        status: 'QUEUED'
+        status: 'PENDING'
       })
       .select('id')
       .single()
@@ -217,17 +217,6 @@ async function processSingleVideo(
       }
 
       return { success: false, error: 'Database error: ' + insertError.message }
-    }
-
-    // Update status to PROCESSING
-    const { error: updateError } = await supabase
-      .from('videos')
-      .update({ status: 'PROCESSING' })
-      .eq('id', video.id)
-
-    if (updateError) {
-      console.error('Error updating video status to PROCESSING:', updateError)
-      // Continue with metadata fetching even if status update fails
     }
 
     try {
@@ -263,7 +252,7 @@ async function processSingleVideo(
           channelName: snippet?.channelTitle || null,
           thumbnailUrl: snippet?.thumbnails?.high?.url || snippet?.thumbnails?.medium?.url || snippet?.thumbnails?.default?.url || null,
           duration: duration,
-          status: 'PROCESSING'
+          status: 'QUEUED'
         })
         .eq('id', video.id)
 
