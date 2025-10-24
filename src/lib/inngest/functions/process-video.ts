@@ -42,7 +42,7 @@ export const processVideo = inngest.createFunction(
         .from('videos')
         .update({ 
           status: 'PROCESSING' as VideoStatus,
-          updated_at: new Date().toISOString()
+          updatedAt: new Date().toISOString()
         })
         .eq('id', video.id)
         .eq('userId', video.userId)
