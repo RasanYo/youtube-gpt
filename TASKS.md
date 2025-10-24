@@ -36,17 +36,17 @@ The system currently stops at `QUEUED` status. The following components need to 
 ## 📋 Implementation Plan: Tasks & Subtasks
 
 ### Phase 1: Database Trigger Setup
-- [ ] **1.1 Create Supabase Database Webhook**
-  - Set up webhook trigger on `videos` table for status changes
-  - Configure webhook to fire when status changes to 'QUEUED' (after metadata fetch)
-  - Add webhook authentication and security headers
-  - Test webhook with sample video status updates
+- [x] **1.1 Create Direct Inngest Trigger** ✅ COMPLETED
+  - ✅ Modified Supabase Edge Function to trigger Inngest directly after metadata fetch
+  - ✅ Added Inngest event triggering in `fetch-video-metadata` function
+  - ✅ Implemented proper error handling for Inngest trigger failures
+  - ✅ Works for both single videos and batch channel processing
 
-- [ ] **1.2 Create Webhook Endpoint**
-  - Create `/api/webhooks/process-transcript` endpoint in Next.js API routes
-  - Implement webhook signature verification for security
-  - Add request validation and error handling
-  - Set up proper logging for webhook calls and failures
+- [x] **1.2 Direct Inngest Integration** ✅ COMPLETED
+  - ✅ Integrated Inngest client directly in Supabase Edge Function
+  - ✅ Sends `video.transcript.processing.requested` event with complete video data
+  - ✅ Handles both single video and batch processing scenarios
+  - ✅ No webhook endpoint needed with direct integration approach
 
 - [x] **1.3 Update Video Status Schema** ✅ COMPLETED
   - ✅ Added 'PENDING' status to VideoStatus enum in Supabase database
