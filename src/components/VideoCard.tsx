@@ -1,3 +1,5 @@
+'use client'
+
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -89,7 +91,11 @@ export const VideoCard = ({
   const formatDate = (dateString?: string | null) => {
     if (!dateString) return ''
     try {
-      return new Date(dateString).toLocaleDateString()
+      return new Date(dateString).toLocaleDateString('en-US', { 
+        year: 'numeric', 
+        month: 'short', 
+        day: 'numeric' 
+      })
     } catch {
       return ''
     }

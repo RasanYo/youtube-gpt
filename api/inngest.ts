@@ -1,4 +1,4 @@
-import { serve } from "inngest/vercel";
+import { serve } from "inngest/next";
 import { inngest } from "../src/lib/inngest/client";
   import { processVideo } from "../src/lib/inngest/functions";
 

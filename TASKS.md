@@ -1,136 +1,137 @@
-# Auto-trigger Transcript Jobs - Implementation Plan
+# YouTube-GPT Test Cases
 
-## 🧠 Context about Project
+## Aspect 1: Authentication & User Management
 
-YouTube-GPT is an AI-powered YouTube knowledge base that transforms hours of video content into an instantly searchable, intelligent assistant. The platform serves content creators, researchers, students, and professionals who need to efficiently extract, search, and repurpose information from their personal video libraries. The system uses a three-column ChatGPT-style interface with conversation history, AI chat, and knowledge base management. Built on React/TypeScript with Supabase for authentication and database, the platform currently supports YouTube video ingestion with metadata fetching through Supabase Edge Functions. The system is in active development with core authentication, UI components, and video ingestion working, but lacks the automated processing pipeline that would transform raw video metadata into searchable, AI-ready content through transcript extraction and vector embeddings.
+### 1.1 AuthContext Provider Tests
+**File**: `tests/unit/contexts/AuthContext.test.tsx`
 
-## 🏗️ Context about Feature
+#### Test Cases:
+- **1.1.1** Provider renders children correctly
+- **1.1.2** Initial state is correct (user: null, session: null, isLoading: true)
+- **1.1.3** Hydration state management works correctly
+- **1.1.4** Context throws error when used outside AuthProvider
+- **1.1.5** Context provides correct interface (user, session, login, logout, isLoading)
 
-The auto-trigger transcript jobs feature sits at the critical junction between video ingestion and AI processing in the YouTube-GPT pipeline. Currently, when users add YouTube videos or channels, the system successfully fetches metadata (title, thumbnail, duration, channel info) and stores it in the `videos` table with status tracking (PENDING → QUEUED → PROCESSING → READY/FAILED). The PENDING → QUEUED transition is fully implemented and working correctly. However, there's a gap between the QUEUED status and the next processing step - transcript extraction and vector embedding generation. The feature must integrate with the existing Supabase database schema, leverage the current Inngest background job system, and work alongside the real-time status updates already implemented in the frontend. The system needs to detect when a video transitions TO 'QUEUED' status and automatically queue it for transcript processing without manual intervention, creating a seamless event-driven pipeline that scales with user activity.
+### 1.2 Authentication Flow Tests
+**File**: `tests/unit/contexts/AuthContext.test.tsx`
 
-## 🎯 Feature Vision & Flow
+#### Login Function Tests:
+- **1.2.1** Login with valid email calls supabase.auth.signInWithOtp correctly (use test@example.com)
+- **1.2.2** Login with valid email sets correct redirect URL
+- **1.2.3** Login with invalid email format throws error
+- **1.2.4** Login with empty email throws error
+- **1.2.5** Login with null/undefined email throws error
+- **1.2.6** Login handles Supabase auth errors correctly
+- **1.2.7** Login handles network errors gracefully
+- **1.2.8** Login updates loading state during process
 
-The desired end-to-end behavior creates a fully automated video processing pipeline where users simply paste YouTube URLs and the system handles everything else. When a video's metadata is successfully fetched and stored, the system automatically detects this status change and triggers an Inngest job for transcript extraction. The job processes the video's transcript, generates vector embeddings for semantic search, and updates the video status to 'READY' for AI queries. Users see real-time status updates in the Knowledge Base panel, from "Processing metadata..." to "Extracting transcript..." to "Ready for AI queries." The system handles both single videos and batch channel processing, with proper error handling and retry mechanisms for failed jobs. The entire flow is invisible to users - they add videos and can immediately start asking AI questions about their content once processing completes.
+#### Logout Function Tests:
+- **1.2.9** Logout calls supabase.auth.signOut correctly
+- **1.2.10** Logout handles Supabase auth errors correctly
+- **1.2.11** Logout handles network errors gracefully
+- **1.2.12** Logout updates loading state during process
 
-## ✅ Current Implementation Status
+### 1.3 Session Management Tests
+**File**: `tests/unit/contexts/AuthContext.test.tsx`
 
-### Completed Features
-- **PENDING → QUEUED Status Flow**: Fully implemented and working
-  - Videos are created with `PENDING` status by default
-  - Supabase Edge Function fetches metadata and updates to `QUEUED`
-  - Real-time UI updates show status changes correctly
-  - Error handling for failed metadata fetching (sets status to `FAILED`)
+#### Initial Session Loading:
+- **1.3.1** getSession() is called on component mount
+- **1.3.2** Loading state is true during initial session fetch
+- **1.3.3** Loading state becomes false after session fetch completes
+- **1.3.4** User and session are set correctly when valid session exists
+- **1.3.5** User and session are null when no session exists
+- **1.3.6** Error handling when getSession() fails
 
-### Implementation Details
-- **Database Schema**: `PENDING` status added to enum, set as default
-- **Edge Function**: `fetch-video-metadata` handles PENDING → QUEUED transition
-- **Frontend**: VideoCard component displays PENDING status with proper UI
-- **Real-time Updates**: Supabase Realtime subscriptions work for status changes
+#### Auth State Change Listener:
+- **1.3.7** onAuthStateChange listener is set up correctly
+- **1.3.8** SIGNED_IN event updates user and session correctly
+- **1.3.9** SIGNED_OUT event clears user and session correctly
+- **1.3.10** TOKEN_REFRESHED event updates session correctly
+- **1.3.11** Auth state changes update loading state correctly
+- **1.3.12** Listener cleanup on component unmount
 
-### Next Steps Required
-The system currently stops at `QUEUED` status. The following components need to be implemented:
-- Background job processing (QUEUED → PROCESSING → READY)
-- Transcript extraction and vector embedding generation
-- Webhook triggers for status transitions
+### 1.4 useAuth Hook Tests
+**File**: `tests/unit/hooks/useAuth.test.ts`
 
-### Status Flow Diagram
-```
-PENDING → QUEUED → PROCESSING → READY
-   ↓         ↓         ↓         ↓
-[Created] [Metadata] [Transcript] [AI Ready]
-           Fetched   Processing
-           
-Webhook triggers here ↑
-(When status changes TO 'QUEUED')
-```
+#### Hook Behavior:
+- **1.4.1** Hook returns correct context values
+- **1.4.2** Hook throws error when used outside AuthProvider
+- **1.4.3** Hook updates when context values change
+- **1.4.4** Hook maintains referential stability for stable values
 
-## 📋 Implementation Plan: Tasks & Subtasks
+### 1.5 Supabase Client Configuration Tests
+**File**: `tests/unit/lib/supabase/client.test.ts`
 
-### Phase 1: Database Trigger Setup
-- [ ] **1.1 Create Supabase Database Webhook**
-  - Set up webhook trigger on `videos` table for status changes
-  - Configure webhook to fire when status changes TO 'QUEUED' (after metadata fetch)
-  - Add webhook authentication and security headers
-  - Test webhook with sample video status updates
+#### Environment Variables:
+- **1.5.1** Client creation succeeds with valid environment variables
+- **1.5.2** Client creation throws error when NEXT_PUBLIC_SUPABASE_URL is missing
+- **1.5.3** Client creation throws error when NEXT_PUBLIC_SUPABASE_ANON_KEY is missing
+- **1.5.4** Client creation throws error when both environment variables are missing
+- **1.5.5** Error message includes helpful instructions for missing variables
 
-- [ ] **1.2 Create Webhook Endpoint**
-  - Create `/api/webhooks/process-transcript` endpoint
-  - Implement webhook signature verification for security
-  - Add request validation and error handling
-  - Set up proper logging for webhook calls and failures
+#### Client Configuration:
+- **1.5.6** Client is configured with correct auth options (persistSession: true)
+- **1.5.7** Client is configured with correct auth options (autoRefreshToken: true)
+- **1.5.8** Client is configured with correct auth options (detectSessionInUrl: true)
+- **1.5.9** Client is configured with correct auth options (flowType: 'pkce')
+- **1.5.10** Client is a singleton instance
 
-- [x] **1.3 Update Video Status Schema** ✅ COMPLETED
-  - ✅ Added 'PENDING' status to VideoStatus enum in Supabase database
-  - ✅ Updated Supabase Edge Function to set status to 'PENDING' initially, then 'QUEUED' after metadata fetch
-  - ✅ Ran database migration to update enum values and default status
-  - ✅ Updated TypeScript types to include PENDING status
+### 1.6 Integration Tests
+**File**: `tests/integration/auth-flow.test.ts`
 
-### Phase 2: Inngest Job Integration
-- [ ] **2.1 Create Transcript Processing Job**
-  - Set up Inngest function for transcript extraction using youtube-transcript package
-  - Implement video transcript fetching with error handling and retries
-  - Add job configuration for timeout, retry attempts, and concurrency limits
-  - Test job with sample video IDs and validate transcript quality
+#### Complete Authentication Flow:
+- **1.6.1** User can complete full login flow (email → magic link → authenticated)
+- **1.6.2** User can complete full logout flow (authenticated → logout → unauthenticated)
+- **1.6.3** Session persists across page refreshes
+- **1.6.4** Session persists across browser restarts (localStorage)
+- **1.6.5** Multiple tabs maintain consistent auth state
+- **1.6.6** Auth state updates propagate across tabs
+- **1.6.7** Magic link callback URL handling works correctly
+- **1.6.8** Token refresh happens automatically before expiration
+- **1.6.9** Auth state is restored correctly on app initialization
 
-- [ ] **2.2 Implement Vector Embedding Generation**
-  - Integrate ZeroEntropy API for generating vector embeddings from transcript text
-  - Chunk transcript into appropriate sizes for embedding generation
-  - Store embeddings in Supabase with proper indexing for search
-  - Add error handling for embedding generation failures
+### 1.7 Error Handling Tests
+**File**: `tests/unit/contexts/AuthContext.test.tsx`
 
-- [ ] **2.3 Update Video Status Pipeline**
-  - Modify job to update video status throughout processing stages
-  - Add 'PROCESSING' status for transcript extraction and embedding generation
-  - Implement proper error handling and status rollback on failures
-  - Add processing metrics and timing information to video records
+#### Network Errors:
+- **1.7.1** Login handles network timeout errors
+- **1.7.2** Login handles connection refused errors
+- **1.7.3** Logout handles network timeout errors
+- **1.7.4** Session fetch handles network errors
+- **1.7.5** Auth state change listener handles network errors
 
-### Phase 3: Webhook-to-Inngest Integration
-- [ ] **3.1 Connect Webhook to Inngest**
-  - Modify webhook endpoint to trigger Inngest job with video data
-  - Pass video ID, YouTube ID, and user context to Inngest function
-  - Add webhook response handling and error reporting
-  - Implement webhook retry logic for failed Inngest triggers
+#### Supabase Errors:
+- **1.7.6** Login handles invalid email errors
+- **1.7.7** Login handles rate limiting errors
+- **1.7.8** Login handles server errors (500, 503)
+- **1.7.9** Logout handles server errors
+- **1.7.10** Session fetch handles server errors
 
-- [ ] **3.2 Add Batch Processing Support**
-  - Handle channel processing scenarios where multiple videos need transcript jobs
-  - Implement batch job creation for channel ingestion workflows
-  - Add progress tracking for batch operations
-  - Ensure proper error handling for individual video failures in batches
+### 1.8 Edge Cases Tests
+**File**: `tests/unit/contexts/AuthContext.test.tsx`
 
-### Phase 4: Error Handling & Monitoring
-- [ ] **4.1 Implement Comprehensive Error Handling**
-  - Add retry mechanisms for failed webhook calls and Inngest jobs
-  - Create dead letter queue for permanently failed jobs
-  - Implement exponential backoff for retry attempts
-  - Add proper error logging and alerting for system administrators
+#### Edge Cases:
+- **1.8.1** Component unmounts during login process
+- **1.8.2** Component unmounts during logout process
+- **1.8.3** Component unmounts during session fetch
+- **1.8.4** Multiple rapid login attempts
+- **1.8.5** Multiple rapid logout attempts
+- **1.8.6** Login with very long email addresses
+- **1.8.7** Login with special characters in email
+- **1.8.8** Session expires during app usage
+- **1.8.9** Invalid session data handling
+- **1.8.10** Corrupted localStorage data handling
 
-- [ ] **4.2 Add Processing Status Tracking**
-  - Update frontend to display detailed processing status for each video
-  - Add progress indicators for transcript extraction and embedding generation
-  - Implement real-time status updates using Supabase Realtime subscriptions
-  - Add user notifications for completed and failed processing jobs
+### 1.9 Performance Tests
+**File**: `tests/unit/contexts/AuthContext.test.tsx`
 
-- [ ] **4.3 Create Monitoring Dashboard**
-  - Add processing metrics to track job success rates and processing times
-  - Implement health checks for webhook and Inngest systems
-  - Create alerts for system failures and performance degradation
-  - Add debugging tools for troubleshooting processing issues
+#### Performance:
+- **1.9.1** Auth context doesn't cause unnecessary re-renders
+- **1.9.2** Auth state changes are batched correctly
+- **1.9.3** Memory leaks are prevented on component unmount
+- **1.9.4** Auth listener cleanup prevents memory leaks
+- **1.9.5** Multiple AuthProvider instances don't conflict
 
-### Phase 5: Testing & Validation
-- [ ] **5.1 Unit Testing**
-  - Write tests for webhook endpoint with various payload scenarios
-  - Test Inngest job functions with mock data and error conditions
-  - Add tests for status update logic and error handling paths
-  - Ensure proper test coverage for all new functionality
+---
 
-- [ ] **5.2 Integration Testing**
-  - Test end-to-end flow from video ingestion to transcript processing
-  - Validate webhook triggering with real Supabase database changes
-  - Test batch processing with multiple videos and channels
-  - Verify real-time status updates in the frontend interface
-
-- [ ] **5.3 Performance Testing**
-  - Load test webhook endpoint with high volume of status changes
-  - Test Inngest job processing with concurrent video processing
-  - Validate system performance under various load conditions
-  - Optimize processing times and resource usage
+## Next Aspect: YouTube URL Processing & Detection

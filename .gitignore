@@ -33,3 +33,7 @@ dist-ssr
 
 # Serena MCP
 .serena
+
+# Next.js build output
+.next/
+out/
