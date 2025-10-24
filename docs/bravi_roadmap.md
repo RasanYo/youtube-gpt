@@ -107,8 +107,8 @@
   import { createBrowserClient } from '@supabase/ssr'
   export const createClient = () =>
     createBrowserClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      process.env.NEXT_SUPABASE_URL!,
+      process.env.NEXT_SUPABASE_ANON_KEY!,
     )
   ```
 - [ ] Créer `lib/supabase/server.ts` (server-side)
@@ -206,8 +206,8 @@
 
   ```bash
   # Supabase
-  NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
-  NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
+  NEXT_SUPABASE_URL=your_supabase_url
+  NEXT_SUPABASE_ANON_KEY=your_anon_key
   SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
 
   # Database
@@ -2144,8 +2144,8 @@
 
   ```bash
   # Supabase
-  NEXT_PUBLIC_SUPABASE_URL=https://xxxxx.supabase.co
-  NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGc...
+  NEXT_SUPABASE_URL=https://xxxxx.supabase.co
+  NEXT_SUPABASE_ANON_KEY=eyJhbGc...
   SUPABASE_SERVICE_ROLE_KEY=eyJhbGc...
 
   # Database

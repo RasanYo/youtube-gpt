@@ -15,49 +15,49 @@ describe('Supabase Client Configuration Tests', () => {
   })
 
   describe('Environment Variables', () => {
-    it('1.5.1 should throw error when NEXT_PUBLIC_SUPABASE_URL is missing', () => {
+    it('1.5.1 should throw error when NEXT_SUPABASE_URL is missing', () => {
       // Remove the environment variable
-      delete process.env.NEXT_PUBLIC_SUPABASE_URL
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'test-anon-key'
+      delete process.env.NEXT_SUPABASE_URL
+      process.env.NEXT_SUPABASE_ANON_KEY = 'test-anon-key'
 
       expect(() => {
         require('@/lib/supabase/client')
       }).toThrow(
         'Missing Supabase environment variables. ' +
-          'Please ensure NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY are set in .env.local'
+          'Please ensure NEXT_SUPABASE_URL and NEXT_SUPABASE_ANON_KEY are set in .env.local'
       )
     })
 
-    it('1.5.2 should throw error when NEXT_PUBLIC_SUPABASE_ANON_KEY is missing', () => {
+    it('1.5.2 should throw error when NEXT_SUPABASE_ANON_KEY is missing', () => {
       // Remove the environment variable
-      process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test.supabase.co'
-      delete process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+      process.env.NEXT_SUPABASE_URL = 'https://test.supabase.co'
+      delete process.env.NEXT_SUPABASE_ANON_KEY
 
       expect(() => {
         require('@/lib/supabase/client')
       }).toThrow(
         'Missing Supabase environment variables. ' +
-          'Please ensure NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY are set in .env.local'
+          'Please ensure NEXT_SUPABASE_URL and NEXT_SUPABASE_ANON_KEY are set in .env.local'
       )
     })
 
     it('1.5.3 should throw error when both environment variables are missing', () => {
       // Remove both environment variables
-      delete process.env.NEXT_PUBLIC_SUPABASE_URL
-      delete process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+      delete process.env.NEXT_SUPABASE_URL
+      delete process.env.NEXT_SUPABASE_ANON_KEY
 
       expect(() => {
         require('@/lib/supabase/client')
       }).toThrow(
         'Missing Supabase environment variables. ' +
-          'Please ensure NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY are set in .env.local'
+          'Please ensure NEXT_SUPABASE_URL and NEXT_SUPABASE_ANON_KEY are set in .env.local'
       )
     })
 
     it('1.5.4 should not throw error when both environment variables are present', () => {
       // Set both environment variables
-      process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test.supabase.co'
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'test-anon-key'
+      process.env.NEXT_SUPABASE_URL = 'https://test.supabase.co'
+      process.env.NEXT_SUPABASE_ANON_KEY = 'test-anon-key'
 
       // This should not throw
       expect(() => {
@@ -69,14 +69,14 @@ describe('Supabase Client Configuration Tests', () => {
   describe('Client Initialization', () => {
     beforeEach(() => {
       // Set up environment variables for successful initialization
-      process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test.supabase.co'
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'test-anon-key'
+      process.env.NEXT_SUPABASE_URL = 'https://test.supabase.co'
+      process.env.NEXT_SUPABASE_ANON_KEY = 'test-anon-key'
     })
 
     it('1.5.5 should use correct environment variables', () => {
       // Set environment variables
-      process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test.supabase.co'
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'test-anon-key'
+      process.env.NEXT_SUPABASE_URL = 'https://test.supabase.co'
+      process.env.NEXT_SUPABASE_ANON_KEY = 'test-anon-key'
 
       // Import the module
       const clientModule = require('@/lib/supabase/client')
@@ -88,8 +88,8 @@ describe('Supabase Client Configuration Tests', () => {
 
     it('1.5.6 should export supabase client instance', () => {
       // Set environment variables
-      process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test.supabase.co'
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'test-anon-key'
+      process.env.NEXT_SUPABASE_URL = 'https://test.supabase.co'
+      process.env.NEXT_SUPABASE_ANON_KEY = 'test-anon-key'
 
       // Import the module
       const { supabase } = require('@/lib/supabase/client')
@@ -100,8 +100,8 @@ describe('Supabase Client Configuration Tests', () => {
 
     it('1.5.7 should have correct client structure', () => {
       // Set environment variables
-      process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test.supabase.co'
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'test-anon-key'
+      process.env.NEXT_SUPABASE_URL = 'https://test.supabase.co'
+      process.env.NEXT_SUPABASE_ANON_KEY = 'test-anon-key'
 
       // Import the module
       const { supabase } = require('@/lib/supabase/client')
@@ -117,14 +117,14 @@ describe('Supabase Client Configuration Tests', () => {
   describe('Auth Configuration', () => {
     beforeEach(() => {
       // Set up environment variables for successful initialization
-      process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test.supabase.co'
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'test-anon-key'
+      process.env.NEXT_SUPABASE_URL = 'https://test.supabase.co'
+      process.env.NEXT_SUPABASE_ANON_KEY = 'test-anon-key'
     })
 
     it('1.5.8 should have auth property on supabase client', () => {
       // Set environment variables
-      process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test.supabase.co'
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'test-anon-key'
+      process.env.NEXT_SUPABASE_URL = 'https://test.supabase.co'
+      process.env.NEXT_SUPABASE_ANON_KEY = 'test-anon-key'
 
       // Import the module
       const { supabase } = require('@/lib/supabase/client')
@@ -135,8 +135,8 @@ describe('Supabase Client Configuration Tests', () => {
 
     it('1.5.9 should have required auth methods', () => {
       // Set environment variables
-      process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test.supabase.co'
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'test-anon-key'
+      process.env.NEXT_SUPABASE_URL = 'https://test.supabase.co'
+      process.env.NEXT_SUPABASE_ANON_KEY = 'test-anon-key'
 
       // Import the module
       const { supabase } = require('@/lib/supabase/client')
@@ -149,8 +149,8 @@ describe('Supabase Client Configuration Tests', () => {
 
     it('1.5.10 should have database query method', () => {
       // Set environment variables
-      process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test.supabase.co'
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'test-anon-key'
+      process.env.NEXT_SUPABASE_URL = 'https://test.supabase.co'
+      process.env.NEXT_SUPABASE_ANON_KEY = 'test-anon-key'
 
       // Import the module
       const { supabase } = require('@/lib/supabase/client')
