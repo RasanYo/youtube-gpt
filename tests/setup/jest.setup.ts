@@ -1,22 +1,7 @@
 import '@testing-library/jest-dom'
 
 // Mock window.location for navigation tests
-const mockLocation = {
-  href: 'http://localhost:3000/',
-  origin: 'http://localhost:3000',
-  protocol: 'http:',
-  host: 'localhost:3000',
-  hostname: 'localhost',
-  port: '3000',
-  pathname: '/',
-  search: '',
-  hash: '',
-}
-
-Object.defineProperty(window, 'location', {
-  value: mockLocation,
-  writable: true,
-})
+// Note: Location mocking is handled in individual test files if needed
 
 // Mock environment variables for Supabase
 process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test-project.supabase.co'

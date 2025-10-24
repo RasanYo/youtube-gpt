@@ -5,13 +5,13 @@
  * Validates environment variable handling and client setup
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+// Jest globals are available without import
 
 describe('Supabase Client Configuration', () => {
   const originalEnv = { ...import.meta.env }
 
   beforeEach(() => {
-    vi.resetModules()
+    jest.resetModules()
   })
 
   afterEach(() => {
@@ -22,8 +22,8 @@ describe('Supabase Client Configuration', () => {
   })
 
   it('should create client with valid environment variables', async () => {
-    vi.stubEnv('VITE_SUPABASE_URL', 'https://test-project.supabase.co')
-    vi.stubEnv('VITE_SUPABASE_ANON_KEY', 'test-anon-key-123')
+    process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test-project.supabase.co'
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'test-anon-key-123'
 
     const { supabase } = await import('@/lib/supabase/client')
 
@@ -32,8 +32,8 @@ describe('Supabase Client Configuration', () => {
   })
 
   it('should export SupabaseClient type', async () => {
-    vi.stubEnv('VITE_SUPABASE_URL', 'https://test-project.supabase.co')
-    vi.stubEnv('VITE_SUPABASE_ANON_KEY', 'test-anon-key-123')
+    process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test-project.supabase.co'
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'test-anon-key-123'
 
     const module = await import('@/lib/supabase/client')
 
@@ -42,8 +42,8 @@ describe('Supabase Client Configuration', () => {
   })
 
   it('should export Database type', async () => {
-    vi.stubEnv('VITE_SUPABASE_URL', 'https://test-project.supabase.co')
-    vi.stubEnv('VITE_SUPABASE_ANON_KEY', 'test-anon-key-123')
+    process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test-project.supabase.co'
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'test-anon-key-123'
 
     const module = await import('@/lib/supabase/client')
 
@@ -52,8 +52,8 @@ describe('Supabase Client Configuration', () => {
   })
 
   it('should configure client with PKCE flow', async () => {
-    vi.stubEnv('VITE_SUPABASE_URL', 'https://test-project.supabase.co')
-    vi.stubEnv('VITE_SUPABASE_ANON_KEY', 'test-anon-key-123')
+    process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test-project.supabase.co'
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'test-anon-key-123'
 
     const { supabase } = await import('@/lib/supabase/client')
 
@@ -68,8 +68,8 @@ describe('Supabase Client Configuration', () => {
 describe('Supabase Client Environment Validation', () => {
   it('should have environment variables set in test environment', () => {
     // These should be set by vitest.setup.ts
-    expect(import.meta.env.VITE_SUPABASE_URL).toBeDefined()
-    expect(import.meta.env.VITE_SUPABASE_ANON_KEY).toBeDefined()
-    expect(import.meta.env.VITE_SUPABASE_URL).toContain('supabase.co')
+    expect(process.env.NEXT_PUBLIC_SUPABASE_URL).toBeDefined()
+    expect(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY).toBeDefined()
+    expect(process.env.NEXT_PUBLIC_SUPABASE_URL).toContain('supabase.co')
   })
 })

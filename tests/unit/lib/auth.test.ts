@@ -5,7 +5,7 @@
  * Validates magic link authentication, sign out, and user/session retrieval
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+// Jest globals are available without import
 import {
   signInWithMagicLink,
   signOut,
@@ -16,20 +16,20 @@ import { supabase } from '@/lib/supabase/client'
 import type { User, Session } from '@supabase/supabase-js'
 
 // Mock the Supabase client
-vi.mock('@/lib/supabase/client', () => ({
+jest.mock('@/lib/supabase/client', () => ({
   supabase: {
     auth: {
-      signInWithOtp: vi.fn(),
-      signOut: vi.fn(),
-      getUser: vi.fn(),
-      getSession: vi.fn(),
+      signInWithOtp: jest.fn(),
+      signOut: jest.fn(),
+      getUser: jest.fn(),
+      getSession: jest.fn(),
     },
   },
 }))
 
 describe('Authentication Helper Functions', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    jest.clearAllMocks()
   })
 
   describe('signInWithMagicLink', () => {
@@ -37,7 +37,7 @@ describe('Authentication Helper Functions', () => {
       const mockEmail = 'test@example.com'
       const mockData = { user: null, session: null }
 
-      vi.mocked(supabase.auth.signInWithOtp).mockResolvedValue({
+      (supabase.auth.signInWithOtp as jest.Mock).mockResolvedValue({
         data: mockData,
         error: null,
       })
@@ -56,7 +56,7 @@ describe('Authentication Helper Functions', () => {
     it('should throw error when magic link fails', async () => {
       const mockError = new Error('Failed to send magic link')
 
-      vi.mocked(supabase.auth.signInWithOtp).mockResolvedValue({
+      (supabase.auth.signInWithOtp as jest.Mock).mockResolvedValue({
         data: { user: null, session: null },
         error: mockError,
       })
@@ -69,7 +69,7 @@ describe('Authentication Helper Functions', () => {
     it('should use correct redirect URL format', async () => {
       const mockEmail = 'user@domain.com'
 
-      vi.mocked(supabase.auth.signInWithOtp).mockResolvedValue({
+      (supabase.auth.signInWithOtp as jest.Mock).mockResolvedValue({
         data: { user: null, session: null },
         error: null,
       })
@@ -88,7 +88,7 @@ describe('Authentication Helper Functions', () => {
 
   describe('signOut', () => {
     it('should call supabase signOut method', async () => {
-      vi.mocked(supabase.auth.signOut).mockResolvedValue({ error: null })
+      (supabase.auth.signOut as jest.Mock).mockResolvedValue({ error: null })
 
       await signOut()
 
@@ -97,13 +97,13 @@ describe('Authentication Helper Functions', () => {
 
     it('should throw error when sign out fails', async () => {
       const mockError = new Error('Sign out failed')
-      vi.mocked(supabase.auth.signOut).mockResolvedValue({ error: mockError })
+      (supabase.auth.signOut as jest.Mock).mockResolvedValue({ error: mockError })
 
       await expect(signOut()).rejects.toThrow('Sign out failed')
     })
 
     it('should not throw when sign out succeeds', async () => {
-      vi.mocked(supabase.auth.signOut).mockResolvedValue({ error: null })
+      (supabase.auth.signOut as jest.Mock).mockResolvedValue({ error: null })
 
       await expect(signOut()).resolves.not.toThrow()
     })
@@ -118,7 +118,7 @@ describe('Authentication Helper Functions', () => {
     }
 
     it('should return current user when authenticated', async () => {
-      vi.mocked(supabase.auth.getUser).mockResolvedValue({
+      (supabase.auth.getUser as jest.Mock).mockResolvedValue({
         data: { user: mockUser as User },
         error: null,
       })
@@ -130,7 +130,7 @@ describe('Authentication Helper Functions', () => {
     })
 
     it('should return null when not authenticated', async () => {
-      vi.mocked(supabase.auth.getUser).mockResolvedValue({
+      (supabase.auth.getUser as jest.Mock).mockResolvedValue({
         data: { user: null },
         error: null,
       })
@@ -143,7 +143,7 @@ describe('Authentication Helper Functions', () => {
     it('should throw error when token validation fails', async () => {
       const mockError = new Error('Invalid token')
 
-      vi.mocked(supabase.auth.getUser).mockResolvedValue({
+      (supabase.auth.getUser as jest.Mock).mockResolvedValue({
         data: { user: null },
         error: mockError,
       })
@@ -166,7 +166,7 @@ describe('Authentication Helper Functions', () => {
     }
 
     it('should return current session when it exists', async () => {
-      vi.mocked(supabase.auth.getSession).mockResolvedValue({
+      (supabase.auth.getSession as jest.Mock).mockResolvedValue({
         data: { session: mockSession as Session },
         error: null,
       })
@@ -178,7 +178,7 @@ describe('Authentication Helper Functions', () => {
     })
 
     it('should return null when no session exists', async () => {
-      vi.mocked(supabase.auth.getSession).mockResolvedValue({
+      (supabase.auth.getSession as jest.Mock).mockResolvedValue({
         data: { session: null },
         error: null,
       })
@@ -189,7 +189,7 @@ describe('Authentication Helper Functions', () => {
     })
 
     it('should not throw error even if session retrieval fails', async () => {
-      vi.mocked(supabase.auth.getSession).mockResolvedValue({
+      (supabase.auth.getSession as jest.Mock).mockResolvedValue({
         data: { session: null },
         error: new Error('Session error'),
       })

@@ -5,7 +5,7 @@
  * Validates redirect behavior for unauthenticated users
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+// Jest globals are available without import
 import { render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import Index from '@/pages/Index'
@@ -13,29 +13,29 @@ import { useAuth } from '@/contexts/AuthContext'
 import type { User, Session } from '@supabase/supabase-js'
 
 // Mock useAuth hook
-vi.mock('@/contexts/AuthContext', () => ({
-  useAuth: vi.fn(),
+jest.mock('@/contexts/AuthContext', () => ({
+  useAuth: jest.fn(),
 }))
 
 // Mock child components to simplify testing
-vi.mock('@/components/ConversationSidebar', () => ({
+jest.mock('@/components/ConversationSidebar', () => ({
   ConversationSidebar: () => (
     <div data-testid="conversation-sidebar">ConversationSidebar</div>
   ),
 }))
 
-vi.mock('@/components/ChatArea', () => ({
+jest.mock('@/components/ChatArea', () => ({
   ChatArea: () => <div data-testid="chat-area">ChatArea</div>,
 }))
 
-vi.mock('@/components/KnowledgeBase', () => ({
+jest.mock('@/components/KnowledgeBase', () => ({
   KnowledgeBase: () => <div data-testid="knowledge-base">KnowledgeBase</div>,
 }))
 
 // Mock react-router-dom navigate
-const mockNavigate = vi.fn()
-vi.mock('react-router-dom', async () => {
-  const actual = await vi.importActual('react-router-dom')
+const mockNavigate = jest.fn()
+jest.mock('react-router-dom', async () => {
+  const actual = await jest.importActual('react-router-dom')
   return {
     ...actual,
     useNavigate: () => mockNavigate,
@@ -44,17 +44,17 @@ vi.mock('react-router-dom', async () => {
 
 describe('Index Page', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    jest.clearAllMocks()
   })
 
   describe('Loading State', () => {
     it('should show loading state when auth is loading', () => {
-      vi.mocked(useAuth).mockReturnValue({
+      (useAuth as jest.Mock).mockReturnValue({
         user: null,
         session: null,
         isLoading: true,
-        login: vi.fn(),
-        logout: vi.fn(),
+        login: jest.fn(),
+        logout: jest.fn(),
       })
 
       render(
@@ -67,12 +67,12 @@ describe('Index Page', () => {
     })
 
     it('should have correct loading state styling', () => {
-      vi.mocked(useAuth).mockReturnValue({
+      (useAuth as jest.Mock).mockReturnValue({
         user: null,
         session: null,
         isLoading: true,
-        login: vi.fn(),
-        logout: vi.fn(),
+        login: jest.fn(),
+        logout: jest.fn(),
       })
 
       render(
@@ -88,12 +88,12 @@ describe('Index Page', () => {
 
   describe('Unauthenticated State', () => {
     it('should redirect to login when user is not authenticated', async () => {
-      vi.mocked(useAuth).mockReturnValue({
+      (useAuth as jest.Mock).mockReturnValue({
         user: null,
         session: null,
         isLoading: false,
-        login: vi.fn(),
-        logout: vi.fn(),
+        login: jest.fn(),
+        logout: jest.fn(),
       })
 
       render(
@@ -108,12 +108,12 @@ describe('Index Page', () => {
     })
 
     it('should not render app content when not authenticated', async () => {
-      vi.mocked(useAuth).mockReturnValue({
+      (useAuth as jest.Mock).mockReturnValue({
         user: null,
         session: null,
         isLoading: false,
-        login: vi.fn(),
-        logout: vi.fn(),
+        login: jest.fn(),
+        logout: jest.fn(),
       })
 
       render(
@@ -133,12 +133,12 @@ describe('Index Page', () => {
     })
 
     it('should return null when user is null and not loading', async () => {
-      vi.mocked(useAuth).mockReturnValue({
+      (useAuth as jest.Mock).mockReturnValue({
         user: null,
         session: null,
         isLoading: false,
-        login: vi.fn(),
-        logout: vi.fn(),
+        login: jest.fn(),
+        logout: jest.fn(),
       })
 
       const { container } = render(
@@ -170,12 +170,12 @@ describe('Index Page', () => {
     }
 
     it('should render three-column layout when user is authenticated', () => {
-      vi.mocked(useAuth).mockReturnValue({
+      (useAuth as jest.Mock).mockReturnValue({
         user: mockUser as User,
         session: mockSession as Session,
         isLoading: false,
-        login: vi.fn(),
-        logout: vi.fn(),
+        login: jest.fn(),
+        logout: jest.fn(),
       })
 
       render(
@@ -190,12 +190,12 @@ describe('Index Page', () => {
     })
 
     it('should not redirect when authenticated', () => {
-      vi.mocked(useAuth).mockReturnValue({
+      (useAuth as jest.Mock).mockReturnValue({
         user: mockUser as User,
         session: mockSession as Session,
         isLoading: false,
-        login: vi.fn(),
-        logout: vi.fn(),
+        login: jest.fn(),
+        logout: jest.fn(),
       })
 
       render(
@@ -208,12 +208,12 @@ describe('Index Page', () => {
     })
 
     it('should have correct layout structure', () => {
-      vi.mocked(useAuth).mockReturnValue({
+      (useAuth as jest.Mock).mockReturnValue({
         user: mockUser as User,
         session: mockSession as Session,
         isLoading: false,
-        login: vi.fn(),
-        logout: vi.fn(),
+        login: jest.fn(),
+        logout: jest.fn(),
       })
 
       const { container } = render(
@@ -238,12 +238,12 @@ describe('Index Page', () => {
       )
 
       // Start with loading state
-      vi.mocked(useAuth).mockReturnValue({
+      (useAuth as jest.Mock).mockReturnValue({
         user: null,
         session: null,
         isLoading: true,
-        login: vi.fn(),
-        logout: vi.fn(),
+        login: jest.fn(),
+        logout: jest.fn(),
       })
 
       rerender(
@@ -255,12 +255,12 @@ describe('Index Page', () => {
       expect(screen.getByText('Loading...')).toBeInTheDocument()
 
       // Transition to unauthenticated
-      vi.mocked(useAuth).mockReturnValue({
+      (useAuth as jest.Mock).mockReturnValue({
         user: null,
         session: null,
         isLoading: false,
-        login: vi.fn(),
-        logout: vi.fn(),
+        login: jest.fn(),
+        logout: jest.fn(),
       })
 
       rerender(
@@ -288,12 +288,12 @@ describe('Index Page', () => {
       }
 
       // Start with loading state
-      vi.mocked(useAuth).mockReturnValue({
+      (useAuth as jest.Mock).mockReturnValue({
         user: null,
         session: null,
         isLoading: true,
-        login: vi.fn(),
-        logout: vi.fn(),
+        login: jest.fn(),
+        logout: jest.fn(),
       })
 
       const { rerender } = render(
@@ -305,15 +305,15 @@ describe('Index Page', () => {
       expect(screen.getByText('Loading...')).toBeInTheDocument()
 
       // Clear any navigate calls from the initial render
-      vi.clearAllMocks()
+      jest.clearAllMocks()
 
       // Transition to authenticated
-      vi.mocked(useAuth).mockReturnValue({
+      (useAuth as jest.Mock).mockReturnValue({
         user: mockUser as User,
         session: mockSession as Session,
         isLoading: false,
-        login: vi.fn(),
-        logout: vi.fn(),
+        login: jest.fn(),
+        logout: jest.fn(),
       })
 
       rerender(
@@ -351,12 +351,12 @@ describe('Index Page', () => {
       )
 
       // Start unauthenticated
-      vi.mocked(useAuth).mockReturnValue({
+      (useAuth as jest.Mock).mockReturnValue({
         user: null,
         session: null,
         isLoading: false,
-        login: vi.fn(),
-        logout: vi.fn(),
+        login: jest.fn(),
+        logout: jest.fn(),
       })
 
       rerender(
@@ -369,15 +369,15 @@ describe('Index Page', () => {
         expect(mockNavigate).toHaveBeenCalledWith('/login')
       })
 
-      vi.clearAllMocks()
+      jest.clearAllMocks()
 
       // Change to authenticated
-      vi.mocked(useAuth).mockReturnValue({
+      (useAuth as jest.Mock).mockReturnValue({
         user: mockUser as User,
         session: mockSession as Session,
         isLoading: false,
-        login: vi.fn(),
-        logout: vi.fn(),
+        login: jest.fn(),
+        logout: jest.fn(),
       })
 
       rerender(

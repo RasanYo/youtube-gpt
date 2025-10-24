@@ -5,20 +5,20 @@
  * Validates authentication state management and Supabase integration
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+// Jest globals are available without import
 import { renderHook, waitFor, act } from '@testing-library/react'
 import { AuthProvider, useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase/client'
 import type { User, Session } from '@supabase/supabase-js'
 
 // Mock Supabase client
-vi.mock('@/lib/supabase/client', () => ({
+jest.mock('@/lib/supabase/client', () => ({
   supabase: {
     auth: {
-      getSession: vi.fn(),
-      onAuthStateChange: vi.fn(),
-      signInWithOtp: vi.fn(),
-      signOut: vi.fn(),
+      getSession: jest.fn(),
+      onAuthStateChange: jest.fn(),
+      signInWithOtp: jest.fn(),
+      signOut: jest.fn(),
     },
   },
 }))
@@ -27,9 +27,9 @@ describe('AuthContext', () => {
   let mockSubscription: { unsubscribe: () => void }
 
   beforeEach(() => {
-    mockSubscription = { unsubscribe: vi.fn() }
+    mockSubscription = { unsubscribe: jest.fn() }
 
-    vi.mocked(supabase.auth.onAuthStateChange).mockReturnValue({
+    ;(supabase.auth.onAuthStateChange as jest.Mock).mockReturnValue({
       data: { subscription: mockSubscription },
     })
   })
@@ -37,7 +37,7 @@ describe('AuthContext', () => {
   describe('useAuth hook', () => {
     it('should throw error when used outside AuthProvider', () => {
       // Suppress console.error for this test
-      const consoleError = vi
+      const consoleError = jest
         .spyOn(console, 'error')
         .mockImplementation(() => {})
 
@@ -49,7 +49,7 @@ describe('AuthContext', () => {
     })
 
     it('should provide auth context when inside AuthProvider', async () => {
-      vi.mocked(supabase.auth.getSession).mockResolvedValue({
+      (supabase.auth.getSession as jest.Mock).mockResolvedValue({
         data: { session: null },
         error: null,
       })
@@ -72,7 +72,7 @@ describe('AuthContext', () => {
 
   describe('Initial session loading', () => {
     it('should start with isLoading true', () => {
-      vi.mocked(supabase.auth.getSession).mockImplementation(
+      (supabase.auth.getSession as jest.Mock).mockImplementation(
         () =>
           new Promise(() => {
             // Never resolve to keep loading state
@@ -99,7 +99,7 @@ describe('AuthContext', () => {
         user: mockUser as User,
       }
 
-      vi.mocked(supabase.auth.getSession).mockResolvedValue({
+      (supabase.auth.getSession as jest.Mock).mockResolvedValue({
         data: { session: mockSession as Session },
         error: null,
       })
@@ -117,7 +117,7 @@ describe('AuthContext', () => {
     })
 
     it('should handle null session on mount', async () => {
-      vi.mocked(supabase.auth.getSession).mockResolvedValue({
+      (supabase.auth.getSession as jest.Mock).mockResolvedValue({
         data: { session: null },
         error: null,
       })
@@ -135,7 +135,7 @@ describe('AuthContext', () => {
     })
 
     it('should set isLoading to false after session loads', async () => {
-      vi.mocked(supabase.auth.getSession).mockResolvedValue({
+      (supabase.auth.getSession as jest.Mock).mockResolvedValue({
         data: { session: null },
         error: null,
       })
@@ -154,7 +154,7 @@ describe('AuthContext', () => {
 
   describe('Auth state change listener', () => {
     it('should subscribe to auth state changes on mount', () => {
-      vi.mocked(supabase.auth.getSession).mockResolvedValue({
+      (supabase.auth.getSession as jest.Mock).mockResolvedValue({
         data: { session: null },
         error: null,
       })
@@ -170,7 +170,7 @@ describe('AuthContext', () => {
     })
 
     it('should unsubscribe on unmount', async () => {
-      vi.mocked(supabase.auth.getSession).mockResolvedValue({
+      (supabase.auth.getSession as jest.Mock).mockResolvedValue({
         data: { session: null },
         error: null,
       })
@@ -191,12 +191,12 @@ describe('AuthContext', () => {
     it('should update user state when auth state changes to signed in', async () => {
       let authStateCallback: (event: string, session: Session | null) => void
 
-      vi.mocked(supabase.auth.getSession).mockResolvedValue({
+      (supabase.auth.getSession as jest.Mock).mockResolvedValue({
         data: { session: null },
         error: null,
       })
 
-      vi.mocked(supabase.auth.onAuthStateChange).mockImplementation(
+      (supabase.auth.onAuthStateChange as jest.Mock).mockImplementation(
         (callback) => {
           authStateCallback = callback
           return { data: { subscription: mockSubscription } }
@@ -248,12 +248,12 @@ describe('AuthContext', () => {
         user: mockUser as User,
       }
 
-      vi.mocked(supabase.auth.getSession).mockResolvedValue({
+      (supabase.auth.getSession as jest.Mock).mockResolvedValue({
         data: { session: mockSession as Session },
         error: null,
       })
 
-      vi.mocked(supabase.auth.onAuthStateChange).mockImplementation(
+      (supabase.auth.onAuthStateChange as jest.Mock).mockImplementation(
         (callback) => {
           authStateCallback = callback
           return { data: { subscription: mockSubscription } }
@@ -279,12 +279,12 @@ describe('AuthContext', () => {
 
   describe('login method', () => {
     it('should call supabase signInWithOtp with correct parameters', async () => {
-      vi.mocked(supabase.auth.getSession).mockResolvedValue({
+      (supabase.auth.getSession as jest.Mock).mockResolvedValue({
         data: { session: null },
         error: null,
       })
 
-      vi.mocked(supabase.auth.signInWithOtp).mockResolvedValue({
+      (supabase.auth.signInWithOtp as jest.Mock).mockResolvedValue({
         data: {},
         error: null,
       })
@@ -310,13 +310,13 @@ describe('AuthContext', () => {
     })
 
     it('should throw error when login fails', async () => {
-      vi.mocked(supabase.auth.getSession).mockResolvedValue({
+      (supabase.auth.getSession as jest.Mock).mockResolvedValue({
         data: { session: null },
         error: null,
       })
 
       const mockError = new Error('Login failed')
-      vi.mocked(supabase.auth.signInWithOtp).mockResolvedValue({
+      (supabase.auth.signInWithOtp as jest.Mock).mockResolvedValue({
         data: {},
         error: mockError,
       })
@@ -337,12 +337,12 @@ describe('AuthContext', () => {
     })
 
     it('should not update state immediately after login call', async () => {
-      vi.mocked(supabase.auth.getSession).mockResolvedValue({
+      (supabase.auth.getSession as jest.Mock).mockResolvedValue({
         data: { session: null },
         error: null,
       })
 
-      vi.mocked(supabase.auth.signInWithOtp).mockResolvedValue({
+      (supabase.auth.signInWithOtp as jest.Mock).mockResolvedValue({
         data: {},
         error: null,
       })
@@ -366,12 +366,12 @@ describe('AuthContext', () => {
 
   describe('logout method', () => {
     it('should call supabase signOut', async () => {
-      vi.mocked(supabase.auth.getSession).mockResolvedValue({
+      (supabase.auth.getSession as jest.Mock).mockResolvedValue({
         data: { session: null },
         error: null,
       })
 
-      vi.mocked(supabase.auth.signOut).mockResolvedValue({ error: null })
+      (supabase.auth.signOut as jest.Mock).mockResolvedValue({ error: null })
 
       const { result } = renderHook(() => useAuth(), {
         wrapper: AuthProvider,
@@ -389,13 +389,13 @@ describe('AuthContext', () => {
     })
 
     it('should throw error when logout fails', async () => {
-      vi.mocked(supabase.auth.getSession).mockResolvedValue({
+      (supabase.auth.getSession as jest.Mock).mockResolvedValue({
         data: { session: null },
         error: null,
       })
 
       const mockError = new Error('Logout failed')
-      vi.mocked(supabase.auth.signOut).mockResolvedValue({ error: mockError })
+      (supabase.auth.signOut as jest.Mock).mockResolvedValue({ error: mockError })
 
       const { result } = renderHook(() => useAuth(), {
         wrapper: AuthProvider,
