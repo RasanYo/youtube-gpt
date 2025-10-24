@@ -1,3 +1,5 @@
+'use client'
+
 import { useState } from 'react'
 import { FileText, Folder, Video as VideoIcon, Calendar, Loader2, Cloud, ChevronLeft, ChevronRight } from 'lucide-react'
 import { ScrollArea } from '@/components/ui/scroll-area'

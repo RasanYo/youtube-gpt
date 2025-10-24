@@ -1,3 +1,5 @@
+'use client'
+
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { VideoCard, VideoCardSkeleton } from './VideoCard'
