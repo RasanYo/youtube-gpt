@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import { Providers } from './providers'
-import '@/index.css'
+import '@/styles/globals.css'
 
 export const metadata: Metadata = {
   title: 'YouTube GPT - AI Knowledge Base',
