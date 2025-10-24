@@ -64,8 +64,8 @@
 
 #### Environment Variables:
 - **1.5.1** Client creation succeeds with valid environment variables
-- **1.5.2** Client creation throws error when NEXT_SUPABASE_URL is missing
-- **1.5.3** Client creation throws error when NEXT_SUPABASE_ANON_KEY is missing
+- **1.5.2** Client creation throws error when NEXT_PUBLIC_SUPABASE_URL is missing
+- **1.5.3** Client creation throws error when NEXT_PUBLIC_SUPABASE_ANON_KEY is missing
 - **1.5.4** Client creation throws error when both environment variables are missing
 - **1.5.5** Error message includes helpful instructions for missing variables
 

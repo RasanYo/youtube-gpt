@@ -50,6 +50,7 @@ const Button = /*#__PURE__*/ __TURBOPACK__imported__module__$5b$project$5d2f$nod
             className
         })),
         ref: ref,
+        suppressHydrationWarning: true,
         ...props
     }, void 0, false, {
         fileName: "[project]/src/components/ui/button.tsx",
@@ -584,6 +585,7 @@ const Input = /*#__PURE__*/ __TURBOPACK__imported__module__$5b$project$5d2f$node
         type: type,
         className: (0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$utils$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["cn"])('flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm', className),
         ref: ref,
+        suppressHydrationWarning: true,
         ...props
     }, void 0, false, {
         fileName: "[project]/src/components/ui/input.tsx",

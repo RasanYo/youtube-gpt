@@ -70,8 +70,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   }
 
+  // Prevent hydration mismatch by not rendering until hydrated
+  if (!isHydrated) {
+    return (
+      <AuthContext.Provider value={{ user: null, session: null, login, logout, isLoading: true }}>
+        {children}
+      </AuthContext.Provider>
+    )
+  }
+
   return (
-    <AuthContext.Provider value={{ user, session, login, logout, isLoading: isLoading || !isHydrated }}>
+    <AuthContext.Provider value={{ user, session, login, logout, isLoading }}>
       {children}
     </AuthContext.Provider>
   )

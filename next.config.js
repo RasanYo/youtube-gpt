@@ -10,8 +10,6 @@ const nextConfig = {
       bodySizeLimit: '2mb',
     },
   },
-  // Vercel deployment optimization
-  output: 'standalone',
 }
 
 export default nextConfig

@@ -32,8 +32,8 @@ Migration from Vite + React to Next.js 14 App Router using the **`src/` structur
 - **Commit:** `9575a38` - chore: update environment variables for Next.js
 - **Changes:**
   - ✅ Updated `.env.example` to use `NEXT_*` prefix for client-side variables
-  - ✅ `NEXT_SUPABASE_URL` (browser accessible)
-  - ✅ `NEXT_SUPABASE_ANON_KEY` (browser accessible)
+  - ✅ `NEXT_PUBLIC_SUPABASE_URL` (browser accessible)
+  - ✅ `NEXT_PUBLIC_SUPABASE_ANON_KEY` (browser accessible)
   - ✅ Server-side variables remain without prefix (DATABASE_URL, YOUTUBE_API_KEY, etc.)
 
 ### 1.4 TypeScript Configuration ✅
