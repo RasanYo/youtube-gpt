@@ -1,3 +1,5 @@
+'use client'
+
 import { useState } from 'react'
 import { FileText, Folder, Video as VideoIcon, Calendar, Loader2, Cloud, ChevronLeft, ChevronRight } from 'lucide-react'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -21,7 +23,11 @@ export const KnowledgeBase = () => {
 
   const totalVideos = videos.length
   const lastIngestion = videos.length > 0 
-    ? new Date(videos[0].createdAt || '').toLocaleDateString()
+    ? new Date(videos[0].createdAt || '').toLocaleDateString('en-US', { 
+        year: 'numeric', 
+        month: 'short', 
+        day: 'numeric' 
+      })
     : 'Never'
 
   // Handle video click
@@ -61,7 +67,7 @@ export const KnowledgeBase = () => {
       if (result.success) {
         toast({
           title: 'Success',
-          description: `YouTube ${result.type} queued for processing! Video ID: ${result.data?.id}`,
+          description: `YouTube ${result.type} submitted for processing! Video ID: ${result.data?.id}`,
         })
         // Reset form
         setUrlInput('')

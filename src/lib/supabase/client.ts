@@ -26,13 +26,13 @@
 
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
 if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error(
     'Missing Supabase environment variables. ' +
-      'Please ensure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are set in .env.local',
+      'Please ensure NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY are set in .env.local',
   )
 }
 
@@ -55,8 +55,8 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 })
 
 /**
- * Database type - will be replaced with Prisma-generated types in Issue #7
- * For now using 'any' as placeholder until schema is defined
+ * Database type - using Supabase generated types
+ * This will be updated when we generate types from our Supabase schema
  */
 export type Database = any
 

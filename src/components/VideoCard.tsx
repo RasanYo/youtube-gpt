@@ -1,3 +1,5 @@
+'use client'
+
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -8,11 +10,11 @@ import { Loader2, AlertCircle, Check, Clock, Video as VideoIcon } from 'lucide-r
 import { cn } from '@/lib/utils'
 import { Video, VideoStatus } from '@/lib/supabase/types'
 
-export type ProcessingStatus = 'queued' | 'processing' | 'ready' | 'failed'
+export type ProcessingStatus = 'pending' | 'queued' | 'processing' | 'ready' | 'failed'
 
 // Helper function to convert database status to UI status
 const convertStatus = (dbStatus: VideoStatus | null): ProcessingStatus => {
-  if (!dbStatus) return 'queued'
+  if (!dbStatus) return 'pending'
   return dbStatus.toLowerCase() as ProcessingStatus
 }
 
@@ -32,9 +34,15 @@ export interface VideoCardProps {
 }
 
 const statusConfig = {
+  pending: {
+    variant: 'outline' as const,
+    icon: Clock,
+    label: 'Pending',
+    color: 'text-yellow-600'
+  },
   queued: {
     variant: 'secondary' as const,
-    icon: Clock,
+    icon: Loader2,
     label: 'Queued',
     color: 'text-muted-foreground'
   },
@@ -83,7 +91,11 @@ export const VideoCard = ({
   const formatDate = (dateString?: string | null) => {
     if (!dateString) return ''
     try {
-      return new Date(dateString).toLocaleDateString()
+      return new Date(dateString).toLocaleDateString('en-US', { 
+        year: 'numeric', 
+        month: 'short', 
+        day: 'numeric' 
+      })
     } catch {
       return ''
     }
@@ -187,7 +199,7 @@ export const VideoCard = ({
                           'h-4 w-4 flex items-center justify-center rounded-full bg-black/50 backdrop-blur-sm',
                           status === 'processing' && 'animate-pulse'
                         )}>
-                          <Icon className={cn('h-2.5 w-2.5 text-white', status === 'processing' && 'animate-spin')} />
+                          <Icon className={cn('h-2.5 w-2.5 text-white', (status === 'processing' || status === 'queued') && 'animate-spin')} />
                         </div>
                       </TooltipTrigger>
                       <TooltipContent side="top">
