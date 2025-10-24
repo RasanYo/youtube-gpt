@@ -31,6 +31,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       setSession(session)
       setUser(session?.user ?? null)
       setIsLoading(false)
+    }).catch((error) => {
+      console.error('Error getting session:', error)
+      setSession(null)
+      setUser(null)
+      setIsLoading(false)
     })
 
     // Listen for auth changes (login, logout, token refresh)
