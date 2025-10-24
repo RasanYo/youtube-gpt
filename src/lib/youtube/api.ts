@@ -83,13 +83,13 @@ export async function processYouTubeUrl(url: string): Promise<YouTubeProcessResu
         }
       }
 
-      console.log(`Successfully queued ${urlInfo.type} for processing:`, urlInfo.id)
+      console.log(`Successfully submitted ${urlInfo.type} for processing:`, urlInfo.id)
       console.log('Video ID:', data.videoId)
     } catch (edgeFunctionError) {
       console.error('Edge function call failed:', edgeFunctionError)
       
       // Handle specific errors
-      let errorMessage = 'Failed to queue video for processing. Please try again.'
+      let errorMessage = 'Failed to submit video for processing. Please try again.'
       if (edgeFunctionError instanceof Error) {
         if (edgeFunctionError.message.includes('network') || edgeFunctionError.message.includes('timeout')) {
           errorMessage = 'Service temporarily unavailable. Please try again in a moment.'

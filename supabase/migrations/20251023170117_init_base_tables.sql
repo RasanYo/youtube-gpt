@@ -8,7 +8,7 @@ DROP TABLE IF EXISTS videos CASCADE;
 DROP TYPE IF EXISTS video_status CASCADE;
 
 -- Create VideoStatus enum
-CREATE TYPE video_status AS ENUM ('QUEUED', 'PROCESSING', 'READY', 'FAILED');
+CREATE TYPE video_status AS ENUM ('PENDING', 'QUEUED', 'PROCESSING', 'READY', 'FAILED');
 
 -- Create videos table
 CREATE TABLE IF NOT EXISTS public.videos (
@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS public.videos (
   thumbnail_url TEXT,
   channel_name TEXT,
   duration INTEGER DEFAULT 0,
-  status video_status DEFAULT 'QUEUED',
+  status video_status DEFAULT 'PENDING',
   error TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()

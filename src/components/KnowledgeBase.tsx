@@ -61,7 +61,7 @@ export const KnowledgeBase = () => {
       if (result.success) {
         toast({
           title: 'Success',
-          description: `YouTube ${result.type} queued for processing! Video ID: ${result.data?.id}`,
+          description: `YouTube ${result.type} submitted for processing! Video ID: ${result.data?.id}`,
         })
         // Reset form
         setUrlInput('')

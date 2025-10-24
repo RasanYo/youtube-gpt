@@ -27,7 +27,7 @@ YouTube GPT helps users instantly find information hidden inside hours of video 
 ### Backend
 
 - [Supabase](https://supabase.com/) (Auth, PostgreSQL, Realtime, RLS)
-- [Prisma](https://www.prisma.io/) ORM
+- Supabase Database (PostgreSQL with built-in ORM)
 - [API Routes](https://vitejs.dev/guide/features.html#api-routes) - Server-side endpoints
 - [Vercel](https://vercel.com/) deployment
 
@@ -87,10 +87,10 @@ YouTube GPT helps users instantly find information hidden inside hours of video 
 
 4. **Set up the database**
 
-   Run Prisma migrations to create database tables:
+   Set up the database tables in Supabase:
 
    ```bash
-   pnpm run db:migrate
+   # Create tables using Supabase SQL editor or migrations
    ```
 
    This will create the User, Video, and Conversation tables in your Supabase PostgreSQL database.
@@ -145,17 +145,19 @@ YouTube GPT helps users instantly find information hidden inside hours of video 
 
 ### Data Flow
 
-1. **Ingestion:** YouTube link → Inngest job → Transcript extraction → Text chunking → Vector embeddings → Supabase storage
-2. **Chat:** Question → Vector search (scoped to selected videos) → Claude generates answer → Stream to frontend
-3. **Storage:** Messages stored in Supabase with scope metadata
+1. **Ingestion:** YouTube link → PENDING status → Metadata fetch → QUEUED status → [Background processing not yet implemented]
+2. **Current Status Flow:** PENDING → QUEUED (metadata fetched) → [PROCESSING → READY - not yet implemented]
+3. **Planned Flow:** YouTube link → Inngest job → Transcript extraction → Text chunking → Vector embeddings → Supabase storage
+4. **Chat:** Question → Vector search (scoped to selected videos) → Claude generates answer → Stream to frontend
+5. **Storage:** Messages stored in Supabase with scope metadata
 
 ### Project Structure
 
 ```
 youtube-gpt/
-├── prisma/
-│   ├── migrations/       # Version-controlled database migrations
-│   └── schema.prisma    # Database schema definition
+├── supabase/
+│   ├── migrations/       # Supabase database migrations
+│   └── config.toml      # Supabase configuration
 ├── src/
 │   ├── components/      # React components
 │   │   ├── ChatArea.tsx
@@ -169,7 +171,7 @@ youtube-gpt/
 │   │   ├── use-mobile.tsx
 │   │   └── use-toast.ts
 │   ├── lib/            # Utilities & integrations
-│   │   ├── prisma.ts   # Prisma Client singleton
+│   │   ├── database/   # Database utilities and types
 │   │   ├── utils.ts
 │   │   ├── supabase/   # Supabase client & auth
 │   │   ├── inngest/    # Background job client
@@ -210,8 +212,7 @@ The application uses the following environment variables (configured in `.env.lo
 VITE_SUPABASE_URL=https://your-project-id.supabase.co
 VITE_SUPABASE_ANON_KEY=your-anon-key-here
 
-# Database (Prisma) - Required
-DATABASE_URL=postgresql://postgres:[PASSWORD]@db.[PROJECT-ID].supabase.co:5432/postgres?pgbouncer=true
+# Database - Supabase handles connection automatically
 
 # Future Configuration (To be added in later steps)
 # AI Services
@@ -226,7 +227,7 @@ DATABASE_URL=postgresql://postgres:[PASSWORD]@db.[PROJECT-ID].supabase.co:5432/p
 **Important Notes:**
 
 - All client-side environment variables must use the `VITE_` prefix to be accessible in the browser
-- `DATABASE_URL` uses Transaction mode for Prisma compatibility with Supabase
+- Database connection is handled automatically by Supabase
 - Never commit `.env.local` or `.env` to version control (both are in `.gitignore`)
 - Use `.env.example` as a template for setting up new environments
 
@@ -245,33 +246,30 @@ The application uses Supabase for:
 - **Auto Refresh**: Tokens automatically refresh before expiration
 - **Session Detection**: Handles magic link callback URLs automatically
 
-### Database Setup (Prisma)
+### Database Setup (Supabase)
 
-The application uses Prisma ORM for type-safe database access with PostgreSQL (via Supabase).
+The application uses Supabase for database access with PostgreSQL and built-in type safety.
 
 **Database Schema:**
 
-- **Video**: Tracks ingested YouTube videos with processing status (QUEUED, PROCESSING, READY, FAILED)
+- **Video**: Tracks ingested YouTube videos with processing status (PENDING, QUEUED, PROCESSING, READY, FAILED)
 - **Conversation**: Represents chat sessions between users and AI
 - **User Data**: Retrieved directly from Supabase Auth (auth.users table)
 
-**Prisma Commands:**
+**Supabase Commands:**
 
 ```bash
-# Run migrations (apply schema changes to database)
-pnpm run db:migrate
+# Start local Supabase development environment
+npx supabase start
 
-# Open Prisma Studio (visual database editor)
-pnpm run db:studio
+# Apply migrations to local database
+npx supabase db reset
 
-# Push schema changes without creating migration files
-pnpm run db:push
+# Generate TypeScript types from database schema
+npx supabase gen types typescript --local > src/types/database.types.ts
 
-# Reset database (⚠️ deletes all data)
-pnpm run db:reset
-
-# Generate Prisma Client types (runs automatically after install)
-pnpm exec prisma generate
+# Open Supabase Studio (visual database editor)
+npx supabase studio
 ```
 
 **Key Features:**
@@ -285,18 +283,18 @@ pnpm exec prisma generate
 **Usage Example:**
 
 ```typescript
-import { prisma } from '@/lib/prisma'
+import { supabase } from '@/lib/supabase/client'
 
-// Create a user
-const user = await prisma.user.create({
-  data: { email: 'user@example.com', name: 'John Doe' },
-})
+// Query videos for a user
+const { data: videos, error } = await supabase
+  .from('videos')
+  .select('*')
+  .eq('userId', userId)
+  .eq('status', 'READY')
 
-// Query videos with user relation
-const videos = await prisma.video.findMany({
-  where: { userId: user.id, status: 'READY' },
-  include: { user: true },
-})
+if (error) {
+  console.error('Error fetching videos:', error)
+}
 ```
 
 **Troubleshooting:**
@@ -329,10 +327,9 @@ pnpm run test:run     # Run tests once
 pnpm run test:coverage # Run tests with coverage
 
 # Database
-pnpm run db:studio    # Open Prisma Studio (visual database editor)
-pnpm run db:migrate   # Create and apply migrations
-pnpm run db:push      # Push schema without migrations
-pnpm run db:reset     # Reset database (⚠️ deletes all data)
+npx supabase studio  # Open Supabase Studio (visual database editor)
+npx supabase start   # Start local Supabase development environment
+npx supabase db reset # Reset local database (⚠️ deletes all data)
 
 # Future tools
 pnpm exec inngest-cli dev  # Start Inngest dev server (Step 3+)
@@ -352,16 +349,20 @@ _To be documented as implementation progresses_
 
 - **Authentication**: Supabase Auth with magic link login
 - **UI Components**: Complete shadcn/ui component library (40+ components)
-- **Database Schema**: Prisma schema with User, Video, and Conversation models
+- **Database Schema**: Supabase database with User, Video, and Conversation tables
 - **Routing**: React Router with protected routes
 - **YouTube URL Detection**: Sophisticated URL parsing for videos and channels
+- **Video Ingestion**: PENDING → QUEUED status flow with metadata fetching
+- **Real-time Updates**: Supabase Realtime subscriptions for live status updates
+- **Status Management**: Complete status flow from PENDING to QUEUED with error handling
 - **Testing**: Comprehensive test suite with Vitest (80%+ coverage target)
 - **Development Tools**: ESLint, Prettier, TypeScript, Vite dev server
 
 ### 🚧 In Progress / Placeholder
 
-- **YouTube API Integration**: `src/lib/youtube/api.ts` is empty (needs implementation)
-- **Video Processing Pipeline**: Background job processing not yet implemented
+- **Background Job Processing**: QUEUED → PROCESSING → READY pipeline not yet implemented
+- **Transcript Extraction**: Video transcript fetching and processing
+- **Vector Embeddings**: Embedding generation and storage
 - **AI Chat Interface**: ChatArea component shows placeholder UI
 - **Knowledge Base**: KnowledgeBase component shows empty state
 - **Vector Search**: Embeddings and search functionality not implemented

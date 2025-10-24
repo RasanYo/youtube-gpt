@@ -55,8 +55,8 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 })
 
 /**
- * Database type - will be replaced with Prisma-generated types in Issue #7
- * For now using 'any' as placeholder until schema is defined
+ * Database type - using Supabase generated types
+ * This will be updated when we generate types from our Supabase schema
  */
 export type Database = any
 

@@ -1,6 +1,5 @@
 import { serve } from "inngest/next";
 import { inngest } from "../src/lib/inngest/client";
-import { processYouTubeVideo } from "../src/lib/inngest/functions/video-processing";
 
 /**
  * Inngest Webhook Handler
@@ -17,7 +16,6 @@ import { processYouTubeVideo } from "../src/lib/inngest/functions/video-processi
 
 // Register all Inngest functions
 const functions = [
-  processYouTubeVideo,
 ];
 
 export default serve({
