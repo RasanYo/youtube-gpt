@@ -590,6 +590,10 @@ body {
   margin-left: auto;
 }
 
+.mr-1 {
+  margin-right: .25rem;
+}
+
 .mr-2 {
   margin-right: .5rem;
 }
@@ -620,6 +624,10 @@ body {
 
 .block {
   display: block;
+}
+
+.inline-block {
+  display: inline-block;
 }
 
 .flex {
@@ -1210,6 +1218,10 @@ body {
   white-space: nowrap;
 }
 
+.whitespace-pre-wrap {
+  white-space: pre-wrap;
+}
+
 .break-words {
   overflow-wrap: break-word;
 }
@@ -1360,6 +1372,10 @@ body {
   background-color: hsl(var(--card));
 }
 
+.bg-current {
+  background-color: currentColor;
+}
+
 .bg-destructive {
   background-color: hsl(var(--destructive));
 }
@@ -1452,6 +1468,11 @@ body {
 .px-1 {
   padding-left: .25rem;
   padding-right: .25rem;
+}
+
+.px-1\.5 {
+  padding-left: .375rem;
+  padding-right: .375rem;
 }
 
 .px-2 {
@@ -1551,6 +1572,10 @@ body {
 
 .pl-8 {
   padding-left: 2rem;
+}
+
+.pr-1 {
+  padding-right: .25rem;
 }
 
 .pr-12 {
@@ -2104,6 +2129,10 @@ body {
   background-color: hsl(var(--accent) / .5);
 }
 
+.hover\:bg-destructive:hover {
+  background-color: hsl(var(--destructive));
+}
+
 .hover\:bg-destructive\/80:hover {
   background-color: hsl(var(--destructive) / .8);
 }
@@ -2150,6 +2179,10 @@ body {
 
 .hover\:text-accent-foreground:hover {
   color: hsl(var(--accent-foreground));
+}
+
+.hover\:text-destructive-foreground:hover {
+  color: hsl(var(--destructive-foreground));
 }
 
 .hover\:text-foreground:hover {
