@@ -1,12 +1,15 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { Send, MessageCircle, Sparkles, Loader2, Bot, User } from 'lucide-react'
+import { Send, MessageCircle, Sparkles, Loader2, Bot, User, Video, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Badge } from '@/components/ui/badge'
 import { useAuth } from '@/contexts/AuthContext'
+import { useVideoSelection } from '@/contexts/VideoSelectionContext'
+import { useVideos } from '@/hooks/useVideos'
 
 interface Message {
   id: string
@@ -20,6 +23,8 @@ export const ChatArea = () => {
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const { user } = useAuth()
+  const { selectedVideos, removeVideo, clearSelection } = useVideoSelection()
+  const { videos } = useVideos()
   const scrollAreaRef = useRef<HTMLDivElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
@@ -232,6 +237,50 @@ export const ChatArea = () => {
           </div>
         )}
       </ScrollArea>
+
+      {/* Selected Videos Context */}
+      {selectedVideos.size > 0 && (
+        <div className="border-t bg-muted/30 px-4 py-3">
+          <div className="max-w-3xl mx-auto">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-sm font-medium text-muted-foreground">
+                Context ({selectedVideos.size} video{selectedVideos.size !== 1 ? 's' : ''}):
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={clearSelection}
+                className="h-6 px-2 text-xs"
+              >
+                <X className="h-3 w-3 mr-1" />
+                Clear All
+              </Button>
+            </div>
+            
+            <div className="w-full overflow-x-auto">
+              <div className="flex gap-2 pb-2 min-w-max">
+                {Array.from(selectedVideos).map((videoId) => {
+                  const video = videos.find(v => v.id === videoId)
+                  if (!video) return null
+                  
+                  return (
+                    <Badge
+                      key={videoId}
+                      variant="secondary"
+                      className="flex items-center gap-1 px-2 py-1 text-xs cursor-pointer hover:bg-secondary/80 flex-shrink-0"
+                      onClick={() => removeVideo(videoId)}
+                    >
+                      <Video className="h-3 w-3" />
+                      <span className="max-w-32 truncate">{video.title}</span>
+                      <X className="h-3 w-3 ml-1" />
+                    </Badge>
+                  )
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Input */}
       <div className="border-t p-4">

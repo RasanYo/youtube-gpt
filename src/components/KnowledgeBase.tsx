@@ -11,11 +11,13 @@ import { useToast } from '@/hooks/use-toast'
 import { processYouTubeUrl } from '@/lib/youtube'
 import { VideoList } from './VideoList'
 import { useVideos } from '@/hooks/useVideos'
+import { useVideoSelection } from '@/contexts/VideoSelectionContext'
 
 export const KnowledgeBase = () => {
   const [urlInput, setUrlInput] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isCollapsed, setIsCollapsed] = useState(false)
+  const { selectedVideos, addVideo, removeVideo, clearSelection } = useVideoSelection()
   const { toast } = useToast()
 
   // Use the useVideos hook for real-time data
@@ -30,10 +32,13 @@ export const KnowledgeBase = () => {
       })
     : 'Never'
 
-  // Handle video click
+  // Handle video click for selection
   const handleVideoClick = (videoId: string) => {
-    console.log('Video clicked:', videoId)
-    // TODO: Implement video selection logic for chat context
+    if (selectedVideos.has(videoId)) {
+      removeVideo(videoId)
+    } else {
+      addVideo(videoId)
+    }
   }
 
   // Handle video retry
@@ -171,6 +176,7 @@ export const KnowledgeBase = () => {
             onVideoClick={handleVideoClick}
             onRetry={handleVideoRetry}
             isLoading={isLoading}
+            selectedVideos={selectedVideos}
           />
 
           {/* Footer with Metrics */}

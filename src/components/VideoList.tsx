@@ -13,6 +13,7 @@ export interface VideoListProps {
   isLoading?: boolean
   onVideoClick?: (videoId: string) => void
   onRetry?: (videoId: string) => void
+  selectedVideos?: Set<string>
   className?: string
   emptyStateMessage?: string
   emptyStateDescription?: string
@@ -23,6 +24,7 @@ export const VideoList = ({
   isLoading = false,
   onVideoClick,
   onRetry,
+  selectedVideos = new Set(),
   className,
   emptyStateMessage = 'No videos yet',
   emptyStateDescription = 'Add videos to build your knowledge base'
@@ -77,6 +79,7 @@ export const VideoList = ({
               video={video}
               onClick={onVideoClick}
               onRetry={onRetry}
+              isSelected={selectedVideos.has(video.id)}
             />
           ))}
         </div>

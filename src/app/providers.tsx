@@ -5,6 +5,7 @@ import { Toaster as Sonner } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AuthProvider } from '@/contexts/AuthContext'
+import { VideoSelectionProvider } from '@/contexts/VideoSelectionContext'
 import { useState } from 'react'
 
 export function Providers({ children }: { children: React.ReactNode }) {
@@ -14,9 +15,11 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <AuthProvider>
-          <Toaster />
-          <Sonner />
-          {children}
+          <VideoSelectionProvider>
+            <Toaster />
+            <Sonner />
+            {children}
+          </VideoSelectionProvider>
         </AuthProvider>
       </TooltipProvider>
     </QueryClientProvider>
