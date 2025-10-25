@@ -1,37 +1,16 @@
-# Auto-trigger Transcript Jobs - Implementation Plan
+# AI Chat Interface Implementation Plan
 
 ## 🧠 Context about Project
 
-YouTube-GPT is an AI-powered YouTube knowledge base that transforms hours of video content into an instantly searchable, intelligent assistant. The platform serves content creators, researchers, students, and professionals who need to efficiently extract, search, and repurpose information from their personal video libraries. The system uses a three-column ChatGPT-style interface with conversation history, AI chat, and knowledge base management. Built on React/TypeScript with Supabase for authentication and database, the platform currently supports YouTube video ingestion with metadata fetching through Supabase Edge Functions. The system is in active development with core authentication, UI components, and video ingestion working, but lacks the automated processing pipeline that would transform raw video metadata into searchable, AI-ready content through transcript extraction and vector embeddings.
+YouTube-GPT is an intelligent AI-powered platform that transforms YouTube videos into a searchable knowledge base. The system allows users to add individual videos or entire YouTube channels, automatically extracts transcripts, processes them into semantic chunks, and stores them in a vector database (ZeroEntropy) for intelligent retrieval. Users can then ask questions about their video content and receive AI-powered responses with specific citations and timestamps. The platform serves content creators, researchers, students, and professionals who need to efficiently extract, search, and repurpose information from their YouTube video libraries. The system is built with Next.js 14, Supabase for authentication and database, Inngest for background job processing, and ZeroEntropy for vector search capabilities. Currently, the video ingestion and transcript processing pipeline is complete, and we're now implementing the core AI chat interface that will allow users to interact with their knowledge base.
 
 ## 🏗️ Context about Feature
 
-The auto-trigger transcript jobs feature sits at the critical junction between video ingestion and AI processing in the YouTube-GPT pipeline. Currently, when users add YouTube videos or channels, the system successfully fetches metadata (title, thumbnail, duration, channel info) and stores it in the `videos` table with status tracking (PENDING → QUEUED → PROCESSING → READY/FAILED). The PENDING → QUEUED transition is fully implemented and working correctly. However, there's a gap between the QUEUED status and the next processing step - transcript extraction and vector embedding generation. The feature must integrate with the existing Supabase database schema, leverage the current Inngest background job system, and work alongside the real-time status updates already implemented in the frontend. The system needs to detect when a video transitions to 'QUEUED' status and automatically queue it for transcript processing without manual intervention, creating a seamless event-driven pipeline that scales with user activity.
+The AI chat interface represents the central interaction point of the YouTube-GPT platform, sitting in the middle column of a three-column layout. This feature integrates with the existing ZeroEntropy vector database that contains processed transcript segments from YouTube videos, each with metadata including video IDs, timestamps, and user associations. The chat system needs to support scope management, allowing users to search across all their videos or filter to specific selected videos. The implementation leverages the AI SDK for seamless Claude integration, uses Server-Sent Events (SSE) for real-time streaming responses, and includes tool calling capabilities to query the knowledge base. The system must handle authentication through Supabase, maintain conversation history, and provide clickable citations that link back to specific video timestamps. Technical constraints include rate limiting for API calls, proper error handling for failed searches, and ensuring the interface works within the existing three-column responsive layout.
 
 ## 🎯 Feature Vision & Flow
 
-The desired end-to-end behavior creates a fully automated video processing pipeline where users simply paste YouTube URLs and the system handles everything else. When a video's metadata is successfully fetched and stored, the system automatically detects this status change and triggers an Inngest job for transcript extraction. The job processes the video's transcript, generates vector embeddings for semantic search, and updates the video status to 'READY' for AI queries. Users see real-time status updates in the Knowledge Base panel, from "Processing metadata..." to "Extracting transcript..." to "Ready for AI queries." The system handles both single videos and batch channel processing, with proper error handling and retry mechanisms for failed jobs. The entire flow is invisible to users - they add videos and can immediately start asking AI questions about their content once processing completes.
-
-## ✅ Current Implementation Status
-
-### Completed Features
-- **PENDING → QUEUED Status Flow**: Fully implemented and working
-  - Videos are created with `PENDING` status by default
-  - Supabase Edge Function fetches metadata and updates to `QUEUED`
-  - Real-time UI updates show status changes correctly
-  - Error handling for failed metadata fetching (sets status to `FAILED`)
-
-### Implementation Details
-- **Database Schema**: `PENDING` status added to enum, set as default
-- **Edge Function**: `fetch-video-metadata` handles PENDING → QUEUED transition
-- **Frontend**: VideoCard component displays PENDING status with proper UI
-- **Real-time Updates**: Supabase Realtime subscriptions work for status changes
-
-### Next Steps Required
-The system currently stops at `QUEUED` status. The following components need to be implemented:
-- Background job processing (QUEUED → PROCESSING → READY)
-- Transcript extraction and vector embedding generation
-- Webhook triggers for status transitions
+Users will interact with an intelligent chat interface that can answer questions about their YouTube video content in real-time. The flow begins when a user types a question, which triggers a streaming AI response using Claude. The AI has access to a search tool that queries the ZeroEntropy knowledge base, retrieving relevant transcript segments with metadata. The AI processes these segments to provide comprehensive answers while including specific video citations with timestamps. Users can scope their searches to all videos or select specific videos from the right column's knowledge base explorer. The interface displays streaming responses with loading indicators, shows tool usage notifications when searching the knowledge base, and renders clickable citations that open videos at the exact timestamp mentioned. The system maintains conversation history in the left sidebar, allows users to start new conversations, and provides an empty state with suggested prompts to help users get started. All interactions are authenticated and scoped to the user's personal video collection.
 
 ## 📋 Implementation Plan: Tasks & Subtasks
 

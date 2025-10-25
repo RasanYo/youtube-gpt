@@ -71,6 +71,7 @@ export type Database = {
           updated_at: string | null
           user_id: string
           youtube_id: string
+          zeroentropy_collection_id: string | null
         }
         Insert: {
           channel_name?: string | null
@@ -84,6 +85,7 @@ export type Database = {
           updated_at?: string | null
           user_id: string
           youtube_id: string
+          zeroentropy_collection_id?: string | null
         }
         Update: {
           channel_name?: string | null
@@ -97,6 +99,7 @@ export type Database = {
           updated_at?: string | null
           user_id?: string
           youtube_id?: string
+          zeroentropy_collection_id?: string | null
         }
         Relationships: []
       }
@@ -108,7 +111,7 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      video_status: "PENDING" | "QUEUED" | "PROCESSING" | "READY" | "FAILED"
+      video_status: "PENDING" | "QUEUED" | "PROCESSING" | "TRANSCRIPT_EXTRACTING" | "ZEROENTROPY_PROCESSING" | "READY" | "FAILED"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -239,7 +242,7 @@ export const Constants = {
   },
   public: {
     Enums: {
-      video_status: ["PENDING", "QUEUED", "PROCESSING", "READY", "FAILED"],
+      video_status: ["PENDING", "QUEUED", "PROCESSING", "TRANSCRIPT_EXTRACTING", "ZEROENTROPY_PROCESSING", "READY", "FAILED"],
     },
   },
 } as const
