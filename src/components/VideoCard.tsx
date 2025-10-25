@@ -10,7 +10,7 @@ import { Loader2, AlertCircle, Check, Clock, Video as VideoIcon } from 'lucide-r
 import { cn } from '@/lib/utils'
 import { Video, VideoStatus } from '@/lib/supabase/types'
 
-export type ProcessingStatus = 'pending' | 'queued' | 'processing' | 'transcript-extracting' | 'ready' | 'failed'
+export type ProcessingStatus = 'pending' | 'queued' | 'processing' | 'transcript-extracting' | 'zeroentropy-processing' | 'ready' | 'failed'
 
 // Helper function to convert database status to UI status
 const convertStatus = (dbStatus: VideoStatus | null): ProcessingStatus => {
@@ -57,6 +57,12 @@ const statusConfig = {
     icon: Loader2,
     label: 'Transcript Extracting',
     color: 'text-purple-600'
+  },
+  'zeroentropy-processing': {
+    variant: 'default' as const,
+    icon: Loader2,
+    label: 'ZeroEntropy Processing',
+    color: 'text-green-600'
   },
   ready: {
     variant: 'default' as const,

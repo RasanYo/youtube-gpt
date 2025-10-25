@@ -1,6 +1,14 @@
 import { inngest } from '@/lib/inngest/client'
 import { supabase } from '@/lib/supabase/client'
 import type { Video, VideoStatus } from '@/lib/supabase/types'
+import type { TranscriptData, ProcessedTranscriptSegment } from '@/lib/zeroentropy/types'
+import { 
+  processTranscriptSegments,
+  validateTranscriptQuality,
+  handleTranscriptEdgeCases,
+  getOrCreateUserCollection,
+  batchIndexPages
+} from '@/lib/zeroentropy'
 import { 
   fetchTranscript, 
   YoutubeTranscriptDisabledError,
@@ -11,24 +19,6 @@ import {
   YoutubeTranscriptInvalidVideoIdError
 } from 'youtube-transcript-plus'
 import { TranscriptResponse } from 'youtube-transcript-plus/dist/types'
-
-// Types for step functions
-interface TranscriptData {
-  transcript: Array<{
-    text: string
-    start: number
-    duration: number
-    language: string
-  }>
-  metadata: {
-    totalSegments: number
-    totalDuration: number
-    totalTextLength: number
-    language: string
-    extractedAt: string
-    processingTimeMs: number
-  }
-}
 
 /**
  * Update video status in the database
@@ -150,6 +140,69 @@ async function extractTranscript(video: Video): Promise<TranscriptData> {
   }
 }
 
+/**
+ * Step 5: Process transcript segments for ZeroEntropy
+ */
+async function processTranscriptSegmentsForZeroEntropy(
+  transcriptData: TranscriptData, 
+  video: Video
+): Promise<ProcessedTranscriptSegment[]> {
+  console.log(`[processTranscriptSegmentsForZeroEntropy] Processing ${transcriptData.transcript.length} transcript segments`)
+  
+  // Type assertion to ensure compatibility with ZeroEntropy functions
+  const typedTranscriptData = transcriptData as TranscriptData
+  
+  // Process transcript segments with user and video context
+  const segments = processTranscriptSegments(typedTranscriptData, video.userId, video.id)
+  
+  // Validate transcript quality
+  const validation = validateTranscriptQuality(typedTranscriptData)
+  if (!validation.isValid) {
+    console.warn(`[processTranscriptSegmentsForZeroEntropy] Transcript quality issues: ${validation.issues.join(', ')}`)
+  }
+  
+  // Handle edge cases
+  const handledSegments = handleTranscriptEdgeCases(segments)
+  
+  console.log(`[processTranscriptSegmentsForZeroEntropy] Successfully processed ${handledSegments.length} segments`)
+  return handledSegments
+}
+
+/**
+ * Step 7: Index transcript pages in ZeroEntropy
+ */
+async function indexTranscriptPagesInZeroEntropy(
+  processedSegments: ProcessedTranscriptSegment[],
+  collectionName: string
+): Promise<string[]> {
+  console.log(`[indexTranscriptPagesInZeroEntropy] Indexing ${processedSegments.length} pages in collection: ${collectionName}`)
+  // Type assertion to ensure compatibility
+  const typedSegments = processedSegments as ProcessedTranscriptSegment[]
+  return await batchIndexPages(typedSegments, collectionName)
+}
+
+/**
+ * Step 7.5: Handle ZeroEntropy indexing failures
+ */
+async function handleZeroEntropyIndexingFailure(
+  pageIds: string[],
+  processedSegments: ProcessedTranscriptSegment[],
+  video: Video
+): Promise<void> {
+  if (pageIds.length === 0) {
+    console.error(`[handleZeroEntropyIndexingFailure] No pages were indexed successfully for video: ${video.id}`)
+    await updateVideoStatus(video, 'FAILED', 'ZeroEntropy indexing failed - no pages indexed')
+    throw new Error('ZeroEntropy indexing failed - no pages indexed')
+  }
+  
+  if (pageIds.length < processedSegments.length) {
+    console.warn(`[handleZeroEntropyIndexingFailure] Partial indexing success: ${pageIds.length}/${processedSegments.length} pages indexed`)
+  }
+  
+  console.log(`[handleZeroEntropyIndexingFailure] ZeroEntropy indexing completed: ${pageIds.length} pages indexed`)
+}
+
+
 
 /**
  * Video Processing Job
@@ -192,18 +245,54 @@ export const processVideo = inngest.createFunction(
     // Step 3: Extract transcript from YouTube video
     const transcriptData = await step.run('extract-transcript', () => extractTranscript(video))
     
-    // Step 4: Handle transcript extraction failures and update status to FAILED
-    await step.run('handle-transcript-failure', () => updateVideoStatus(video, 'FAILED', 'Transcript extraction failed - see logs for details'))
+    // Step 4: Update status to ZEROENTROPY_PROCESSING
+    await step.run('update-status-to-zeroentropy-processing', () => updateVideoStatus(video, 'ZEROENTROPY_PROCESSING'))
     
-    // Step 5: Update video status to READY (transcript extraction successful)
-    await step.run('update-status-to-ready', () => updateVideoStatus(video, 'READY'))
+    // Step 5: Process transcript segments for ZeroEntropy
+    const processedSegments = await step.run('process-transcript-segments', () => 
+      processTranscriptSegmentsForZeroEntropy(transcriptData as TranscriptData, video)
+    )
     
-    // TODO: Implement vector embedding generation
-    // TODO: Add transcript storage to database
+    // Step 6: Ensure user collection exists
+    const collectionName = await step.run('ensure-user-collection', () => getOrCreateUserCollection(video.userId))
+    
+    // Step 7: Index transcript pages in ZeroEntropy
+    const pageIds = await step.run('index-transcript-pages', () => 
+      indexTranscriptPagesInZeroEntropy(processedSegments as ProcessedTranscriptSegment[], collectionName)
+    )
+    
+    // Step 7.5: Handle ZeroEntropy indexing failures
+    await step.run('handle-zeroentropy-failure', () => 
+      handleZeroEntropyIndexingFailure(pageIds, processedSegments as ProcessedTranscriptSegment[], video)
+    )
+    
+    // Step 8: Update video with collection ID and status to READY
+    await step.run('update-video-with-collection', async () => {
+      console.log(`[processVideo] Updating video with collection ID: ${collectionName}`)
+      
+      const { error } = await supabase
+        .from('videos')
+        .update({
+          zeroentropyCollectionId: collectionName,
+          status: 'READY',
+          updatedAt: new Date().toISOString()
+        })
+        .eq('id', video.id)
+        .eq('user_id', video.userId)
+      
+      if (error) {
+        console.error(`[processVideo] Failed to update video with collection ID:`, error)
+        throw new Error(`Failed to update video: ${error.message}`)
+      }
+      
+      console.log(`[processVideo] Successfully updated video with collection ID: ${collectionName}`)
+    })
     
     console.log(`[processVideo] Processing completed successfully for video: ${video.id}`)
     console.log(`[processVideo] Video status: READY`)
+    console.log(`[processVideo] Collection: ${collectionName}`)
     console.log(`[processVideo] Transcript segments: ${transcriptData.metadata.totalSegments}`)
+    console.log(`[processVideo] Pages indexed: ${pageIds.length}`)
     console.log(`[processVideo] Total duration: ${transcriptData.metadata.totalDuration}s`)
     console.log(`[processVideo] Processing time: ${transcriptData.metadata.processingTimeMs}ms`)
   }
