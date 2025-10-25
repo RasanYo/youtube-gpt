@@ -6,11 +6,11 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { Loader2, AlertCircle, Check, Clock, Video as VideoIcon } from 'lucide-react'
+import { Loader2, AlertCircle, Check, Clock, Video as VideoIcon, CheckCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Video, VideoStatus } from '@/lib/supabase/types'
 
-export type ProcessingStatus = 'pending' | 'queued' | 'processing' | 'transcript-extracting' | 'zeroentropy-processing' | 'ready' | 'failed'
+export type ProcessingStatus = 'pending' | 'queued' | 'processing' | 'transcript_extracting' | 'zeroentropy_processing' | 'ready' | 'failed'
 
 // Helper function to convert database status to UI status
 const convertStatus = (dbStatus: VideoStatus | null): ProcessingStatus => {
@@ -30,6 +30,7 @@ export interface VideoCardProps {
   video: Video
   onClick?: (videoId: string) => void
   onRetry?: (videoId: string) => void
+  isSelected?: boolean
   className?: string
 }
 
@@ -52,13 +53,13 @@ const statusConfig = {
     label: 'Processing',
     color: 'text-blue-600'
   },
-  'transcript-extracting': {
+  'transcript_extracting': {
     variant: 'default' as const,
     icon: Loader2,
     label: 'Transcript Extracting',
     color: 'text-purple-600'
   },
-  'zeroentropy-processing': {
+  'zeroentropy_processing': {
     variant: 'default' as const,
     icon: Loader2,
     label: 'ZeroEntropy Processing',
@@ -82,6 +83,7 @@ export const VideoCard = ({
   video,
   onClick,
   onRetry,
+  isSelected = false,
   className
 }: VideoCardProps) => {
   // Extract and transform data from the Video object
@@ -124,6 +126,7 @@ export const VideoCard = ({
         className={cn(
           'group cursor-pointer transition-all duration-200 hover:shadow-sm hover:bg-accent/50',
           'border-border/50 hover:border-border',
+          isSelected && 'ring-2 ring-primary bg-primary/5 border-primary/50',
           className
         )}
         onClick={handleClick}
@@ -220,6 +223,15 @@ export const VideoCard = ({
                     </Tooltip>
                   )}
                 </div>
+
+                {/* Selection indicator - top left corner */}
+                {isSelected && (
+                  <div className="absolute top-1 left-1">
+                    <div className="h-4 w-4 flex items-center justify-center rounded-full bg-primary text-primary-foreground">
+                      <CheckCircle className="h-2.5 w-2.5" />
+                    </div>
+                  </div>
+                )}
                 
                 {/* Duration overlay for ready videos */}
                 {!isEmpty(duration) && status === 'ready' && (

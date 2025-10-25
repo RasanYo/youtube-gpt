@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '@/lib/supabase/client'
 import { Video } from '@/lib/supabase/types'
 import { useAuth } from '@/contexts/AuthContext'
@@ -8,6 +8,10 @@ export function useVideos() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const { user } = useAuth()
+  
+  // Track subscription to prevent multiple subscriptions
+  const subscriptionRef = useRef<boolean>(false)
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null)
 
   useEffect(() => {
     if (!user?.id) {
@@ -15,6 +19,14 @@ export function useVideos() {
       setIsLoading(false)
       return
     }
+
+    // Check if subscription already exists
+    if (subscriptionRef.current) {
+      console.log('Subscription already exists, skipping...')
+      return
+    }
+
+    console.log('useVideos useEffect triggered, user:', user?.id)
 
     // Initial fetch
     const fetchVideos = async () => {
@@ -41,8 +53,11 @@ export function useVideos() {
     fetchVideos()
 
     // Subscribe to real-time changes
+    console.log('Creating subscription for user:', user?.id, 'at:', new Date().toISOString())
+    subscriptionRef.current = true
+    
     const channel = supabase
-      .channel('video-changes')
+      .channel(`video-changes-${user.id}-${Date.now()}`) // Make channel name unique
       .on(
         'postgres_changes',
         {
@@ -76,8 +91,15 @@ export function useVideos() {
         }
       })
 
+    channelRef.current = channel
+
     return () => {
-      supabase.removeChannel(channel)
+      console.log('Cleaning up subscription for user:', user?.id, 'at:', new Date().toISOString())
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current)
+        channelRef.current = null
+      }
+      subscriptionRef.current = false
     }
   }, [user?.id])
 
