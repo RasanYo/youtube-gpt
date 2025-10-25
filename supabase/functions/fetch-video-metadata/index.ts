@@ -1,8 +1,10 @@
 // Setup type definitions for built-in Supabase Runtime APIs
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from 'jsr:@supabase/supabase-js@2'
-import type { Database } from '../../lib/database/types.ts'
+import type { Database } from '../../../src/lib/database/types'
 import { youtube_v3, google } from 'googleapis'
+import { Inngest } from 'jsr:@inngest/sdk'
+
 
 interface VideoQueueRequest {
   id: string
@@ -268,6 +270,52 @@ async function processSingleVideo(
           .eq('id', video.id)
 
         return { success: false, error: 'Failed to save video metadata' }
+      }
+
+      // Trigger Inngest processing for transcript extraction
+      try {
+        console.log(`[fetch-video-metadata] Triggering Inngest processing for video: ${video.id}`)
+        
+        // Get the updated video data for Inngest
+        const { data: updatedVideo, error: videoFetchError } = await supabase
+          .from('videos')
+          .select('*')
+          .eq('id', video.id)
+          .single()
+        
+        if (videoFetchError) {
+          console.error('Failed to fetch updated video data:', videoFetchError)
+        } else if (updatedVideo) {
+          // Trigger Inngest function directly
+          const inngest = new Inngest({
+            id: 'youtube-gpt',
+            eventKey: Deno.env.get('INNGEST_EVENT_KEY') ?? '',
+            signingKey: Deno.env.get('INNGEST_SIGNING_KEY') ?? '',
+          })
+          await inngest.send({
+            name: 'video.transcript.processing.requested',
+            data: {
+              video: {
+                id: updatedVideo.id,
+                youtubeId: updatedVideo.youtubeId,
+                userId: updatedVideo.userId,
+                title: updatedVideo.title,
+                channelName: updatedVideo.channelName,
+                duration: updatedVideo.duration,
+                thumbnailUrl: updatedVideo.thumbnailUrl,
+                status: updatedVideo.status,
+                createdAt: updatedVideo.createdAt,
+                updatedAt: updatedVideo.updatedAt
+              }
+            }
+          })
+          
+          console.log(`[fetch-video-metadata] Successfully triggered Inngest processing for video: ${video.id}`)
+        }
+      } catch (inngestError) {
+        console.error('Failed to trigger Inngest processing:', inngestError)
+        // Don't fail the entire operation if Inngest trigger fails
+        // The video is still successfully queued, just processing might be delayed
       }
 
       return {

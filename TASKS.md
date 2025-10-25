@@ -14,86 +14,91 @@ Users will interact with an intelligent chat interface that can answer questions
 
 ## 📋 Implementation Plan: Tasks & Subtasks
 
-### Phase 1: Dependencies and Environment Setup
-- [ ] Install AI SDK dependencies
-  - [ ] Add `ai` package for core AI functionality (ref: https://ai-sdk.dev/docs/introduction)
-  - [ ] Add `@ai-sdk/anthropic` package for Claude integration (ref: https://ai-sdk.dev/docs/providers/anthropic)
-  - [ ] Update package.json with new dependencies
-- [x] Configure environment variables
-  - [x] Add `ANTHROPIC_API_KEY` to environment configuration
-  - [x] Update `.env.example` with required API key
-  - [ ] Verify environment variable loading in development
+### Phase 1: Database Trigger Setup
+- [x] **1.1 Create Direct Inngest Trigger** ✅ COMPLETED
+  - ✅ Modified Supabase Edge Function to trigger Inngest directly after metadata fetch
+  - ✅ Added Inngest event triggering in `fetch-video-metadata` function
+  - ✅ Implemented proper error handling for Inngest trigger failures
+  - ✅ Works for both single videos and batch channel processing
 
-### Phase 2: Core AI Integration and API Routes
-- [ ] Create Claude API route handler
-  - [ ] Implement `src/app/api/chat/route.ts` with POST handler (ref: https://ai-sdk.dev/docs/ai-sdk-core/generating-text)
-  - [ ] Set up `streamText` function with Claude model configuration (ref: https://ai-sdk.dev/docs/foundations/streaming)
-  - [ ] Add proper error handling and response formatting
-- [ ] Implement knowledge base search tool
-  - [ ] Create `src/lib/search-videos.ts` with search functionality
-  - [ ] Integrate with existing ZeroEntropy client from `src/lib/zeroentropy/client.ts`
-  - [ ] Add filtering capabilities for video scope management
-  - [ ] Implement proper error handling for search failures
-  - [ ] Reference existing ZeroEntropy search patterns from `src/lib/zeroentropy/pages.ts`
+- [x] **1.2 Direct Inngest Integration** ✅ COMPLETED
+  - ✅ Integrated Inngest client directly in Supabase Edge Function
+  - ✅ Sends `video.transcript.processing.requested` event with complete video data
+  - ✅ Handles both single video and batch processing scenarios
+  - ✅ No webhook endpoint needed with direct integration approach
 
-### Phase 3: Chat UI Components and State Management
-- [ ] Enhance existing ChatArea component
-  - [ ] Replace static messages with manual streaming implementation (more reliable than useChat hook)
-  - [ ] Implement real-time streaming with fetch and ReadableStream
-  - [ ] Add loading states and error handling for chat interactions
-  - [ ] Update existing `src/components/ChatArea.tsx` component
-- [ ] Create citation components
-  - [ ] Build `VideoCitation` component for displaying video references
-  - [ ] Add clickable timestamp functionality
-  - [ ] Implement proper styling and hover states
-  - [ ] Reference Vercel AI Chatbot template patterns (ref: https://vercel.com/templates/next.js/nextjs-ai-chatbot)
-- [ ] Add scope management UI
-  - [ ] Create scope indicator showing selected videos
-  - [ ] Add "Reset to All" functionality
-  - [ ] Implement scope persistence across conversations
+- [x] **1.3 Update Video Status Schema** ✅ COMPLETED
+  - ✅ Added 'PENDING' status to VideoStatus enum in Supabase database
+  - ✅ Updated Supabase Edge Function to set status to 'PENDING' initially, then 'QUEUED' after metadata fetch
+  - ✅ Ran database migration to update enum values and default status
+  - ✅ Updated TypeScript types to include PENDING status
 
-### Phase 4: Integration and Testing
-- [ ] Integrate with existing layout
-  - [ ] Chat interface already integrated in main page layout
-  - [ ] Ensure proper responsive behavior in three-column layout
-  - [ ] Test integration with existing components
-  - [ ] Verified `src/app/page.tsx` structure
-- [ ] Add conversation history management (Future Enhancement)
-  - [ ] Implement conversation persistence (ref: https://ai-sdk.dev/docs/ai-sdk-ui/chatbot-message-persistence)
-  - [ ] Add conversation title generation
-  - [ ] Create conversation restoration functionality
-  - [ ] Integrate with existing `src/components/ConversationSidebar.tsx`
-- [ ] Comprehensive testing
-  - [ ] Test development server startup
-  - [ ] Verify API endpoint responds
-  - [ ] Test component rendering without errors
-  - [ ] Validate environment variables
-  - [ ] Test SSE streaming functionality (requires end-to-end test)
-  - [ ] Verify knowledge base search accuracy (requires video data)
-  - [ ] Test scope management and filtering (requires video data)
-  - [ ] Validate citation linking and timestamp accuracy (requires video data)
-  - [ ] Test tool calling integration (future enhancement)
+### Phase 2: Inngest Job Integration
+- [ ] **2.1 Create Transcript Processing Job**
+  - Set up Inngest function for transcript extraction using youtube-transcript package
+  - Implement video transcript fetching with error handling and retries
+  - Add job configuration for timeout, retry attempts, and concurrency limits
+  - Test job with sample video IDs and validate transcript quality
 
-## 📚 References and Documentation
+- [ ] **2.2 Implement Vector Embedding Generation**
+  - Integrate ZeroEntropy API for generating vector embeddings from transcript text
+  - Chunk transcript into appropriate sizes for embedding generation
+  - Store embeddings in Supabase with proper indexing for search
+  - Add error handling for embedding generation failures
 
-### AI SDK Documentation
-- [AI SDK Introduction](https://ai-sdk.dev/docs/introduction) - Core concepts and getting started
-- [AI SDK Core - Generating Text](https://ai-sdk.dev/docs/ai-sdk-core/generating-text) - Text generation patterns
-- [AI SDK Core - Streaming](https://ai-sdk.dev/docs/ai-sdk-core/streaming) - Real-time streaming implementation
-- [AI SDK Core - Tool Calling](https://ai-sdk.dev/docs/ai-sdk-core/tool-calling) - Tool integration patterns
-- [AI SDK UI - useChat Hook](https://ai-sdk.dev/docs/ai-sdk-ui/use-chat) - Chat interface implementation
-- [AI SDK UI - Streaming](https://ai-sdk.dev/docs/ai-sdk-ui/streaming) - UI streaming patterns
-- [AI SDK UI - Message Persistence](https://ai-sdk.dev/docs/ai-sdk-ui/chatbot-message-persistence) - Conversation storage
-- [Anthropic Provider](https://ai-sdk.dev/docs/providers/anthropic) - Claude integration guide
+- [ ] **2.3 Update Video Status Pipeline**
+  - Modify job to update video status throughout processing stages
+  - Add 'TRANSCRIPT_EXTRACTING', 'EMBEDDING_GENERATING', 'READY' statuses
+  - Implement proper error handling and status rollback on failures
+  - Add processing metrics and timing information to video records
 
-### Templates and Examples
-- [Vercel AI Chatbot Template](https://vercel.com/templates/next.js/nextjs-ai-chatbot) - Reference implementation
-- [GitHub Issue #33](https://github.com/RasanYo/youtube-gpt/issues/33) - Feature tracking
+### Phase 3: Webhook-to-Inngest Integration
+- [ ] **3.1 Connect Webhook to Inngest**
+  - Modify webhook endpoint to trigger Inngest job with video data
+  - Pass video ID, YouTube ID, and user context to Inngest function
+  - Add webhook response handling and error reporting
+  - Implement webhook retry logic for failed Inngest triggers
 
-### Existing Codebase References
-- `src/lib/zeroentropy/client.ts` - ZeroEntropy client configuration
-- `src/lib/zeroentropy/pages.ts` - Search and indexing functions
-- `src/components/ChatArea.tsx` - Current chat interface component
-- `src/components/ConversationSidebar.tsx` - Conversation history component
-- `src/app/layout.tsx` - Main application layout
+- [ ] **3.2 Add Batch Processing Support**
+  - Handle channel processing scenarios where multiple videos need transcript jobs
+  - Implement batch job creation for channel ingestion workflows
+  - Add progress tracking for batch operations
+  - Ensure proper error handling for individual video failures in batches
 
+### Phase 4: Error Handling & Monitoring
+- [ ] **4.1 Implement Comprehensive Error Handling**
+  - Add retry mechanisms for failed webhook calls and Inngest jobs
+  - Create dead letter queue for permanently failed jobs
+  - Implement exponential backoff for retry attempts
+  - Add proper error logging and alerting for system administrators
+
+- [ ] **4.2 Add Processing Status Tracking**
+  - Update frontend to display detailed processing status for each video
+  - Add progress indicators for transcript extraction and embedding generation
+  - Implement real-time status updates using Supabase Realtime subscriptions
+  - Add user notifications for completed and failed processing jobs
+
+- [ ] **4.3 Create Monitoring Dashboard**
+  - Add processing metrics to track job success rates and processing times
+  - Implement health checks for webhook and Inngest systems
+  - Create alerts for system failures and performance degradation
+  - Add debugging tools for troubleshooting processing issues
+
+### Phase 5: Testing & Validation
+- [ ] **5.1 Unit Testing**
+  - Write tests for webhook endpoint with various payload scenarios
+  - Test Inngest job functions with mock data and error conditions
+  - Add tests for status update logic and error handling paths
+  - Ensure proper test coverage for all new functionality
+
+- [ ] **5.2 Integration Testing**
+  - Test end-to-end flow from video ingestion to transcript processing
+  - Validate webhook triggering with real Supabase database changes
+  - Test batch processing with multiple videos and channels
+  - Verify real-time status updates in the frontend interface
+
+- [ ] **5.3 Performance Testing**
+  - Load test webhook endpoint with high volume of status changes
+  - Test Inngest job processing with concurrent video processing
+  - Validate system performance under various load conditions
+  - Optimize processing times and resource usage
