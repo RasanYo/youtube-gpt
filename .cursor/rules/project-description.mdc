@@ -87,7 +87,7 @@ Users who watch YouTube videos or follow YouTube channels want to:
 - Video/channel input feels integrated into KB Explorer (not separate screen)
 
 ## Key Implementation Details
-- **YouTube Transcription**: Use `youtube-transcript` npm package
+- **YouTube Transcription**: Use `youtube-transcript` pnpm package
 - **Citations**: Include video title + timestamp for all AI responses
 - **Scope Management**: Track and restore conversation scope across sessions
 - **Ingestion Pipeline**: Queue → Process → Embed → Index workflow

@@ -31,6 +31,12 @@ jest.mock('youtube-transcript-plus', () => ({
       this.name = 'YoutubeTranscriptNotAvailableError'
     }
   },
+  YoutubeTranscriptNotAvailableLanguageError: class extends Error {
+    constructor(message: string) {
+      super(message)
+      this.name = 'YoutubeTranscriptNotAvailableLanguageError'
+    }
+  },
   YoutubeTranscriptVideoUnavailableError: class extends Error {
     constructor(message: string) {
       super(message)
@@ -64,6 +70,54 @@ jest.mock('@/lib/inngest/client', () => ({
     })),
     send: jest.fn()
   }
+}))
+
+// Mock ZeroEntropy functions
+jest.mock('@/lib/zeroentropy/transcript', () => ({
+  processTranscriptSegments: jest.fn((transcriptData, userId, videoId) => [
+    {
+      text: 'Test transcript segment',
+      start: 0,
+      end: 5,
+      duration: 5,
+      language: 'en',
+      segmentIndex: 0,
+      userId,
+      videoId
+    }
+  ]),
+  validateTranscriptQuality: jest.fn(() => ({
+    isValid: true,
+    issues: [],
+    metrics: {
+      totalSegments: 1,
+      totalDuration: 5,
+      totalTextLength: 20,
+      averageSegmentLength: 20,
+      averageSegmentDuration: 5,
+      languageDistribution: { en: 1 }
+    }
+  })),
+  handleTranscriptEdgeCases: jest.fn((segments) => segments),
+  getTranscriptProcessingMetrics: jest.fn((segments) => ({
+    totalSegments: segments.length,
+    totalDuration: 5,
+    totalTextLength: 20,
+    averageSegmentLength: 20,
+    averageSegmentDuration: 5,
+    languageDistribution: { en: segments.length }
+  }))
+}))
+
+jest.mock('@/lib/zeroentropy/collections', () => ({
+  getOrCreateUserCollection: jest.fn((userId) => `user-${userId}-videos`),
+  createUserCollection: jest.fn((userId) => `user-${userId}-videos`),
+  collectionExists: jest.fn(() => false)
+}))
+
+jest.mock('@/lib/zeroentropy/pages', () => ({
+  batchIndexPages: jest.fn(() => ['page-1', 'page-2']),
+  indexTranscriptPage: jest.fn(() => 'page-id')
 }))
 
 describe('Video Processing Integration Tests', () => {
@@ -120,20 +174,22 @@ describe('Video Processing Integration Tests', () => {
 
       // Mock step function that tracks all steps
       const stepCalls: Array<{ stepName: string; success: boolean; error?: string }> = []
-      const mockStep = jest.fn().mockImplementation(async (stepName, stepFn) => {
-        try {
-          const result = await stepFn()
-          stepCalls.push({ stepName, success: true })
-          return result
-        } catch (error) {
-          stepCalls.push({ 
-            stepName, 
-            success: false, 
-            error: error instanceof Error ? error.message : 'Unknown error' 
-          })
-          throw error
-        }
-      })
+      const mockStep = {
+        run: jest.fn().mockImplementation(async (stepName, stepFn) => {
+          try {
+            const result = await stepFn()
+            stepCalls.push({ stepName, success: true })
+            return result
+          } catch (error) {
+            stepCalls.push({ 
+              stepName, 
+              success: false, 
+              error: error instanceof Error ? error.message : 'Unknown error' 
+            })
+            throw error
+          }
+        })
+      }
 
       const event = {
         data: { video: mockVideo }
@@ -142,20 +198,29 @@ describe('Video Processing Integration Tests', () => {
       // Test the complete flow
       await processVideo.handler({ event, step: mockStep })
 
-      // Verify all expected steps were called
-      expect(stepCalls).toHaveLength(4)
+      // Verify all expected steps were called (new ZeroEntropy flow has 9 steps)
+      expect(stepCalls).toHaveLength(9)
       expect(stepCalls[0].stepName).toBe('update-status-to-processing')
       expect(stepCalls[0].success).toBe(true)
       expect(stepCalls[1].stepName).toBe('update-status-to-transcript-extracting')
       expect(stepCalls[1].success).toBe(true)
       expect(stepCalls[2].stepName).toBe('extract-transcript')
       expect(stepCalls[2].success).toBe(true)
-      expect(stepCalls[3].stepName).toBe('update-status-to-ready')
+      expect(stepCalls[3].stepName).toBe('update-status-to-zeroentropy-processing')
       expect(stepCalls[3].success).toBe(true)
+      expect(stepCalls[4].stepName).toBe('process-transcript-segments')
+      expect(stepCalls[4].success).toBe(true)
+      expect(stepCalls[5].stepName).toBe('ensure-user-collection')
+      expect(stepCalls[5].success).toBe(true)
+      expect(stepCalls[6].stepName).toBe('index-transcript-pages')
+      expect(stepCalls[6].success).toBe(true)
+      expect(stepCalls[7].stepName).toBe('handle-zeroentropy-failure')
+      expect(stepCalls[7].success).toBe(true)
+      expect(stepCalls[8].stepName).toBe('update-video-with-collection')
+      expect(stepCalls[8].success).toBe(true)
 
       // Verify transcript extraction was called with correct parameters
       expect(fetchTranscript).toHaveBeenCalledWith('A2yW_J6kwgM', {
-        lang: 'en',
         cacheTTL: 3600
       })
 
@@ -168,20 +233,22 @@ describe('Video Processing Integration Tests', () => {
       ;(fetchTranscript as jest.Mock).mockRejectedValue(new YoutubeTranscriptDisabledError('Captions disabled'))
 
       const stepCalls: Array<{ stepName: string; success: boolean; error?: string }> = []
-      const mockStep = jest.fn().mockImplementation(async (stepName, stepFn) => {
-        try {
-          const result = await stepFn()
-          stepCalls.push({ stepName, success: true })
-          return result
-        } catch (error) {
-          stepCalls.push({ 
-            stepName, 
-            success: false, 
-            error: error instanceof Error ? error.message : 'Unknown error' 
-          })
-          throw error
-        }
-      })
+      const mockStep = {
+        run: jest.fn().mockImplementation(async (stepName, stepFn) => {
+          try {
+            const result = await stepFn()
+            stepCalls.push({ stepName, success: true })
+            return result
+          } catch (error) {
+            stepCalls.push({ 
+              stepName, 
+              success: false, 
+              error: error instanceof Error ? error.message : 'Unknown error' 
+            })
+            throw error
+          }
+        })
+      }
 
       const event = {
         data: { video: mockVideo }
@@ -213,20 +280,22 @@ describe('Video Processing Integration Tests', () => {
       ;(fetchTranscript as jest.Mock).mockResolvedValue(poorQualityTranscript)
 
       const stepCalls: Array<{ stepName: string; success: boolean; error?: string }> = []
-      const mockStep = jest.fn().mockImplementation(async (stepName, stepFn) => {
-        try {
-          const result = await stepFn()
-          stepCalls.push({ stepName, success: true })
-          return result
-        } catch (error) {
-          stepCalls.push({ 
-            stepName, 
-            success: false, 
-            error: error instanceof Error ? error.message : 'Unknown error' 
-          })
-          throw error
-        }
-      })
+      const mockStep = {
+        run: jest.fn().mockImplementation(async (stepName, stepFn) => {
+          try {
+            const result = await stepFn()
+            stepCalls.push({ stepName, success: true })
+            return result
+          } catch (error) {
+            stepCalls.push({ 
+              stepName, 
+              success: false, 
+              error: error instanceof Error ? error.message : 'Unknown error' 
+            })
+            throw error
+          }
+        })
+      }
 
       const event = {
         data: { video: mockVideo }
@@ -269,19 +338,26 @@ describe('Video Processing Integration Tests', () => {
     it('should update video status through all processing stages', async () => {
       ;(fetchTranscript as jest.Mock).mockResolvedValue(mockTranscript)
 
-      const mockStep = jest.fn().mockImplementation(async (stepName, stepFn) => {
-        return await stepFn()
-      })
+      const mockStep = {
+        run: jest.fn().mockImplementation(async (stepName, stepFn) => {
+          return await stepFn()
+        })
+      }
 
       const event = {
         data: { video: mockVideo }
       }
 
+      // Test that the mock is working
+      expect(supabase.from).toBeDefined()
+      expect(jest.isMockFunction(supabase.from)).toBe(true)
+
       await processVideo.handler({ event, step: mockStep })
 
       // Verify database was called for each status update
       expect(supabase.from).toHaveBeenCalledWith('videos')
-      expect(supabase.from().update).toHaveBeenCalledTimes(4) // PROCESSING, TRANSCRIPT_EXTRACTING, READY, plus any internal calls
+      // The new flow has more database calls due to ZeroEntropy processing
+      expect(supabase.from().update).toHaveBeenCalledTimes(5) // PROCESSING, TRANSCRIPT_EXTRACTING, ZEROENTROPY_PROCESSING, READY, plus any internal calls
     })
 
     it('should handle database errors during status updates', async () => {
@@ -301,9 +377,11 @@ describe('Video Processing Integration Tests', () => {
         supabase: mockSupabase
       }))
 
-      const mockStep = jest.fn().mockImplementation(async (stepName, stepFn) => {
-        return await stepFn()
-      })
+      const mockStep = {
+        run: jest.fn().mockImplementation(async (stepName, stepFn) => {
+          return await stepFn()
+        })
+      }
 
       const event = {
         data: { video: mockVideo }
@@ -327,9 +405,11 @@ describe('Video Processing Integration Tests', () => {
         return Promise.resolve(mockTranscript)
       })
 
-      const mockStep = jest.fn().mockImplementation(async (stepName, stepFn) => {
-        return await stepFn()
-      })
+      const mockStep = {
+        run: jest.fn().mockImplementation(async (stepName, stepFn) => {
+          return await stepFn()
+        })
+      }
 
       const event = {
         data: { video: mockVideo }
@@ -353,9 +433,11 @@ describe('Video Processing Integration Tests', () => {
         const { [error]: ErrorClass } = await import('youtube-transcript-plus')
         ;(fetchTranscript as jest.Mock).mockRejectedValue(new ErrorClass('Test error'))
 
-        const mockStep = jest.fn().mockImplementation(async (stepName, stepFn) => {
-          return await stepFn()
-        })
+        const mockStep = {
+          run: jest.fn().mockImplementation(async (stepName, stepFn) => {
+            return await stepFn()
+          })
+        }
 
         const event = {
           data: { video: mockVideo }
