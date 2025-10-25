@@ -257,8 +257,8 @@ export const ChatArea = () => {
               </Button>
             </div>
             
-            <div className="w-full overflow-x-auto">
-              <div className="flex gap-2 pb-2 min-w-max">
+            <div className="w-full">
+              <div className="flex flex-wrap gap-2 pb-2">
                 {Array.from(selectedVideos).map((videoId) => {
                   const video = videos.find(v => v.id === videoId)
                   if (!video) return null
@@ -267,7 +267,7 @@ export const ChatArea = () => {
                     <Badge
                       key={videoId}
                       variant="secondary"
-                      className="flex items-center gap-1 px-2 py-1 text-xs cursor-pointer hover:bg-secondary/80 flex-shrink-0"
+                      className="flex items-center gap-1 px-2 py-1 text-xs cursor-pointer hover:bg-secondary/80"
                       onClick={() => removeVideo(videoId)}
                     >
                       <Video className="h-3 w-3" />

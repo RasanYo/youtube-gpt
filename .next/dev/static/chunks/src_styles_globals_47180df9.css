@@ -919,10 +919,6 @@ body {
   min-width: var(--radix-select-trigger-width);
 }
 
-.min-w-max {
-  min-width: max-content;
-}
-
 .max-w-2xl {
   max-width: 42rem;
 }
@@ -1206,10 +1202,6 @@ body {
 
 .overflow-hidden {
   overflow: hidden;
-}
-
-.overflow-x-auto {
-  overflow-x: auto;
 }
 
 .overflow-y-auto {
