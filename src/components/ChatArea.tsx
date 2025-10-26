@@ -185,6 +185,7 @@ const AuthenticatedChatArea = ({ user }: { user: NonNullable<ReturnType<typeof u
                 key={message.id} 
                 message={message} 
                 isLoading={isLoading}
+                videos={videos}
               />
             ))}
             <div ref={messagesEndRef} />

@@ -2,14 +2,16 @@
 
 import { Loader2, Bot, User } from 'lucide-react'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { VideoReferenceCard } from '@/components/video-reference-card'
 import type { UIMessage } from 'ai'
 
 interface ChatMessageProps {
   message: UIMessage
   isLoading: boolean
+  videos?: Array<{ id: string; title: string }>
 }
 
-export const ChatMessage = ({ message, isLoading }: ChatMessageProps) => {
+export const ChatMessage = ({ message, isLoading, videos = [] }: ChatMessageProps) => {
   return (
     <div
       className={`flex gap-3 ${
@@ -47,7 +49,43 @@ export const ChatMessage = ({ message, isLoading }: ChatMessageProps) => {
                     </div>
                   )
                 }
-                // Don't show output
+                
+                // Show video references when output is available
+                if (part.state === 'output-available' && part.output && typeof part.output === 'object' && 'results' in part.output) {
+                  const output = part.output as { results: Array<{ videoId: string; timestamp: string }> }
+                  const results = output.results
+                  
+                  // Deduplicate by videoId and timestamp
+                  const uniqueRefs = Array.from(
+                    new Map(
+                      results.map(result => [
+                        `${result.videoId}-${result.timestamp}`,
+                        result
+                      ])
+                    ).values()
+                  )
+                  
+                  if (uniqueRefs.length > 0) {
+                    return (
+                      <div key={`${message.id}-${i}`} className="mt-3 space-y-2">
+                        <p className="text-xs font-medium text-muted-foreground mb-2">Video References</p>
+                        <div className="flex flex-wrap gap-2">
+                          {uniqueRefs.map((ref, idx) => {
+                            const video = videos.find(v => v.id === ref.videoId)
+                            return (
+                              <VideoReferenceCard
+                                key={`${message.id}-${i}-${idx}`}
+                                videoTitle={video?.title || `Video ${ref.videoId}`}
+                                timestamp={ref.timestamp}
+                              />
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )
+                  }
+                }
+                
                 return null
               
               default:
