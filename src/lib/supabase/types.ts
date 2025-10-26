@@ -27,6 +27,10 @@ export type ConversationRaw = Database['public']['Tables']['conversations']['Row
 export type ConversationInsertRaw = Database['public']['Tables']['conversations']['Insert']
 export type ConversationUpdateRaw = Database['public']['Tables']['conversations']['Update']
 
+export type MessageRaw = Database['public']['Tables']['messages']['Row']
+export type MessageInsertRaw = Database['public']['Tables']['messages']['Insert']
+export type MessageUpdateRaw = Database['public']['Tables']['messages']['Update']
+
 // Transformed types (camelCase) - these are the main exported types
 export type Video = TransformKeys<VideoRaw>
 export type VideoInsert = TransformKeys<VideoInsertRaw>
@@ -36,8 +40,12 @@ export type Conversation = TransformKeys<ConversationRaw>
 export type ConversationInsert = TransformKeys<ConversationInsertRaw>
 export type ConversationUpdate = TransformKeys<ConversationUpdateRaw>
 
+export type Message = TransformKeys<MessageRaw>
+export type MessageInsert = TransformKeys<MessageInsertRaw>
+export type MessageUpdate = TransformKeys<MessageUpdateRaw>
+
 // Enum types (these don't need transformation)
-export type VideoStatus = Database['public']['Enums']['video_status']
+export type VideoStatus = Database['public']['Enums']['VideoStatus']
 
 // Runtime transformation function
 export function transformToCamelCase<T>(obj: any): T {

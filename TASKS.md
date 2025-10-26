@@ -1,136 +1,94 @@
----
-name: Video Deletion Feature Implementation Plan
-description: 'Comprehensive implementation plan for adding video deletion with Remove Selection button functionality to the Knowledge Base.'
----
+# Implementation Plan: Conversation Sidebar
 
-🧠 Context about Project
+## 🧠 Context about Project
 
-YouTube-GPT is an intelligent YouTube search application that allows users to build a personal knowledge base from YouTube videos and channels. The platform uses AI-powered semantic search to help users quickly find information within hours of video content. Users can add individual videos or entire channels, and then search across multiple videos to get grounded answers with citations and timestamps. The system is built on Next.js 14 with Supabase for backend services, uses ZeroEntropy for vector embeddings and semantic search, and Inngest for background job processing. Currently, users can add videos, view them in a Knowledge Base explorer, select videos for AI conversation context, but they cannot yet permanently delete videos from their library once added.
+YouTube-GPT is an AI-powered YouTube search application that enables users to discover information across their video content through semantic search and conversational AI. Users can add individual videos or entire channels to build a searchable knowledge base and ask natural language questions to receive grounded AI answers with citations and timestamps. The system is built on Next.js 14 with Server Actions, Supabase for authentication and database, ZeroEntropy for vector embeddings, and Anthropic Claude via the AI SDK. The app features a three-column layout: conversation sidebar (left), chat area (center), and knowledge base explorer (right). The conversation sidebar currently displays a static placeholder with a hardcoded empty conversations array.
 
-🏗️ Context about Feature
+## 🏗️ Context about Feature
 
-This feature adds the ability to permanently delete selected videos from the user's knowledge base. The deletion must be performed through the `deleteVideoDocuments` Inngest function which already exists and handles the complete cleanup workflow: verifying video ownership, deleting all related documents from ZeroEntropy vector collection, and removing the video record from Supabase. The UI integration needs to add a "Remove Selection" button to the Knowledge Base column toolbar that appears when videos are selected. The button should trigger background deletion jobs via Inngest, show a confirmation dialog to prevent accidental deletions, provide user feedback with loading states and success/error toasts, and immediately remove deleted videos from the UI. The existing video selection infrastructure is already in place through `useVideoSelection` hook and `VideoSelectionContext`, which tracks selected videos across the application.
+The conversation sidebar enables users to create, list, and switch between multiple conversations. The existing `ConversationSidebar.tsx` component is a placeholder showing static UI with no data fetching or functionality. The `conversations` table already exists in Supabase with columns: `id` (text), `userId` (text), `title` (text), `createdAt` (timestamptz), `updatedAt` (timestamptz). The Supabase client is available via `src/lib/supabase/client.ts` singleton. User authentication is provided via `AuthContext` which exports `useAuth()` hook with user information. The "+" button currently exists but has no click handler. This implementation focuses solely on the sidebar functionality: fetching conversations from Supabase, displaying them sorted by most recent, handling conversation switching via click, and creating new conversations via the "+" button. Auto-creating a first conversation on initial load and loading the most recent conversation are also part of this scope.
 
-🎯 Feature Vision & Flow
+## 🎯 Feature Vision & Flow
 
-When users have selected one or more videos in the Knowledge Base (indicated by checkmarks on video cards), a "Remove Selection" button appears in a toolbar above the video list. Clicking the button opens a confirmation dialog showing how many videos will be deleted and warning that deletion is permanent. Upon confirmation, the UI shows a loading state on the button and sends deletion events to Inngest for each selected video. While deletion is in progress, users can see the status via a progress indicator. Once background jobs complete successfully, the UI immediately removes those videos from the list without requiring a refresh, shows success toasts, and clears the selection. If any deletions fail, partial success is handled gracefully with error toasts showing which videos failed. The scope-aware chat functionality continues to work normally, but deleted videos are automatically excluded from future searches since they no longer exist in the user's collection.
+When a user first loads the app, the sidebar automatically fetches all their conversations from Supabase. If they have no conversations, a new conversation titled "New Chat" is automatically created and becomes the active conversation. The conversation list displays sorted by most recent update time (updatedAt DESC), showing the conversation title and relative time (e.g., "2 hours ago"). The currently active conversation is visually highlighted. Clicking any conversation button loads that conversation and updates the active state. The "+" button creates a new conversation titled "New Chat", adds it to the list, and automatically switches to it. Empty state UI shows a friendly message with icon when no conversations exist. When conversations exist, they appear in a scrollable list. The sidebar maintains its scroll position independently of the main chat area. On subsequent loads, the most recent conversation is automatically loaded.
 
-📋 Implementation Plan: Tasks & Subtasks
+## 📋 Implementation Plan: Tasks & Subtasks
 
-## Task 1: Add Delete Button to KB Header ✅
+### Phase 1: Database Access Layer
+[ ] **1.1** Create `src/lib/supabase/conversations.ts` file that exports conversation-related database functions. Import the Supabase client from `@/lib/supabase/client` and relevant TypeScript types from `@/lib/supabase/types.ts` for type safety.
 
-[x] Create a delete button in the KB header (integrated into KBHeader component)
-[x] Accept props: `selectedVideos: Set<string>`, `onRemove: () => void`, `isDeleting: boolean`  
-[x] Use shadcn/ui Button component with Trash2 icon from lucide-react for the delete button
-[x] Style with proper Tailwind classes - red color when active (text-red-600 hover:bg-red-100 hover:text-red-700)
-[x] Show button becomes active when selectedVideos.size > 0
-[x] Disable button when isDeleting is true and show a Loader2 spinner icon
-[x] Position the button in the KB header toolbar (to the left of the folder icon)
-[x] Import and integrate delete button functionality in `KnowledgeBase.tsx` KBHeader component
+[ ] **1.2** Implement function `getConversationsByUserId(userId: string): Promise<ConversationRaw[]>` that queries the Supabase `conversations` table filtered by `userId`, ordered by `updatedAt DESC`. Return typed conversation objects or throw an error if the query fails.
 
-## Task 2: Implement Delete Confirmation Dialog ✅
+[ ] **1.3** Implement function `createConversation(userId: string, title?: string): Promise<ConversationRaw>` that inserts a new conversation record using Supabase's `.insert()`. Use the existing database default for ID generation. Return the created conversation object. Handle the optional title parameter with default "New Chat" if not provided.
 
-[x] Import AlertDialog components from `@/components/ui/alert-dialog` 
-[x] Create state for controlling dialog open/close: `const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)`
-[x] Integrate AlertDialog with controlled open state in KBHeader component
-[x] Add AlertDialogContent with appropriate styling for the confirmation dialog
-[x] Display the number of selected videos: "Delete {count} video(s)?"
-[x] Add warning message: "This action cannot be undone. The videos will be permanently removed from your knowledge base."
-[x] Include AlertDialogFooter with Cancel and Delete action buttons
-[x] Style the Delete button with destructive variant (bg-destructive text-destructive-foreground)
-[x] Handle dialog state: open when delete button is clicked, close on Cancel or after confirmation (controlled via showDialog prop and callbacks)
+[ ] **1.4** Implement function `updateConversationTitle(conversationId: string, title: string): Promise<void>` for future use (users renaming conversations). Use Supabase's `.update()` method filtered by conversation ID. Add error handling with descriptive messages.
 
-## Task 3: Add Deletion Handler Function ✅
+### Phase 2: Conversation Context Provider
+[ ] **2.1** Create `src/contexts/ConversationContext.tsx` file with a React context that manages conversation state. Define interface `ConversationContextType` with properties: `conversations` (array), `activeConversationId` (string | null), `setActiveConversationId` (function), `isLoading` (boolean), and CRUD functions.
 
-[x] Import inngest client from `@/lib/inngest/client` in `KnowledgeBase.tsx`
-[x] Import toast hook: `const { toast } = useToast()` (already exists)
-[x] Create handler function `handleDeleteVideos` in `KnowledgeBase.tsx` that takes selectedVideos as parameter
-[x] Add state for tracking deletion progress: `isDeleting` state
-[x] Extract userId from auth context using `useAuth` hook (check existing pattern in ChatArea.tsx)
-[x] Iterate over selectedVideos Set and send Inngest event for each: `inngest.send({ name: 'video.documents.deletion.requested', data: { videoId, userId } })`
-[x] Update isDeleting state to track which videos are being deleted
-[x] Show loading toast: "Deleting {count} video(s)..."
-[x] Await all deletion events to be sent (use Promise.all for parallel dispatch)
-[x] On success, clear the selection with `clearSelection()`, show success toast with count
-[x] On error, show error toast with helpful message and console error logging
-[x] Clear isDeleting state after completion in finally block
+[ ] **2.2** Implement `ConversationProvider` component that wraps children and provides the context. Use `useState` to track conversations array and activeConversationId. Import and use `useAuth()` from AuthContext to get the current user.
 
-## Task 4: Create API Helper Function
+[ ] **2.3** Add function `loadConversations()` to the context that calls `getConversationsByUserId` with the current user's ID, updates the conversations state, and handles loading/error states. Expose this function in the context value.
 
-[ ] Create new file `src/lib/video-deletion.ts` for client-side deletion helper
-[ ] Export async function `deleteSelectedVideos(userId: string, videoIds: string[])`
-[ ] Import inngest client for sending events: `import { inngest } from '@/lib/inngest/client'`
-[ ] Map videoIds array to Inngest event sends using Promise.all for batch deletion
-[ ] Each event: `{ name: 'video.documents.deletion.requested', data: { videoId, userId } }`
-[ ] Return object with success status and any error information for UI feedback
-[ ] Handle partial failures gracefully by returning which videos succeeded/failed
-[ ] Add proper TypeScript types for function parameters and return value
+[ ] **2.4** Add function `createNewConversation()` that calls `createConversation` with user ID, updates the conversations array state with the new conversation, and automatically sets it as the active conversation by calling `setActiveConversationId`. Expose this function in context.
 
-## Task 5: Integrate Deletion with UI Components ✅
+### Phase 3: Auto-Load Initial Conversation
+[ ] **3.1** Add a `useEffect` hook in `ConversationContext` that runs when the component mounts and the user is authenticated. Call `loadConversations()` to fetch all conversations for the current user from Supabase.
 
-[x] Pass `handleDeleteVideos` function to KBHeader component as onRemove prop
-[x] Pass `isDeleting` state to KBHeader as isDeleting prop
-[x] Wire up the Delete button in AlertDialog to call the handler
-[x] Extract selected video count: `const selectedCount = selectedVideos.size` (in KBHeader)
-[x] Use selectedCount in confirmation dialog for accurate count display
-[x] After successful deletion, rely on real-time updates from useVideos hook
-[x] Handler implementation is in KnowledgeBase component (no separate helper needed)
-[x] Update isDeleting state before and after the deletion
+[ ] **3.2** After loading conversations, check if the conversations array is empty. If empty, automatically call `createNewConversation()` to create the first conversation and set it as active. This handles the "first use" scenario.
 
-## Task 6: Add Real-time UI Updates ✅
+[ ] **3.3** If conversations exist (array length > 0), automatically set the most recent conversation (first item in the array) as the active conversation by calling `setActiveConversationId` with its ID. This loads the most recent conversation on app startup.
 
-[x] Check if useVideos hook already provides real-time updates (handles Supabase realtime subscription)
-[x] Verify that videos state automatically updates when videos are deleted from database
-[x] useVideos hook handles DELETE events and removes videos from state automatically
-[x] VideoList component properly re-renders when videos array changes (automatic with React)
-[x] useVideos hook uses Supabase realtime subscription to listen for changes
-[x] Selected videos cleared automatically when videos are deleted via handler
+[ ] **3.4** Add loading state management: create `isLoadingConversations` boolean state, set it to `true` before loading, and `false` after loading completes. Expose this in the context for UI components to show loading indicators.
 
-## Task 7: Handle Edge Cases and Error States ✅
+### Phase 4: Sidebar UI Integration
+[ ] **4.1** Update `ConversationSidebar.tsx` to import and use `useConversation()` hook from the new context. Extract `conversations`, `activeConversationId`, `createNewConversation`, `isLoading`, and `loadConversations` from the hook.
 
-[x] Button disabled when isDeleting is true (prevents multiple deletion attempts)
-[x] Try-catch blocks around deletion logic to prevent crashes on errors
-[x] Log errors to console for debugging: `console.error('Deletion failed:', error)`
-[x] Clear selection in finally block even if error occurs
-[x] Validate that selectedVideos are not empty before attempting deletion
-[x] Check user authentication before deletion
-[x] Show error toast with helpful message for network failures
-[~] Partial failure handling - currently all-or-nothing approach
+[ ] **4.2** Add a `useEffect` that calls `loadConversations()` when the component mounts to trigger conversation data fetching. This ensures fresh data is loaded when the sidebar renders.
 
-## Task 8: Add Loading and Success Visual Feedback ✅
+[ ] **4.3** Replace the hardcoded empty conversations array (`const conversations: Array<...> = []`) with the real data from the context: `const { conversations } = useConversation()`. Remove the local empty array declaration.
 
-[x] Show spinner icon (Loader2) in delete button while deletion is in progress
-[x] Disable button when isDeleting is true (prevents interaction during deletion)
-[x] Show loading toast: "Deleting videos..." during deletion
-[x] Show toast notification: "Successfully deleted X video(s)" on completion
-[x] Show error toast with description on failure
-[x] Use proper toast variants: 'default' for success, 'destructive' for errors
-[x] Toast notifications have appropriate durations (default timing)
-[x] Selection cleared after successful deletion
+[ ] **4.4** Update the conversation list rendering to map over the real `conversations` from context instead of the hardcoded empty array. Ensure the map uses conversation object properties (`conv.id`, `conv.title`) matching the database schema.
 
-## Task 9: Testing and Verification
+[ ] **4.5** Implement click handlers for each conversation button. When a conversation is clicked, call `setActiveConversationId(conv.id)` from the context to switch to that conversation. Add this to the Button's `onClick` prop in the map function.
 
-[x] Code compiles without errors - checked via linter
-[x] Delete button wired to handler correctly
-[x] Confirmation dialog properly integrated
-[x] Error handling with try-catch blocks
-[x] Toast notifications properly configured
-[x] State management prevents duplicate deletions
-[ ] Manual testing required: deletion of single video
-[ ] Manual testing required: deletion of multiple videos (2, 3, 5+)
-[ ] Manual testing required: cancellation (click Cancel)
-[ ] Manual testing required: verify RLS prevents deleting other users' videos
+[ ] **4.6** Add visual indication for the active conversation. Conditionally apply active/selected styling to the conversation button when `conv.id === activeConversationId`. Use Tailwind classes like `bg-accent` or border styling to highlight the selected conversation.
 
-Note: Manual testing can be done locally by user
+[ ] **4.7** Implement the "+" button click handler. Replace the empty Button component (line 24-31) with an onClick handler that calls `createNewConversation()` from the context. This creates a new conversation and automatically switches to it.
 
-## Task 10: Code Cleanup and Documentation ✅
+[ ] **4.8** Handle loading states in the sidebar UI. When `isLoading` is true, show a loading skeleton or spinner in the ScrollArea instead of the empty state or conversation list. This provides user feedback during data fetching.
 
-[x] No console.log debugging statements in production code (only error logging)
-[x] TypeScript interfaces already updated for KBHeader props
-[x] All imports are properly organized
-[x] No unused imports detected
-[x] Code formatting handled by Prettier
-[x] Component follows existing patterns in KnowledgeBase
-[x] Try-catch blocks have clear error handling
-[x] Error messages are user-friendly
-[x] No new files created (integrated into existing KnowledgeBase.tsx)
+[ ] **4.9** Handle the empty state properly: only show the empty state UI (MessageSquare icon and text) when `!isLoading && conversations.length === 0`. Otherwise, show the conversation list. This prevents empty state from flashing during loading.
+
+### Phase 5: Date Formatting & UI Polish
+[ ] **5.1** Install `date-fns` package for date formatting: `pnpm add date-fns`. This provides the `formatDistanceToNow` utility function for relative time display.
+
+[ ] **5.2** Import `formatDistanceToNow` from `date-fns` in `ConversationSidebar.tsx`. Update the date display in each conversation item (currently showing `{conv.date}` on line 61) to use `formatDistanceToNow(new Date(conv.updatedAt))` to show relative time like "2 hours ago", "Yesterday".
+
+[ ] **5.3** Add proper null/undefined handling for the date display. Check if `conv.updatedAt` exists before calling `formatDistanceToNow`. Provide a fallback value like "Unknown" if the date is missing.
+
+[ ] **5.4** Implement conversation title truncation for long titles. Add `truncate` class to the title div (line 57) and set max-width or use CSS truncation to limit display to reasonable length (e.g., 40 characters). Show full title on hover using a tooltip component.
+
+[ ] **5.5** Ensure conversation items have hover states. Add hover styling to the Button component (line 49-65) using Tailwind's `hover:bg-accent` or similar to provide visual feedback when hovering over conversations.
+
+### Phase 6: Error Handling & Edge Cases
+[ ] **6.1** Add try-catch blocks around all database operations in `src/lib/database/conversations.ts`. For `getConversationsByUserId`, catch errors and log to console, then throw a new Error with a user-friendly message. Handle Supabase query failures gracefully.
+
+[ ] **6.2** Add error handling for `createNewConversation` in the context. Wrap the function call in a try-catch block in `ConversationContext.tsx`. If creation fails, log the error and show a toast notification to the user (use a toast library or browser alert for now).
+
+[ ] **6.3** Handle the case where user is null in `ConversationContext`. Add a guard in the `useEffect` that only runs when `user` exists. If user is null, don't attempt to load conversations and show an appropriate state.
+
+[ ] **6.4** Prevent duplicate conversation creation. Add a loading/creating state that prevents multiple "+" button clicks while a conversation is being created. Disable the button during creation to prevent race conditions.
+
+[ ] **6.5** Handle network errors gracefully. If Supabase queries fail due to network issues, show a retry button or error message in the sidebar. Don't crash the entire app if conversation loading fails.
+
+### Phase 7: Type Safety & Testing
+[ ] **7.1** Ensure all TypeScript types are properly defined. Check that `ConversationRaw` type is imported and used correctly in `src/lib/database/conversations.ts`. Verify that conversation objects match the database schema structure (id, userId, title, createdAt, updatedAt).
+
+[ ] **7.2** Add PropTypes or TypeScript interfaces for all props in components. Ensure `ConversationSidebar` has proper typing for any props it receives. Verify that the context hook return type matches the interface definition.
+
+[ ] **7.3** Test the full flow manually: create first conversation automatically on page load, verify it appears in sidebar, click "+" to create second conversation, verify both appear in list, click each conversation to verify switching works, and check that conversation list updates after creating new conversations.
+
+[ ] **7.4** Test conversation list sorting: create multiple conversations with delays between them, verify they always appear in most-recent-first order, and verify that sending a message updates the conversation's `updatedAt` timestamp and causes it to move to the top of the list.
+
+[ ] **7.5** Test empty state transitions: start with a new user who has no conversations, verify auto-creation happens, verify empty state doesn't flicker, verify new conversation appears smoothly, and verify the conversation becomes active.
