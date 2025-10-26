@@ -29,6 +29,7 @@ const formatDuration = (seconds: number | null): string | null => {
 export interface VideoCardProps {
   video: Video
   onClick?: (videoId: string) => void
+  onPreview?: (videoId: string) => void
   onRetry?: (videoId: string) => void
   isSelected?: boolean
   className?: string
@@ -82,6 +83,7 @@ const statusConfig = {
 export const VideoCard = ({
   video,
   onClick,
+  onPreview,
   onRetry,
   isSelected = false,
   className
@@ -100,6 +102,10 @@ export const VideoCard = ({
 
   const handleClick = () => {
     onClick?.(videoId)
+  }
+
+  const handleDoubleClick = () => {
+    onPreview?.(videoId)
   }
 
   const formatDate = (dateString?: string | null) => {
@@ -130,6 +136,7 @@ export const VideoCard = ({
           className
         )}
         onClick={handleClick}
+        onDoubleClick={handleDoubleClick}
       >
         <CardContent className="p-3">
           <div className="flex gap-3">

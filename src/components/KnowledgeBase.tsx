@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { FileText, Folder, Video as VideoIcon, Calendar, Loader2, Cloud, ChevronLeft, ChevronRight } from 'lucide-react'
+import { FileText, Folder, Video as VideoIcon, Calendar, Loader2, Cloud, ChevronLeft, ChevronRight, X } from 'lucide-react'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -12,11 +12,13 @@ import { processYouTubeUrl } from '@/lib/youtube'
 import { VideoList } from './VideoList'
 import { useVideos } from '@/hooks/useVideos'
 import { useVideoSelection } from '@/contexts/VideoSelectionContext'
+import { AspectRatio } from '@/components/ui/aspect-ratio'
 
 export const KnowledgeBase = () => {
   const [urlInput, setUrlInput] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isCollapsed, setIsCollapsed] = useState(false)
+  const [previewingVideo, setPreviewingVideo] = useState<{ youtubeId: string; title: string; channelName?: string | null } | null>(null)
   const { selectedVideos, addVideo, removeVideo, clearSelection } = useVideoSelection()
   const { toast } = useToast()
 
@@ -38,6 +40,18 @@ export const KnowledgeBase = () => {
       removeVideo(videoId)
     } else {
       addVideo(videoId)
+    }
+  }
+
+  // Handle video preview - separate from selection
+  const handleVideoPreview = (videoId: string) => {
+    const video = videos.find(v => v.id === videoId)
+    if (video && video.youtubeId) {
+      setPreviewingVideo({
+        youtubeId: video.youtubeId,
+        title: video.title || 'Video',
+        channelName: video.channelName
+      })
     }
   }
 
@@ -170,10 +184,48 @@ export const KnowledgeBase = () => {
               </div>
             </form>
           </div>
+
+          {/* Video Preview Player */}
+          {previewingVideo && (
+            <div className="border-b p-4 space-y-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-sm font-medium leading-tight line-clamp-2">
+                    {previewingVideo.title}
+                  </h3>
+                  {previewingVideo.channelName && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {previewingVideo.channelName}
+                    </p>
+                  )}
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0 flex-shrink-0"
+                  onClick={() => setPreviewingVideo(null)}
+                  title="Close preview"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+              
+              <AspectRatio ratio={16 / 9} className="bg-black rounded-md overflow-hidden">
+                <iframe
+                  src={`https://www.youtube.com/embed/${previewingVideo.youtubeId}`}
+                  title={previewingVideo.title}
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                  className="w-full h-full"
+                />
+              </AspectRatio>
+            </div>
+          )}
           {/* Video List */}
           <VideoList
             videos={videos}
             onVideoClick={handleVideoClick}
+            onVideoPreview={handleVideoPreview}
             onRetry={handleVideoRetry}
             isLoading={isLoading}
             selectedVideos={selectedVideos}
