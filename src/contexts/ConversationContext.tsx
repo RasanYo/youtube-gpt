@@ -22,6 +22,7 @@ interface ConversationContextType {
   error: string | null
   loadConversations: () => Promise<void>
   createNewConversation: () => Promise<void>
+  refreshConversationOrder: (conversationId: string, newUpdatedAt: string) => void
 }
 
 const ConversationContext = createContext<
@@ -109,6 +110,29 @@ export const ConversationProvider: React.FC<{
     }
   }, [user, isCreating])
 
+  /**
+   * Refresh conversation order after an update
+   * This keeps the list sorted by most recent activity (updatedAt)
+   */
+  const refreshConversationOrder = useCallback((conversationId: string, newUpdatedAt: string) => {
+    setConversations((prevConversations) => {
+      // Find and update the conversation with new updatedAt
+      const updatedConversations = prevConversations.map((conv) => {
+        if (conv.id === conversationId) {
+          return { ...conv, updatedAt: newUpdatedAt }
+        }
+        return conv
+      })
+
+      // Sort by updatedAt descending (most recent first)
+      return updatedConversations.sort((a, b) => {
+        const dateA = new Date(a.updatedAt).getTime()
+        const dateB = new Date(b.updatedAt).getTime()
+        return dateB - dateA
+      })
+    })
+  }, [])
+
   // Load conversations when component mounts and user is authenticated
   useEffect(() => {
     if (user) {
@@ -144,6 +168,7 @@ export const ConversationProvider: React.FC<{
     error,
     loadConversations,
     createNewConversation,
+    refreshConversationOrder,
   }
 
   return (

@@ -126,7 +126,7 @@ const AuthenticatedChatArea = ({
   initialMessages: UIMessage[]
 }) => {
   const { selectedVideos, removeVideo, clearSelection } = useVideoSelection()
-  const { activeConversationId } = useConversation()
+  const { activeConversationId, refreshConversationOrder } = useConversation()
   const { videos } = useVideos()
   const scrollAreaRef = useRef<HTMLDivElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -188,8 +188,12 @@ const AuthenticatedChatArea = ({
 
         // Update conversation updatedAt timestamp
         console.log('🔄 Updating conversation updatedAt...')
+        const updatedAt = new Date().toISOString()
         await updateConversationUpdatedAt(activeConversationId)
         console.log('✅ Conversation updatedAt updated')
+        
+        // Refresh conversation order in the list
+        refreshConversationOrder(activeConversationId, updatedAt)
       } catch (error) {
         console.error('❌ Error saving assistant message:', error)
         console.error('❌ Error details:', error instanceof Error ? error.stack : String(error))
@@ -221,8 +225,12 @@ const AuthenticatedChatArea = ({
           })
           
           // Update conversation updatedAt timestamp
+          const updatedAt = new Date().toISOString()
           await updateConversationUpdatedAt(activeConversationId)
           console.log('✅ User message saved to database')
+          
+          // Refresh conversation order in the list
+          refreshConversationOrder(activeConversationId, updatedAt)
         } catch (error) {
           console.error('Error saving user message:', error)
           // TODO: Add user-facing error notification
@@ -256,8 +264,12 @@ const AuthenticatedChatArea = ({
           })
           
           // Update conversation updatedAt timestamp
+          const updatedAt = new Date().toISOString()
           await updateConversationUpdatedAt(activeConversationId)
           console.log('✅ User message saved to database')
+          
+          // Refresh conversation order in the list
+          refreshConversationOrder(activeConversationId, updatedAt)
         } catch (error) {
           console.error('Error saving user message:', error)
           // TODO: Add user-facing error notification
