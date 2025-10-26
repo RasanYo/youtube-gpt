@@ -11,6 +11,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import {
   getConversationsByUserId,
   createConversation,
+  updateConversationTitle as updateConversationTitleInDB,
 } from '@/lib/supabase/conversations'
 import type { ConversationRaw } from '@/lib/supabase/types'
 
@@ -23,6 +24,7 @@ interface ConversationContextType {
   loadConversations: () => Promise<void>
   createNewConversation: () => Promise<void>
   refreshConversationOrder: (conversationId: string, newUpdatedAt: string) => void
+  updateConversationTitle: (conversationId: string, newTitle: string) => Promise<void>
 }
 
 const ConversationContext = createContext<
@@ -133,6 +135,32 @@ export const ConversationProvider: React.FC<{
     })
   }, [])
 
+  /**
+   * Update a conversation's title
+   * Updates both database and local state
+   */
+  const updateConversationTitle = useCallback(async (conversationId: string, newTitle: string) => {
+    if (!user) {
+      console.error('Cannot update title: user not authenticated')
+      return
+    }
+
+    try {
+      // Update in database
+      await updateConversationTitleInDB(conversationId, newTitle)
+
+      // Update in local state
+      setConversations((prevConversations) =>
+        prevConversations.map((conv) =>
+          conv.id === conversationId ? { ...conv, title: newTitle } : conv
+        )
+      )
+    } catch (error) {
+      console.error('Error updating conversation title:', error)
+      throw error
+    }
+  }, [user])
+
   // Load conversations when component mounts and user is authenticated
   useEffect(() => {
     if (user) {
@@ -169,6 +197,7 @@ export const ConversationProvider: React.FC<{
     loadConversations,
     createNewConversation,
     refreshConversationOrder,
+    updateConversationTitle,
   }
 
   return (
