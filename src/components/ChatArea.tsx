@@ -10,120 +10,63 @@ import { Badge } from '@/components/ui/badge'
 import { useAuth } from '@/contexts/AuthContext'
 import { useVideoSelection } from '@/contexts/VideoSelectionContext'
 import { useVideos } from '@/hooks/useVideos'
+import { ToolUsageNotification } from '@/components/ToolUsageNotification'
+import { useChat } from '@ai-sdk/react'
+import { DefaultChatTransport } from 'ai'
 
-interface Message {
-  id: string
-  role: 'user' | 'assistant'
-  content: string
-  isStreaming?: boolean
+interface ToolUsageState {
+  isActive: boolean
+  toolName: string
+  status: 'starting' | 'active' | 'completed' | 'error'
+  progress?: string
+  startTime?: number
 }
 
 export const ChatArea = () => {
-  const [messages, setMessages] = useState<Message[]>([])
-  const [input, setInput] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
+  const [toolUsage, setToolUsage] = useState<ToolUsageState>({
+    isActive: false,
+    toolName: '',
+    status: 'completed'
+  })
   const { user } = useAuth()
   const { selectedVideos, removeVideo, clearSelection } = useVideoSelection()
   const { videos } = useVideos()
   const scrollAreaRef = useRef<HTMLDivElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
+  // Debug user state
+  console.log('User state:', { user, userId: user?.id, isAuthenticated: !!user })
+
+  // Local state for input
+  const [input, setInput] = useState('')
+
+  // Use the useChat hook from AI SDK
+  const { messages, sendMessage, status } = useChat({
+    transport: new DefaultChatTransport({
+      api: '/api/chat',
+      body: {
+        userId: user?.id,
+        scope: selectedVideos.size > 0 
+          ? { type: 'selected', videoIds: Array.from(selectedVideos) }
+          : { type: 'all' }
+      }
+    })
+  })
+
+  const isLoading = status === 'streaming'
+
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
-
-  // Handle form submission and streaming
-  const handleSubmit = async (e: React.FormEvent) => {
+  // Handle form submission
+  const onSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!input.trim() || isLoading || !user) return
-
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      role: 'user',
-      content: input.trim()
-    }
-
-    setMessages(prev => [...prev, userMessage])
-    setInput('')
-    setIsLoading(true)
-
-    // Create assistant message for streaming
-    const assistantMessage: Message = {
-      id: (Date.now() + 1).toString(),
-      role: 'assistant',
-      content: '',
-      isStreaming: true
-    }
-
-    setMessages(prev => [...prev, assistantMessage])
-
-    try {
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          messages: [...messages, userMessage].map(msg => ({
-            role: msg.role,
-            content: msg.content
-          })),
-          userId: user.id,
-          scope: { type: 'all' }
-        })
-      })
-
-      if (!response.body) {
-        throw new Error('No response body')
-      }
-
-      const reader = response.body.getReader()
-      const decoder = new TextDecoder()
-      let assistantContent = ''
-
-      while (true) {
-        const { value, done } = await reader.read()
-        if (done) break
-
-        const chunk = decoder.decode(value, { stream: true })
-        assistantContent += chunk
-
-        // Update the streaming message
-        setMessages(prev => 
-          prev.map(msg => 
-            msg.id === assistantMessage.id 
-              ? { ...msg, content: assistantContent }
-              : msg
-          )
-        )
-      }
-
-      // Finalize the message
-      setMessages(prev => 
-        prev.map(msg => 
-          msg.id === assistantMessage.id 
-            ? { ...msg, isStreaming: false }
-            : msg
-        )
-      )
-
-    } catch (error) {
-      console.error('Error sending message:', error)
-      setMessages(prev => 
-        prev.map(msg => 
-          msg.id === assistantMessage.id 
-            ? { 
-                ...msg, 
-                content: 'Sorry, I encountered an error. Please try again.',
-                isStreaming: false 
-              }
-            : msg
-        )
-      )
-    } finally {
-      setIsLoading(false)
+    if (input.trim() && !isLoading) {
+      console.log('Sending message:', input)
+      sendMessage({ text: input })
+      setInput('')
     }
   }
 
@@ -132,6 +75,39 @@ export const ChatArea = () => {
     setInput(prompt)
   }
 
+  // Check if user is authenticated
+  if (!user) {
+    return (
+      <div className="flex h-screen flex-1 flex-col">
+        {/* Header */}
+        <div className="flex h-14 items-center border-b px-6">
+          <h1 className="text-lg font-semibold">Bravi AI Assistant</h1>
+        </div>
+        
+        {/* Authentication Required Message */}
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center px-4">
+            <div className="relative mb-6">
+              <MessageCircle className="h-16 w-16 text-muted-foreground/30 mx-auto" />
+              <Sparkles className="h-6 w-6 text-primary absolute -top-1 -right-1" />
+            </div>
+            <h2 className="text-2xl font-semibold mb-2 text-foreground">
+              Authentication Required
+            </h2>
+            <p className="text-muted-foreground mb-6 max-w-md">
+              Please log in to access the AI assistant and start chatting about your YouTube videos.
+            </p>
+            <Button 
+              onClick={() => window.location.href = '/login'}
+              className="px-6 py-2"
+            >
+              Go to Login
+            </Button>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="flex h-screen flex-1 flex-col">
@@ -217,9 +193,46 @@ export const ChatArea = () => {
                       : 'bg-muted'
                   }`}
                 >
+                  {/* Tool Usage Notification - show only for streaming AI messages */}
+                  {message.role === 'assistant' && isLoading && toolUsage.isActive && (
+                    <div className="mb-3">
+                      <ToolUsageNotification
+                        isActive={toolUsage.isActive}
+                        toolName={toolUsage.toolName}
+                        status={toolUsage.status}
+                        progress={toolUsage.progress}
+                      />
+                    </div>
+                  )}
+                  
                   <div className="text-sm whitespace-pre-wrap">
-                    {message.content}
-                    {message.isStreaming && (
+                    {message.parts.map((part, i) => {
+                      switch (part.type) {
+                        case 'text':
+                          return <div key={`${message.id}-${i}`}>{part.text}</div>
+                        case 'tool-call':
+                          return (
+                            <div key={`${message.id}-${i}`} className="mt-2 p-2 bg-muted/50 rounded text-xs">
+                              <div className="font-medium">🔧 Tool Call</div>
+                              <div className="text-muted-foreground">
+                                {JSON.stringify(part, null, 2)}
+                              </div>
+                            </div>
+                          )
+                        case 'tool-result':
+                          return (
+                            <div key={`${message.id}-${i}`} className="mt-2 p-2 bg-muted/30 rounded text-xs">
+                              <div className="font-medium">✅ Tool Result</div>
+                              <div className="text-muted-foreground">
+                                {JSON.stringify(part, null, 2)}
+                              </div>
+                            </div>
+                          )
+                        default:
+                          return null
+                      }
+                    })}
+                    {isLoading && message.role === 'assistant' && (
                       <span className="inline-block w-2 h-4 bg-current animate-pulse ml-1" />
                     )}
                   </div>
@@ -244,8 +257,11 @@ export const ChatArea = () => {
           <div className="max-w-3xl mx-auto">
             <div className="flex items-center gap-2 mb-2">
               <span className="text-sm font-medium text-muted-foreground">
-                Context ({selectedVideos.size} video{selectedVideos.size !== 1 ? 's' : ''}):
+                Search Scope ({selectedVideos.size} video{selectedVideos.size !== 1 ? 's' : ''}):
               </span>
+              <Badge variant="outline" className="text-xs">
+                Limited to selected videos
+              </Badge>
               <Button
                 variant="ghost"
                 size="sm"
@@ -285,7 +301,7 @@ export const ChatArea = () => {
       {/* Input */}
       <div className="border-t p-4">
         <div className="max-w-3xl mx-auto">
-          <form onSubmit={handleSubmit} className="flex gap-2">
+          <form onSubmit={onSubmit} className="flex gap-2">
             <Input 
               placeholder="Ask Bravi anything..." 
               className="flex-1" 

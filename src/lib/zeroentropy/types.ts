@@ -2,6 +2,8 @@
  * Shared types for ZeroEntropy integration
  */
 
+import { UIMessage } from 'ai'
+
 /**
  * Raw transcript segment from YouTube
  */
@@ -40,5 +42,22 @@ export interface TranscriptData {
     extractedAt: string
     processingTimeMs: number
   }
+}
+
+/**
+ * Chat scope configuration for video search
+ */
+export interface ChatScope {
+  type: 'all' | 'selected'
+  videoIds?: string[]
+}
+
+/**
+ * Chat request payload - using AI SDK types
+ */
+export interface ChatRequest {
+  messages: UIMessage[]
+  userId: string
+  scope: ChatScope
 }
 

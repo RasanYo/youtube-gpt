@@ -1,6 +1,6 @@
 import { serve } from "inngest/next";
 import { inngest } from "@/lib/inngest/client";
-import { processVideo } from "@/lib/inngest/functions";
+import { processVideo, deleteVideoDocuments, deleteUserCollectionFunction } from "@/lib/inngest/functions";
 
 /**
  * Inngest Webhook Handler
@@ -18,6 +18,8 @@ import { processVideo } from "@/lib/inngest/functions";
 // Register all Inngest functions
 const functions = [
   processVideo,
+  deleteVideoDocuments,
+  deleteUserCollectionFunction,
 ];
 
 export const { GET, POST, PUT } = serve({

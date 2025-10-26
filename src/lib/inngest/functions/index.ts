@@ -7,3 +7,5 @@
  */
 
 export { processVideo } from './process-video'
+export { deleteVideoDocuments } from './delete-video-documents'
+export { deleteUserCollectionFunction } from './delete-user-collection'
