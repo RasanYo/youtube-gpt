@@ -7,14 +7,18 @@ import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { ChatMessage } from '@/components/ChatMessage'
 import { useAuth } from '@/contexts/AuthContext'
+import { useConversation } from '@/contexts/ConversationContext'
 import { useVideoSelection } from '@/contexts/VideoSelectionContext'
 import { useVideos } from '@/hooks/useVideos'
 import { useChat } from '@ai-sdk/react'
-import { DefaultChatTransport } from 'ai'
+import { DefaultChatTransport, type UIMessage } from 'ai'
 import { VideoScopeBar } from '@/components/video-scope-bar'
+import { saveMessage, updateConversationUpdatedAt, getMessagesByConversationId } from '@/lib/supabase/messages'
+import { nanoid } from 'nanoid'
 
 export const ChatArea = () => {
   const { user } = useAuth()
+  const { activeConversationId, isLoading: isConversationLoading } = useConversation()
 
   // Check if user is authenticated
   if (!user) {
@@ -50,29 +54,134 @@ export const ChatArea = () => {
     )
   }
 
+  // Show loading state while conversations are being loaded or created
+  if (isConversationLoading || !activeConversationId) {
+    return (
+      <div className="flex h-screen flex-1 flex-col">
+        <div className="flex h-14 items-center border-b px-6">
+          <h1 className="text-lg font-semibold">Bravi AI Assistant</h1>
+        </div>
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center px-4">
+            <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto mb-4" />
+            <p className="text-muted-foreground">Loading your conversations...</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return <AuthenticatedChatArea user={user} />
 }
 
 // Separate component for authenticated chat
 const AuthenticatedChatArea = ({ user }: { user: NonNullable<ReturnType<typeof useAuth>['user']> }) => {
   const { selectedVideos, removeVideo, clearSelection } = useVideoSelection()
+  const { activeConversationId } = useConversation()
   const { videos } = useVideos()
   const scrollAreaRef = useRef<HTMLDivElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const [input, setInput] = useState('')
+  const [initialMessages, setInitialMessages] = useState<UIMessage[]>([])
 
   useEffect(() => {
     console.log('selectedVideos', selectedVideos)
   }, [user, selectedVideos])
 
+  // Load messages when conversation changes
+  useEffect(() => {
+    const loadMessages = async () => {
+      if (!activeConversationId) {
+        setInitialMessages([])
+        return
+      }
+
+      try {
+        const dbMessages = await getMessagesByConversationId(activeConversationId)
+        
+        // Convert database messages to UIMessage format for useChat
+        const convertedMessages: UIMessage[] = dbMessages.map(msg => ({
+          id: msg.id,
+          role: msg.role === 'USER' ? 'user' : 'assistant',
+          parts: [
+            {
+              type: 'text',
+              text: msg.content
+            }
+          ]
+        }))
+        
+        setInitialMessages(convertedMessages)
+        console.log(`✅ Loaded ${convertedMessages.length} messages for conversation ${activeConversationId}`)
+      } catch (error) {
+        console.error('Error loading messages:', error)
+        setInitialMessages([])
+      }
+    }
+
+    loadMessages()
+  }, [activeConversationId])
+
   // Use the useChat hook from AI SDK - only runs when user is authenticated
   const { messages, sendMessage, status } = useChat({
+    // initialMessages: initialMessages, // Commented out - useChat doesn't support dynamic initialMessages
     transport: new DefaultChatTransport({
       api: '/api/chat',
       body: {
-        userId: user.id // Only userId in transport body - scope passed per message
+        userId: user.id,
       }
-    })
+    }),
+    onFinish: async ({message, messages, isAbort, isDisconnect, isError}) => {
+      console.log('🔄 onFinish called')
+      console.log('📝 Message:', message)
+      console.log('🔄 Active conversation ID:', activeConversationId)
+      
+      // Save assistant message after streaming completes
+      if (!activeConversationId) {
+        console.warn('❌ Cannot save assistant message: no active conversation')
+        return
+      }
+
+      try {
+        // The message parameter is already the assistant message
+        console.log('📝 Assistant message parts:', message.parts)
+        
+        // Extract text content from the message
+        let assistantContent = ''
+        
+        // Try to get text from message.parts first
+        const parts = message.parts || []
+        for (const part of parts) {
+          if (part.type === 'text') {
+            assistantContent += part.text
+          }
+        }
+        
+        console.log('📝 Extracted content length:', assistantContent.length)
+        console.log('📝 Content preview:', assistantContent.substring(0, 100))
+
+        // Extract citations from the message (if available in the future)
+        const citations = null // TODO: Extract citations from streaming response
+
+        console.log('💾 Saving assistant message to database...')
+        await saveMessage({
+          conversationId: activeConversationId,
+          role: 'ASSISTANT',
+          content: assistantContent,
+          citations: citations
+        })
+        console.log('✅ Assistant message saved to database')
+
+        // Update conversation updatedAt timestamp
+        console.log('🔄 Updating conversation updatedAt...')
+        await updateConversationUpdatedAt(activeConversationId)
+        console.log('✅ Conversation updatedAt updated')
+      } catch (error) {
+        console.error('❌ Error saving assistant message:', error)
+        console.error('❌ Error details:', error instanceof Error ? error.stack : String(error))
+        // TODO: Add user-facing error notification
+      }
+    }
   })
 
   const isLoading = status === 'streaming'
@@ -83,10 +192,29 @@ const AuthenticatedChatArea = ({ user }: { user: NonNullable<ReturnType<typeof u
   }, [messages])
 
   // Handle form submission
-  const onSubmit = (e: React.FormEvent) => {
+  const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (input.trim() && !isLoading) {
       console.log('Sending message:', input)
+      
+      // Save user message to database
+      if (activeConversationId) {
+        try {
+          await saveMessage({
+            conversationId: activeConversationId,
+            role: 'USER',
+            content: input.trim()
+          })
+          
+          // Update conversation updatedAt timestamp
+          await updateConversationUpdatedAt(activeConversationId)
+          console.log('✅ User message saved to database')
+        } catch (error) {
+          console.error('Error saving user message:', error)
+          // TODO: Add user-facing error notification
+        }
+      }
+      
       sendMessage(
         { text: input },
         {
@@ -102,8 +230,26 @@ const AuthenticatedChatArea = ({ user }: { user: NonNullable<ReturnType<typeof u
   }
 
   // Handle suggested prompt clicks
-  const handleSuggestedPrompt = (prompt: string) => {
+  const handleSuggestedPrompt = async (prompt: string) => {
     if (!isLoading) {
+      // Save user message to database
+      if (activeConversationId) {
+        try {
+          await saveMessage({
+            conversationId: activeConversationId,
+            role: 'USER',
+            content: prompt.trim()
+          })
+          
+          // Update conversation updatedAt timestamp
+          await updateConversationUpdatedAt(activeConversationId)
+          console.log('✅ User message saved to database')
+        } catch (error) {
+          console.error('Error saving user message:', error)
+          // TODO: Add user-facing error notification
+        }
+      }
+      
       sendMessage(
         { text: prompt },
         {

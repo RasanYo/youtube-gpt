@@ -60,6 +60,7 @@
     "inngest": "^3.44.3",
     "input-otp": "^1.4.2",
     "lucide-react": "^0.462.0",
+    "nanoid": "^5.1.6",
     "next": "^16.0.0",
     "next-themes": "^0.3.0",
     "react": "^18.3.1",

@@ -60,5 +60,6 @@ export interface ChatRequest {
   messages: UIMessage[]
   userId: string
   scope: ChatScope
+  conversationId?: string
 }
 
