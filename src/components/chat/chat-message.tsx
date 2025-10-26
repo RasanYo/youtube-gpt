@@ -2,7 +2,7 @@
 
 import { Loader2, Bot, User } from 'lucide-react'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { VideoReferenceCard } from '@/components/video-reference-card'
+import { VideoReferenceCard } from './video-reference-card'
 import type { UIMessage } from 'ai'
 
 interface ChatMessageProps {

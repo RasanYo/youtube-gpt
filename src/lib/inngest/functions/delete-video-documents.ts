@@ -1,6 +1,9 @@
 import { inngest } from '@/lib/inngest/client'
 import { supabase } from '@/lib/supabase/client'
 import { deleteVideoPages } from '@/lib/zeroentropy'
+import { createLogger } from '@/lib/inngest/utils/inngest-logger'
+
+const logger = createLogger('deleteVideoDocuments')
 
 /**
  * Delete video documents from ZeroEntropy collection
@@ -29,12 +32,11 @@ export const deleteVideoDocuments = inngest.createFunction(
   async ({ event, step }) => {
     const { videoId, userId } = event.data
     
-    console.log(`[deleteVideoDocuments] Starting deletion for video: ${videoId}`)
-    console.log(`[deleteVideoDocuments] User ID: ${userId}`)
+    logger.info(`Starting deletion for video: ${videoId}`, { userId })
     
     // Step 1: Get video information to verify ownership
     const video = await step.run('get-video-info', async () => {
-      console.log(`[deleteVideoDocuments] Fetching video information: ${videoId}`)
+      logger.info(`Fetching video information: ${videoId}`)
       
       const { data: videoData, error } = await supabase
         .from('videos')
@@ -44,7 +46,7 @@ export const deleteVideoDocuments = inngest.createFunction(
         .single()
       
       if (error) {
-        console.error(`[deleteVideoDocuments] Failed to fetch video:`, error)
+        logger.error('Failed to fetch video', { error: error.message })
         throw new Error(`Failed to fetch video: ${error.message}`)
       }
       
@@ -52,43 +54,45 @@ export const deleteVideoDocuments = inngest.createFunction(
         throw new Error(`Video not found or access denied: ${videoId}`)
       }
       
-      console.log(`[deleteVideoDocuments] Video found: ${videoData.title}`)
+      logger.info(`Video found: ${videoData.title}`)
       return videoData
     })
     
     // Step 2: Verify collection exists
     const collectionName = await step.run('verify-collection', async () => {
       if (!video.zeroentropyCollectionId) {
-        console.log(`[deleteVideoDocuments] No collection ID found for video: ${videoId}`)
+        logger.info(`No collection ID found for video: ${videoId}`)
         return null
       }
       
-      console.log(`[deleteVideoDocuments] Collection ID: ${video.zeroentropyCollectionId}`)
+      logger.info(`Collection ID: ${video.zeroentropyCollectionId}`)
       return video.zeroentropyCollectionId
     })
     
     // Step 3: Delete documents from ZeroEntropy (if collection exists)
     const deletedCount = await step.run('delete-documents', async () => {
       if (!collectionName) {
-        console.log(`[deleteVideoDocuments] No collection to delete from for video: ${videoId}`)
+        logger.info(`No collection to delete from for video: ${videoId}`)
         return 0
       }
       
-      console.log(`[deleteVideoDocuments] Deleting documents from collection: ${collectionName}`)
+      logger.info(`Deleting documents from collection: ${collectionName}`)
       
       try {
         const count = await deleteVideoPages(videoId, collectionName)
-        console.log(`[deleteVideoDocuments] Successfully deleted ${count} documents for video: ${videoId}`)
+        logger.info(`Successfully deleted ${count} documents for video: ${videoId}`)
         return count
       } catch (error) {
-        console.error(`[deleteVideoDocuments] Failed to delete documents:`, error)
+        logger.error('Failed to delete documents', {
+          error: error instanceof Error ? error.message : 'Unknown error'
+        })
         throw new Error(`Failed to delete documents: ${error instanceof Error ? error.message : 'Unknown error'}`)
       }
     })
     
     // Step 4: Delete video from Supabase
     await step.run('delete-video-from-db', async () => {
-      console.log(`[deleteVideoDocuments] Deleting video from database: ${videoId}`)
+      logger.info(`Deleting video from database: ${videoId}`)
       
       const { error } = await supabase
         .from('videos')
@@ -97,15 +101,16 @@ export const deleteVideoDocuments = inngest.createFunction(
         .eq('userId', userId)
       
       if (error) {
-        console.error(`[deleteVideoDocuments] Failed to delete video from database:`, error)
+        logger.error('Failed to delete video from database', { error: error.message })
         throw new Error(`Failed to delete video from database: ${error.message}`)
       }
       
-      console.log(`[deleteVideoDocuments] Successfully deleted video from database: ${videoId}`)
+      logger.info(`Successfully deleted video from database: ${videoId}`)
     })
     
-    console.log(`[deleteVideoDocuments] Deletion completed successfully for video: ${videoId}`)
-    console.log(`[deleteVideoDocuments] Documents deleted: ${deletedCount}`)
-    console.log(`[deleteVideoDocuments] Collection: ${collectionName || 'N/A'}`)
+    logger.info(`Deletion completed successfully for video: ${videoId}`, {
+      documentsDeleted: deletedCount,
+      collection: collectionName || 'N/A'
+    })
   }
 )

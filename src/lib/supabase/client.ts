@@ -55,12 +55,6 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 })
 
 /**
- * Database type - using Supabase generated types
- * This will be updated when we generate types from our Supabase schema
- */
-export type Database = any
-
-/**
  * Type helper for the Supabase client instance
  * Use this when you need to type-hint the client in function parameters
  */

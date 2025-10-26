@@ -6,7 +6,6 @@
 
 import { supabase } from '@/lib/supabase/client'
 import type { MessageRaw } from '@/lib/supabase/types'
-import { nanoid } from 'nanoid'
 
 /**
  * Save a message to the database

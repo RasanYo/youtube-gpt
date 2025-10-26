@@ -14,11 +14,7 @@ export function useVideos() {
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null)
 
   useEffect(() => {
-    console.log('[useVideos] useEffect triggered', {
-      userId: user?.id,
-      hasSubscription: subscriptionRef.current,
-      timestamp: new Date().toISOString()
-    })
+
     
     if (!user?.id) {
       console.log('[useVideos] No user ID, clearing videos')
@@ -36,7 +32,6 @@ export function useVideos() {
     // Initial fetch
     const fetchVideos = async () => {
       try {
-        console.log('[useVideos] Fetching videos for user:', user.id)
         setIsLoading(true)
         setError(null)
         const { data, error } = await supabase
@@ -46,10 +41,6 @@ export function useVideos() {
           .order('createdAt', { ascending: false })
         
         if (error) throw error
-        console.log('[useVideos] Fetched videos successfully:', {
-          count: data?.length || 0,
-          videoIds: data?.map(v => v.id)
-        })
         setVideos(data || [])
       } catch (err) {
         console.error('[useVideos] Error fetching videos:', err)
@@ -65,11 +56,6 @@ export function useVideos() {
     subscriptionRef.current = true
     
     const channelName = `video-changes-${user.id}-${Date.now()}`
-    console.log('[useVideos] Setting up subscription:', {
-      userId: user.id,
-      channelName,
-      timestamp: Date.now()
-    })
     
     const channel = supabase
       .channel(channelName)
@@ -98,16 +84,9 @@ export function useVideos() {
         }
       )
       .subscribe((status, err) => {
-        console.log('[useVideos] Subscription status:', {
-          status,
-          channelName,
-          userId: user.id,
-          error: err,
-          timestamp: new Date().toISOString()
-        })
         
         if (status === 'SUBSCRIBED') {
-          console.log('[useVideos] Successfully subscribed to video changes')
+          // console.log('[useVideos] Successfully subscribed to video changes')
         } else if (status === 'CHANNEL_ERROR') {
           console.error('[useVideos] Error subscribing to video changes', {
             status,
@@ -133,10 +112,6 @@ export function useVideos() {
     channelRef.current = channel
 
     return () => {
-      console.log('[useVideos] Cleanup triggered', {
-        hasChannel: !!channelRef.current,
-        userId: user.id
-      })
       if (channelRef.current) {
         supabase.removeChannel(channelRef.current)
         channelRef.current = null

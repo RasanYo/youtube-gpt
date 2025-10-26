@@ -1,6 +1,6 @@
-import { ConversationSidebar } from '@/components/ConversationSidebar'
-import { ChatArea } from '@/components/ChatArea'
-import { KnowledgeBase } from '@/components/KnowledgeBase'
+import { ConversationSidebar } from '@/components/layout'
+import { ChatArea } from '@/components/chat'
+import { KnowledgeBase } from '@/components/knowledge-base'
 
 export default function HomePage() {
   // TODO: Add server-side auth check in Phase 4 with Supabase server client
