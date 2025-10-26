@@ -1,268 +1,18 @@
 import { inngest } from '@/lib/inngest/client'
 import { supabase } from '@/lib/supabase/client'
-import type { Video, VideoStatus } from '@/lib/supabase/types'
+import type { Video } from '@/lib/supabase/types'
 import type { TranscriptData, ProcessedTranscriptSegment } from '@/lib/zeroentropy/types'
-import { 
-  processTranscriptSegments,
-  validateTranscriptQuality,
-  handleTranscriptEdgeCases,
-  getOrCreateUserCollection,
-  batchIndexPages
-} from '@/lib/zeroentropy'
-import { 
-  fetchTranscript, 
-  YoutubeTranscriptDisabledError,
-  YoutubeTranscriptNotAvailableError,
-  YoutubeTranscriptNotAvailableLanguageError,
-  YoutubeTranscriptVideoUnavailableError,
-  YoutubeTranscriptTooManyRequestError,
-  YoutubeTranscriptInvalidVideoIdError
-} from 'youtube-transcript-plus'
-import { TranscriptResponse } from 'youtube-transcript-plus/dist/types'
+import { getOrCreateUserCollection } from '@/lib/zeroentropy'
+import { createLogger } from '@/lib/inngest/utils/inngest-logger'
+import { updateVideoStatus } from '@/lib/inngest/utils/video-status'
+import { extractTranscriptWithRetry } from '@/lib/inngest/utils/transcript-extractor'
+import {
+  processTranscriptSegmentsForZeroEntropy,
+  indexTranscriptPagesInZeroEntropy,
+  handleZeroEntropyIndexingFailure
+} from '@/lib/inngest/utils/zeroentropy-processor'
 
-/**
- * Update video status in the database
- */
-async function updateVideoStatus(video: Video, status: VideoStatus, errorMessage?: string): Promise<void> {
-  console.log(`[updateVideoStatus] Updating status to ${status} for video: ${video.id}`)
-  
-  const updateData: {
-    status: VideoStatus
-    updatedAt: string
-    error?: string
-  } = {
-    status,
-    updatedAt: new Date().toISOString()
-  }
-  
-  // Add error message if provided (for FAILED status)
-  if (errorMessage) {
-    updateData.error = errorMessage
-  }
-  
-  const { error } = await supabase
-    .from('videos')
-    .update(updateData)
-    .eq('id', video.id)
-    .eq('userId', video.userId)
-  
-  if (error) {
-    console.error(`[updateVideoStatus] Failed to update status to ${status}:`, error)
-    throw new Error(`Failed to update video status: ${error.message}`)
-  }
-  
-  console.log(`[updateVideoStatus] Successfully updated status to ${status} for video: ${video.id}`)
-}
-
-/**
- * Step 3: Extract transcript from YouTube video with retry logic
- */
-async function extractTranscriptWithRetry(video: Video, maxRetries = 3): Promise<TranscriptData> {
-  console.log(`[extractTranscriptWithRetry] Starting transcript extraction with retry for video: ${video.id}`)
-  console.log(`[extractTranscriptWithRetry] YouTube ID: ${video.youtubeId}`)
-  console.log(`[extractTranscriptWithRetry] Max retries: ${maxRetries}`)
-  
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      console.log(`[extractTranscriptWithRetry] Attempt ${attempt}/${maxRetries} for video: ${video.id}`)
-      return await extractTranscript(video, attempt)
-    } catch (error) {
-      console.error(`[extractTranscriptWithRetry] Attempt ${attempt} failed:`, {
-        message: error instanceof Error ? error.message : 'Unknown error',
-        youtubeId: video.youtubeId,
-        attempt,
-        maxRetries
-      })
-      
-      if (attempt === maxRetries) {
-        console.error(`[extractTranscriptWithRetry] All ${maxRetries} attempts failed for video: ${video.id}`)
-        throw error
-      }
-      
-      // Wait before retry with exponential backoff
-      const delay = Math.pow(2, attempt) * 1000
-      console.log(`[extractTranscriptWithRetry] Waiting ${delay}ms before retry...`)
-      await new Promise(resolve => setTimeout(resolve, delay))
-    }
-  }
-  
-  throw new Error('This should never be reached')
-}
-
-/**
- * Step 3: Extract transcript from YouTube video
- */
-async function extractTranscript(video: Video, attempt = 1): Promise<TranscriptData> {
-  console.log(`[extractTranscript] Starting transcript extraction for video: ${video.id} (attempt ${attempt})`)
-  console.log(`[extractTranscript] YouTube ID: ${video.youtubeId}`)
-  
-  try {
-    const startTime = Date.now()
-    
-    // Try different configurations based on attempt number
-    let transcript: TranscriptResponse[]
-    
-    if (attempt === 1) {
-      // First attempt: try without cache
-      console.log(`[extractTranscript] Attempt ${attempt}: Trying without cache...`)
-      transcript = await fetchTranscript(video.youtubeId) as TranscriptResponse[]
-    } else if (attempt === 2) {
-      // Second attempt: try with custom user agent and no cache
-      console.log(`[extractTranscript] Attempt ${attempt}: Trying with custom user agent...`)
-      transcript = await fetchTranscript(video.youtubeId, {
-        userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        cacheTTL: 0, // Disable caching
-      }) as TranscriptResponse[]
-    } else {
-      // Third attempt: try with cache and different settings
-      console.log(`[extractTranscript] Attempt ${attempt}: Trying with cache and different settings...`)
-      transcript = await fetchTranscript(video.youtubeId, {
-        cacheTTL: 3600, // Cache for 1 hour
-        userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        disableHttps: false,
-      }) as TranscriptResponse[]
-    }
-    
-    const processingTime = Date.now() - startTime
-    console.log(`[extractTranscript] Transcript extraction completed in ${processingTime}ms for video: ${video.id}`)
-    console.log(`[extractTranscript] Transcript segments count: ${transcript.length}`)
-    
-    // Validate transcript quality
-    if (!transcript || transcript.length === 0) {
-      throw new Error('No transcript data received from YouTube')
-    }
-    
-    // Calculate total duration and text length
-    const totalDuration = transcript.reduce((sum, segment) => sum + segment.duration, 0)
-    const totalTextLength = transcript.reduce((sum, segment) => sum + segment.text.length, 0)
-    
-    console.log(`[extractTranscript] Transcript validation - Duration: ${totalDuration}s, Text length: ${totalTextLength} chars`)
-    
-    // Check for minimum quality thresholds
-    if (totalTextLength < 50) {
-      throw new Error('Transcript too short - likely poor quality or auto-generated captions disabled')
-    }
-    
-    if (totalDuration < 10) {
-      throw new Error('Video too short - minimum 10 seconds required')
-    }
-    
-    // Format transcript for storage
-    const formattedTranscript = transcript.map(segment => ({
-      text: segment.text.trim(),
-      start: segment.offset,
-      duration: segment.duration,
-      language: segment.lang || 'en'
-    }))
-    
-    console.log(`[extractTranscript] Transcript extraction successful for video: ${video.id}`)
-    console.log(`[extractTranscript] Formatted transcript segments: ${formattedTranscript.length}`)
-    
-    return {
-      transcript: formattedTranscript,
-      metadata: {
-        totalSegments: transcript.length,
-        totalDuration,
-        totalTextLength,
-        language: transcript[0]?.lang || 'en',
-        extractedAt: new Date().toISOString(),
-        processingTimeMs: processingTime
-      }
-    }
-    
-  } catch (error) {
-    console.error(`[extractTranscript] Transcript extraction failed for video: ${video.id}`, {
-      message: error instanceof Error ? error.message : 'Unknown error',
-      stack: error instanceof Error ? error.stack : undefined,
-      name: error instanceof Error ? error.name : 'UnknownError',
-      youtubeId: video.youtubeId,
-      attempt
-    })
-    
-    // Handle specific error types with appropriate messages
-    if (error instanceof YoutubeTranscriptDisabledError) {
-      throw new Error('Transcript extraction failed: Captions are disabled for this video')
-    } else if (error instanceof YoutubeTranscriptNotAvailableError) {
-      throw new Error('Transcript extraction failed: No transcript available for this video')
-    } else if (error instanceof YoutubeTranscriptNotAvailableLanguageError) {
-      throw new Error('Transcript extraction failed: No transcript available in the requested language')
-    } else if (error instanceof YoutubeTranscriptVideoUnavailableError) {
-      throw new Error('Transcript extraction failed: Video is unavailable or private')
-    } else if (error instanceof YoutubeTranscriptTooManyRequestError) {
-      throw new Error('Transcript extraction failed: Too many requests - rate limited')
-    } else if (error instanceof YoutubeTranscriptInvalidVideoIdError) {
-      throw new Error('Transcript extraction failed: Invalid YouTube video ID')
-    } else if (error instanceof Error) {
-      throw new Error(`Transcript extraction failed: ${error.message}`)
-    } else {
-      throw new Error('Transcript extraction failed: Unknown error occurred')
-    }
-  }
-}
-
-/**
- * Step 5: Process transcript segments for ZeroEntropy
- */
-async function processTranscriptSegmentsForZeroEntropy(
-  transcriptData: TranscriptData, 
-  video: Video
-): Promise<ProcessedTranscriptSegment[]> {
-  console.log(`[processTranscriptSegmentsForZeroEntropy] Processing ${transcriptData.transcript.length} transcript segments`)
-  
-  // Type assertion to ensure compatibility with ZeroEntropy functions
-  const typedTranscriptData = transcriptData as TranscriptData
-  
-  // Process transcript segments with user and video context
-  const segments = processTranscriptSegments(typedTranscriptData, video.userId, video.id, video.title)
-  
-  // Validate transcript quality
-  const validation = validateTranscriptQuality(typedTranscriptData)
-  if (!validation.isValid) {
-    console.warn(`[processTranscriptSegmentsForZeroEntropy] Transcript quality issues: ${validation.issues.join(', ')}`)
-  }
-  
-  // Handle edge cases
-  const handledSegments = handleTranscriptEdgeCases(segments)
-  
-  console.log(`[processTranscriptSegmentsForZeroEntropy] Successfully processed ${handledSegments.length} segments`)
-  return handledSegments
-}
-
-/**
- * Step 7: Index transcript pages in ZeroEntropy
- */
-async function indexTranscriptPagesInZeroEntropy(
-  processedSegments: ProcessedTranscriptSegment[],
-  collectionName: string
-): Promise<string[]> {
-  console.log(`[indexTranscriptPagesInZeroEntropy] Indexing ${processedSegments.length} pages in collection: ${collectionName}`)
-  // Type assertion to ensure compatibility
-  const typedSegments = processedSegments as ProcessedTranscriptSegment[]
-  return await batchIndexPages(typedSegments, collectionName)
-}
-
-/**
- * Step 7.5: Handle ZeroEntropy indexing failures
- */
-async function handleZeroEntropyIndexingFailure(
-  pageIds: string[],
-  processedSegments: ProcessedTranscriptSegment[],
-  video: Video
-): Promise<void> {
-  if (pageIds.length === 0) {
-    console.error(`[handleZeroEntropyIndexingFailure] No pages were indexed successfully for video: ${video.id}`)
-    await updateVideoStatus(video, 'FAILED', 'ZeroEntropy indexing failed - no pages indexed')
-    throw new Error('ZeroEntropy indexing failed - no pages indexed')
-  }
-  
-  if (pageIds.length < processedSegments.length) {
-    console.warn(`[handleZeroEntropyIndexingFailure] Partial indexing success: ${pageIds.length}/${processedSegments.length} pages indexed`)
-  }
-  
-  console.log(`[handleZeroEntropyIndexingFailure] ZeroEntropy indexing completed: ${pageIds.length} pages indexed`)
-}
-
-
+const logger = createLogger('processVideo')
 
 /**
  * Video Processing Job
@@ -291,10 +41,11 @@ export const processVideo = inngest.createFunction(
   async ({ event, step }) => {
     const video = event.data.video as Video
     
-    console.log(`[processVideo] Starting processing for video: ${video.id}`)
-    console.log(`[processVideo] YouTube ID: ${video.youtubeId}`)
-    console.log(`[processVideo] Title: ${video.title}`)
-    console.log(`[processVideo] Current status: ${video.status}`)
+    logger.info(`Starting processing for video: ${video.id}`, {
+      youtubeId: video.youtubeId,
+      title: video.title,
+      status: video.status
+    })
     
     // Step 1: Update status from QUEUED to PROCESSING
     await step.run('update-status-to-processing', () => updateVideoStatus(video, 'PROCESSING'))
@@ -328,7 +79,7 @@ export const processVideo = inngest.createFunction(
     
     // Step 8: Update video with collection ID and status to READY
     await step.run('update-video-with-collection', async () => {
-      console.log(`[processVideo] Updating video with collection ID: ${collectionName}`)
+      logger.info(`Updating video with collection ID: ${collectionName}`)
       
       const { error } = await supabase
         .from('videos')
@@ -341,19 +92,20 @@ export const processVideo = inngest.createFunction(
         .eq('userId', video.userId)
       
       if (error) {
-        console.error(`[processVideo] Failed to update video with collection ID:`, error)
+        logger.error('Failed to update video with collection ID', { error: error.message })
         throw new Error(`Failed to update video: ${error.message}`)
       }
       
-      console.log(`[processVideo] Successfully updated video with collection ID: ${collectionName}`)
+      logger.info(`Successfully updated video with collection ID: ${collectionName}`)
     })
     
-    console.log(`[processVideo] Processing completed successfully for video: ${video.id}`)
-    console.log(`[processVideo] Video status: READY`)
-    console.log(`[processVideo] Collection: ${collectionName}`)
-    console.log(`[processVideo] Transcript segments: ${transcriptData.metadata.totalSegments}`)
-    console.log(`[processVideo] Pages indexed: ${pageIds.length}`)
-    console.log(`[processVideo] Total duration: ${transcriptData.metadata.totalDuration}s`)
-    console.log(`[processVideo] Processing time: ${transcriptData.metadata.processingTimeMs}ms`)
+    logger.info(`Processing completed successfully for video: ${video.id}`, {
+      status: 'READY',
+      collection: collectionName,
+      transcriptSegments: transcriptData.metadata.totalSegments,
+      pagesIndexed: pageIds.length,
+      totalDuration: `${transcriptData.metadata.totalDuration}s`,
+      processingTime: `${transcriptData.metadata.processingTimeMs}ms`
+    })
   }
 )
