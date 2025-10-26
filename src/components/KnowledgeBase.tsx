@@ -22,7 +22,9 @@ import { processYouTubeUrl } from '@/lib/youtube'
 import { VideoList } from './VideoList'
 import { useVideos } from '@/hooks/useVideos'
 import { useVideoSelection } from '@/contexts/VideoSelectionContext'
+import { useAuth } from '@/contexts/AuthContext'
 import { AspectRatio } from '@/components/ui/aspect-ratio'
+import { inngest } from '@/lib/inngest/client'
 
 // Header Component
 interface KBHeaderProps {
@@ -231,6 +233,7 @@ export const KnowledgeBase = () => {
   const [isDeleting, setIsDeleting] = useState(false)
   const { selectedVideos, addVideo, removeVideo, clearSelection } = useVideoSelection()
   const { toast } = useToast()
+  const { user } = useAuth()
 
   // Use the useVideos hook for real-time data
   const { videos, isLoading, error } = useVideos()
@@ -273,6 +276,68 @@ export const KnowledgeBase = () => {
       title: 'Retry Requested',
       description: `Retrying processing for video ${videoId}`,
     })
+  }
+
+  // Handle video deletion
+  const handleDeleteVideos = async () => {
+    if (!user) {
+      toast({
+        title: 'Error',
+        description: 'You must be logged in to delete videos',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    if (selectedVideos.size === 0) {
+      return
+    }
+
+    const videoIds = Array.from(selectedVideos)
+    const count = videoIds.length
+
+    setIsDeleting(true)
+    
+    try {
+      // Show loading toast
+      toast({
+        title: 'Deleting videos...',
+        description: `Removing ${count} video${count !== 1 ? 's' : ''} from your knowledge base`,
+      })
+
+      // Send deletion events to Inngest for each video
+      const deletionEvents = videoIds.map(videoId => 
+        inngest.send({
+          name: 'video.documents.deletion.requested',
+          data: { 
+            videoId, 
+            userId: user.id 
+          }
+        })
+      )
+
+      // Wait for all events to be sent
+      await Promise.all(deletionEvents)
+
+      // Show success toast
+      toast({
+        title: 'Success',
+        description: `Successfully deleted ${count} video${count !== 1 ? 's' : ''}`,
+      })
+
+      // Clear selection
+      clearSelection()
+    } catch (error) {
+      console.error('Deletion failed:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to delete videos. Please try again.',
+        variant: 'destructive',
+      })
+    } finally {
+      setIsDeleting(false)
+      setShowDeleteConfirm(false)
+    }
   }
 
   // Handle form submission
@@ -338,10 +403,7 @@ export const KnowledgeBase = () => {
         isCollapsed={isCollapsed} 
         onToggleCollapse={() => setIsCollapsed(!isCollapsed)}
         selectedVideos={selectedVideos}
-        onRemove={() => {
-          // TODO: Implement delete handler
-          console.log('Remove selection clicked')
-        }}
+        onRemove={handleDeleteVideos}
         isDeleting={isDeleting}
         showDialog={showDeleteConfirm}
         onOpenDialog={() => setShowDeleteConfirm(true)}
