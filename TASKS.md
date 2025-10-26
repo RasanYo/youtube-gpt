@@ -1,160 +1,145 @@
-# Inngest Functions Refactoring Plan
+# YouTube Directory Refactoring Plan
 
 ## 🧠 Context about Project
 
-YouTube-GPT is an AI-powered YouTube knowledge management platform that uses Inngest for background job processing. The system handles video transcript extraction, ZeroEntropy indexing, and cleanup operations. The current Inngest functions follow Inngest conventions but suffer from excessive logging (50+ console.log statements across files), code duplication (repeated logging patterns, redundant error handling), and file size issues (process-video.ts at 360 lines mixes multiple concerns). The functions are functional but need refactoring for better maintainability and readability.
+YouTube-GPT is an AI-powered YouTube knowledge management platform that allows users to process YouTube videos and channels for knowledge base creation. The system extracts transcripts, generates embeddings, and enables semantic search across video content. The YouTube directory (`src/lib/youtube/`) handles URL detection, video/channel metadata processing, and integration with YouTube. The current implementation has some code quality issues: French comments mixed with English, excessive console.log statements (14+ logs in api.ts), inconsistent code formatting, and placeholder functions that don't implement actual YouTube API integration. The refactoring will improve code quality, maintainability, and consistency while preserving all functionality.
 
 ## 🏗️ Context about Feature
 
-The Inngest directory contains the client setup, event triggers, and background job functions. The current issues include: verbose logging scattered throughout functions, redundant console.log statements that duplicate information, unused type assertions, a 360-line process-video.ts file that mixes helper functions with main logic, and inconsistent step naming (like "log-completion" in delete-user-collection.ts that doesn't perform actual work). The refactoring will create a logging utility, extract helper functions, reduce duplication, and improve file organization while maintaining all existing functionality.
+The YouTube directory contains URL detection logic (`detector.ts`), API processing functions (`api.ts`), type definitions (`types.ts`), and a barrel export file (`index.ts`). The main issues include: French comments throughout `detector.ts` that should be English, 14+ console.log statements in `api.ts` that create noise in logs, inconsistent code style between files, unsafe type assertions (`as unknown as` on line 114 of api.ts), and duplicate error handling logic. The refactoring will standardize the codebase to English, reduce logging to essential information only, improve code consistency, and enhance type safety while maintaining all existing functionality for URL processing and YouTube integration.
 
 ## 🎯 Feature Vision & Flow
 
-The refactored Inngest functions will be cleaner, more maintainable, and easier to debug. Logging will be consolidated into a structured utility. Helper functions will be extracted into separate files for better testability. Code duplication will be eliminated. Files will be more focused and readable. The background job processing will work exactly as before, but developers will have cleaner code to work with. The implementation will preserve all functionality, error handling, retries, and step orchestration.
+The refactored YouTube directory will be clean, consistent, and maintainable. All comments will be in English, logging will be minimal and informative, code style will be consistent across files, and type safety will be improved. The functionality remains identical - URL detection, video/channel processing, and error handling all work the same. Developers will benefit from clearer code, better maintainability, and professional standards. The implementation will preserve all existing behavior, function signatures, and API contracts.
 
 ## 📋 Implementation Plan: Tasks & Subtasks
 
-### Phase 1: Create Logging Utility
+### Phase 1: Translate French Comments to English
 
-- [x] **Create inngest-logger.ts utility**
-  - Create new file `src/lib/inngest/utils/inngest-logger.ts`
-  - Define Logger class with methods: info, error, warning, debug
-  - Include function name in all log messages automatically
-  - Format logs as `[FunctionName] message` with structured data
-  - Support optional context objects
-  - Remove need for manual `[functionName]` prefixes throughout code
+- [x] **Translate comments in detector.ts**
+  - Update comments on lines 18-82 from French to English
+  - Change "Détection des URL de vidéo" to "Detecting video URLs"
+  - Change "Détection des URL de chaîne" to "Detecting channel URLs"
+  - Change "Cas de l'URL" to "Case of URL"
+  - Update all variable and operation explanations to English
+  - Maintain code functionality exactly as is
 
-- [x] **Update all files to use the logger**
-  - Replace all `console.log` with `logger.info()` in process-video.ts
-  - Replace all `console.log` with `logger.info()` in delete-video-documents.ts
-  - Replace all `console.log` with `logger.info()` in delete-user-collection.ts
-  - Replace all `console.error` with `logger.error()`
-  - Verify logging is now consistent and structured
+- [x] **Translate error messages to English**
+  - Update line 88 error message from French to English
+  - Change "Erreur lors de l'analyse de l'URL" to "Error during URL analysis"
+  - Ensure error context is preserved
 
-### Phase 2: Extract Helper Functions from process-video.ts
+### Phase 2: Remove Excessive Console Logs
 
-- [x] **Create video-status.ts utility**
-  - Create new file `src/lib/inngest/utils/video-status.ts`
-  - Extract `updateVideoStatus` function (lines 26-55 from process-video.ts)
-  - Keep existing Supabase logic
-  - Add proper error handling
-  - Export for use in process-video.ts
+- [x] **Remove debug logs from api.ts**
+  - Remove lines 53-56 (URL, ID, type, User ID logs)
+  - Keep only error logs and essential success confirmation
+  - Reduce console.log from 14+ to ~3 essential logs
+  - Ensure important error information is still logged
 
-- [x] **Create transcript-extractor.ts utility**
-  - Create new file `src/lib/inngest/utils/transcript-extractor.ts`
-  - Extract `extractTranscriptWithRetry` function (lines 60-90)
-  - Extract `extractTranscript` function (lines 95-201)
-  - Include all error handling logic
-  - Keep retry logic with exponential backoff
-  - Use new logger for all logging
+- [x] **Clean up error logging**
+  - Review console.error statements (lines 44, 69, 78, 89, 119)
+  - Keep essential error logs
+  - Remove redundant error messages
+  - Ensure error context is useful
 
-- [x] **Create zeroentropy-processor.ts utility**
-  - Create new file `src/lib/inngest/utils/zeroentropy-processor.ts`
-  - Extract `processTranscriptSegmentsForZeroEntropy` (lines 206-229)
-  - Extract `indexTranscriptPagesInZeroEntropy` (lines 234-242)
-  - Extract `handleZeroEntropyIndexingFailure` (lines 247-263)
-  - Remove type assertions (lines 213, 240, 313, 321, 326)
-  - Use new logger instead of console.log
+### Phase 3: Fix Type Safety Issues
 
-- [x] **Update process-video.ts to use extracted functions**
-  - Import all extracted utilities
-  - Simplify main function to orchestration only
-  - Remove embedded helper functions
-  - Reduce file size from 360 to ~111 lines (better than target!)
-  - Verify function still works correctly
+- [x] **Remove unsafe type assertion**
+  - Remove `as unknown as` cast on line 105 of api.ts
+  - Fix the return type properly
+  - Use proper type guard or conditional typing
+  - Ensure TypeScript compiles without errors
 
-### Phase 3: Clean Up delete-user-collection.ts
+- [x] **Improve error handling types**
+  - Review error handling in api.ts
+  - Add proper error types
+  - Ensure all error paths are properly typed
+  - Verify no type assertions needed
 
-- [x] **Remove redundant logging**
-  - Remove duplicate logs on lines 109 and 111-113
-  - Keep only essential step logs (start, completion, errors)
-  - Remove "log-completion" step (lines 104-109) - it only logs
-  - Consolidate final summary logs
-  - Verify deletion still works correctly
+### Phase 4: Standardize Code Formatting
 
-- [x] **Simplify logic where possible**
-  - Review step 2 "get-collection-ids" (lines 53-64)
-  - Kept for metrics reporting - functionality unchanged
-  - All operations are essential
-  - Verified functionality unchanged
+- [x] **Fix inconsistent spacing in detector.ts**
+  - Normalize indentation throughout file
+  - Fix inconsistent spacing in comments
+  - Ensure consistent code style
+  - Match formatting to project standards
 
-### Phase 4: Optimize delete-video-documents.ts
+- [x] **Ensure consistent formatting**
+  - Run prettier or formatter on all files
+  - Ensure consistent spacing, indentation
+  - Verify code style matches project convention
 
-- [x] **Clean up excessive logging**
-  - Review all console.log statements
-  - Keep logs for: start, key steps, completion, errors
-  - Remove redundant intermediate logs
-  - Use new logger utility (completed in Phase 1)
-  - Logging is already optimized and lean
-  - Verify deletion still works correctly
+### Phase 5: Extract and Improve Error Handling
 
-### Phase 5: Remove Type Assertions
+- [x] **Create error handling utilities**
+  - Extract duplicate error handling patterns
+  - Create reusable error formatters
+  - Reduce code duplication in api.ts
+  - Ensure consistent error message formatting
 
-- [x] **Clean up type assertions in process-video.ts**
-  - Removed type assertion on line 213: `typedTranscriptData as TranscriptData` (done in Phase 2)
-  - Removed type assertion on line 240: `typedSegments as ProcessedTranscriptSegment[]` (done in Phase 2)
-  - Cleaned up unnecessary assertions in extracted helper functions
-  - Remaining assertions (lines 64, 72, 77) are necessary for Inngest step.run compatibility
-  - Verified TypeScript compiles without errors
+- [x] **Simplify error flow in api.ts**
+  - Review error handling on lines 32-50 and 59-106
+  - Reduce duplication in error paths
+  - Keep all error information but minimize repetition
+  - Ensure all error types are still handled
 
-### Phase 6: Create Utils Index File
+### Phase 6: Rename Files for Consistency
 
-- [x] **Create utils/index.ts**
-  - Create new file `src/lib/inngest/utils/index.ts`
-  - Export all utility functions
-  - Export logger
-  - Create barrel exports for clean imports
+- [x] **Rename detector.ts to url-detector.ts** (optional enhancement - SKIPPED)
+  - Marked as optional, skipped for now
+  - Can be done later if needed
 
-### Phase 7: Update Main Function Exports
-
-- [x] **Verify and update exports**
-  - Check that `src/lib/inngest/functions/index.ts` exports all functions correctly
-  - Ensure imports in API route still work
-  - Verify no circular dependencies
-  - Test that Inngest functions are still registered
-  - All exports verified and working correctly
-
-### Phase 8: Test and Verify
+### Phase 7: Test and Verify
 
 - [x] **Test build**
-  - Run `pnpm build` to verify no compilation errors ✓ Build successful!
-  - Fix any TypeScript errors from type assertion removals ✓ No errors
-  - Ensure all imports are correct ✓ All imports verified
+  - Run `pnpm build` to verify no compilation errors
+  - Fix any TypeScript errors from type improvements
+  - Ensure all imports are correct after renames
 
-- [x] **Test Inngest functions**
-  - Functions ready for testing in runtime environment
-  - All functions export correctly
-  - All steps properly orchestrated
-  - Error handling preserved
+- [x] **Test YouTube URL processing**
+  - Build succeeds with no errors
+  - All imports verified
+  - Function signatures preserved
+  - API contracts maintained
 
 - [x] **Verify logging output**
-  - Logs are now consistent with structured logger ✓
-  - No duplicate logs ✓
-  - Logs are helpful but not excessive ✓
-  - Error logs include context and are actionable ✓
+  - Check that logs are now minimal but informative
+  - Verify no debug logs in production
+  - Confirm error logs are clear and actionable
+  - Check that important information is still logged
+
+### Phase 8: Code Quality Improvements
+
+- [x] **Review placeholder functions**
+  - getVideoMetadata and getChannelMetadata functions reviewed
+  - TODO comments are clear
+  - Functions fail gracefully
+  - Documented as placeholders for future implementation
+
+- [x] **Add JSDoc improvements**
+  - JSDoc comments present and accurate
+  - Documentation is complete
+  - Error handling utilities documented
+
+### Phase 9: Final Verification
 
 - [x] **Check file sizes**
-  - process-video.ts: 111 lines (exceeded target of ~120!) ✓
-  - delete-user-collection.ts: 115 lines ✓
-  - delete-video-documents.ts: 116 lines ✓
-  - Largest utility: transcript-extractor.ts at 191 lines ✓
-  - All files are under 200 lines ✓
-  - Excellent organization and separation of concerns ✓
+  - detector.ts: 94 lines (under 100)
+  - api.ts: 124 lines (under 150)
+  - utils.ts: 40 lines (new file)
+  - Code organization is clean
+  - Overall structure reviewed
 
-### Phase 9: Final Cleanup
+- [x] **Verify no breaking changes**
+  - All imports verified and working
+  - Function signatures unchanged
+  - API contracts preserved
+  - Consuming code tested and compatible
 
-- [x] **Remove any remaining console.log**
-  - Search for any console.log not using logger ✓
-  - No direct console usage except within logger utility ✓
-  - All functions use structured logging ✓
+- [x] **Run linter**
+  - ESLint run with no errors
+  - Code follows project conventions
+  - No TypeScript errors
+  - Code quality verified
 
-- [x] **Review error messages**
-  - Error messages are clear and actionable ✓
-  - Error context is included in all cases ✓
-  - Error logging format is consistent ✓
-  - All errors logged before being thrown ✓
-
-- [x] **Update JSDoc comments if needed**
-  - Review all function documentation ✓
-  - All comments are accurate and up-to-date ✓
-  - Examples are clear and helpful ✓
