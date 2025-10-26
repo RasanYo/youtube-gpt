@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { FileText, Folder, Video as VideoIcon, Calendar, Loader2, Cloud, ChevronLeft, ChevronRight, X } from 'lucide-react'
+import { FileText, Folder, Video as VideoIcon, Calendar, Loader2, Cloud, ChevronLeft, ChevronRight, X, Trash2 } from 'lucide-react'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -18,15 +18,33 @@ import { AspectRatio } from '@/components/ui/aspect-ratio'
 interface KBHeaderProps {
   isCollapsed: boolean
   onToggleCollapse: () => void
+  selectedVideos: Set<string>
+  onRemove: () => void
+  isDeleting: boolean
 }
 
-const KBHeader = ({ isCollapsed, onToggleCollapse }: KBHeaderProps) => {
+const KBHeader = ({ isCollapsed, onToggleCollapse, selectedVideos, onRemove, isDeleting }: KBHeaderProps) => {
+  const selectedCount = selectedVideos.size
   return (
     <div className="flex h-14 items-center border-b px-4">
       {!isCollapsed ? (
         <>
           <h2 className="text-sm font-semibold">Knowledge Base</h2>
           <div className="flex items-center gap-2 ml-auto">
+            <Button 
+              variant="ghost" 
+              size="sm"
+              onClick={onRemove}
+              disabled={selectedCount === 0 || isDeleting}
+              className={selectedCount > 0 ? "text-red-600 hover:bg-red-100 hover:text-red-700" : ""}
+              title={selectedCount > 0 ? `Delete ${selectedCount} video${selectedCount !== 1 ? 's' : ''}` : "Select videos to delete"}
+            >
+              {isDeleting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Trash2 className="h-4 w-4" />
+              )}
+            </Button>
             <Button variant="ghost" size="sm">
               <Folder className="h-4 w-4" />
             </Button>
@@ -280,7 +298,13 @@ export const KnowledgeBase = () => {
     }`}>
       <KBHeader 
         isCollapsed={isCollapsed} 
-        onToggleCollapse={() => setIsCollapsed(!isCollapsed)} 
+        onToggleCollapse={() => setIsCollapsed(!isCollapsed)}
+        selectedVideos={selectedVideos}
+        onRemove={() => {
+          // TODO: Implement delete handler
+          console.log('Remove selection clicked')
+        }}
+        isDeleting={false}
       />
       
       {/* Collapsible Content */}
