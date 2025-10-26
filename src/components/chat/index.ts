@@ -1,4 +1,5 @@
 export { ChatArea } from './chat-area'
 export { ChatMessage } from './chat-message'
+export { ChatEmptyState } from './chat-empty-state'
 export { VideoReferenceCard } from './video-reference-card'
-
+export { useTitleAnimator } from './chat-title-animator'

@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { ChatMessage } from './chat-message'
+import { ChatEmptyState } from './chat-empty-state'
+import { useTitleAnimator } from './chat-title-animator'
 import { useAuth } from '@/contexts/AuthContext'
 import { useConversation } from '@/contexts/ConversationContext'
 import { useVideoSelection } from '@/contexts/VideoSelectionContext'
@@ -14,7 +16,6 @@ import { useChat } from '@ai-sdk/react'
 import { DefaultChatTransport, type UIMessage } from 'ai'
 import { VideoScopeBar } from '@/components/video/video-scope-bar'
 import { saveMessage, updateConversationUpdatedAt, getMessagesByConversationId } from '@/lib/supabase/messages'
-import { nanoid } from 'nanoid'
 
 export const ChatArea = () => {
   const { user } = useAuth()
@@ -128,6 +129,7 @@ const AuthenticatedChatArea = ({
   const { selectedVideos, removeVideo, clearSelection } = useVideoSelection()
   const { activeConversationId, refreshConversationOrder, conversations, updateConversationTitle } = useConversation()
   const { videos } = useVideos()
+  const { animateTitleUpdate } = useTitleAnimator()
   const scrollAreaRef = useRef<HTMLDivElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const [input, setInput] = useState('')
@@ -241,27 +243,6 @@ const AuthenticatedChatArea = ({
     }
   })
 
-  // Helper function to animate title update 4 characters at a time with cursor
-  const animateTitleUpdate = async (conversationId: string, newTitle: string) => {
-    const chunkSize = 4 // Display 4 characters at a time
-    const chunkDelay = 25 // Delay between chunks in ms
-    
-    for (let i = 0; i < newTitle.length; i += chunkSize) {
-      const currentChunk = newTitle.slice(i, i + chunkSize)
-      const currentTitle = newTitle.slice(0, i + currentChunk.length)
-      
-      // Show chunk without cursor
-      await updateConversationTitle(conversationId, currentTitle)
-      
-      // Add blinking cursor effect
-      if (i + chunkSize < newTitle.length) {
-        await updateConversationTitle(conversationId, currentTitle + '▊')
-        await new Promise(resolve => setTimeout(resolve, chunkDelay))
-        await updateConversationTitle(conversationId, currentTitle)
-        await new Promise(resolve => setTimeout(resolve, chunkDelay))
-      }
-    }
-  }
 
   const isLoading = status === 'streaming'
 
@@ -360,57 +341,7 @@ const AuthenticatedChatArea = ({
       {/* Messages */}
       <ScrollArea ref={scrollAreaRef} className="flex-1 p-6">
         {messages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-center px-4">
-            <div className="relative mb-6">
-              <MessageCircle className="h-16 w-16 text-muted-foreground/30" />
-              <Sparkles className="h-6 w-6 text-primary absolute -top-1 -right-1" />
-            </div>
-            <h2 className="text-2xl font-semibold mb-2 text-foreground">
-              Welcome to Bravi AI
-            </h2>
-            <p className="text-muted-foreground mb-6 max-w-md">
-              Your intelligent YouTube assistant. Ask me anything about your
-              videos, content strategy, or get insights from your knowledge base.
-            </p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-w-2xl w-full">
-              <div 
-                className="p-4 rounded-lg border bg-card hover:bg-accent/50 transition-colors cursor-pointer text-left"
-                onClick={() => handleSuggestedPrompt("Analyze my video performance and engagement metrics")}
-              >
-                <p className="text-sm font-medium mb-1">Analyze Video Performance</p>
-                <p className="text-xs text-muted-foreground">
-                  Get insights on views, engagement, and audience retention
-                </p>
-              </div>
-              <div 
-                className="p-4 rounded-lg border bg-card hover:bg-accent/50 transition-colors cursor-pointer text-left"
-                onClick={() => handleSuggestedPrompt("What content strategy ideas should I explore?")}
-              >
-                <p className="text-sm font-medium mb-1">Content Strategy Ideas</p>
-                <p className="text-xs text-muted-foreground">
-                  Discover trending topics and optimization tips
-                </p>
-              </div>
-              <div 
-                className="p-4 rounded-lg border bg-card hover:bg-accent/50 transition-colors cursor-pointer text-left"
-                onClick={() => handleSuggestedPrompt("How can I improve my video SEO and discoverability?")}
-              >
-                <p className="text-sm font-medium mb-1">SEO Optimization</p>
-                <p className="text-xs text-muted-foreground">
-                  Improve titles, descriptions, and tags for better reach
-                </p>
-              </div>
-              <div 
-                className="p-4 rounded-lg border bg-card hover:bg-accent/50 transition-colors cursor-pointer text-left"
-                onClick={() => handleSuggestedPrompt("What insights can you provide about my audience?")}
-              >
-                <p className="text-sm font-medium mb-1">Audience Insights</p>
-                <p className="text-xs text-muted-foreground">
-                  Understand your viewers and grow your channel
-                </p>
-              </div>
-            </div>
-          </div>
+          <ChatEmptyState onPromptClick={handleSuggestedPrompt} />
         ) : (
           <div className="space-y-6 max-w-3xl mx-auto">
             {messages.map((message) => (
