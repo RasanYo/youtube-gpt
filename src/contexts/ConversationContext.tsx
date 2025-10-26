@@ -22,6 +22,7 @@ interface ConversationContextType {
   error: string | null
   loadConversations: () => Promise<void>
   createNewConversation: () => Promise<void>
+  refreshConversations: () => Promise<void>
 }
 
 const ConversationContext = createContext<
@@ -128,6 +129,12 @@ export const ConversationProvider: React.FC<{
     }
   }, [user, isLoading, conversations.length, activeConversationId, isCreating, createNewConversation])
 
+  // Expose refreshConversations as an alias to loadConversations
+  // This can be called after saving messages to update the conversation list
+  const refreshConversations = useCallback(async () => {
+    await loadConversations()
+  }, [loadConversations])
+
   const value: ConversationContextType = {
     conversations,
     activeConversationId,
@@ -136,6 +143,7 @@ export const ConversationProvider: React.FC<{
     error,
     loadConversations,
     createNewConversation,
+    refreshConversations,
   }
 
   return (

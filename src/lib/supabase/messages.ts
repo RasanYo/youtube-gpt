@@ -16,7 +16,7 @@ export async function saveMessage(data: {
   conversationId: string
   role: 'USER' | 'ASSISTANT'
   content: string
-  citations?: Array<{ videoId: string; videoTitle: string; timestamp: string | number }> | null
+  citations?: unknown[] | null
 }): Promise<void> {
   try {
     const { error } = await supabase.from('messages').insert({

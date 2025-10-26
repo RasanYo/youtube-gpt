@@ -77,25 +77,52 @@ export const ChatArea = () => {
 // Separate component for authenticated chat
 const AuthenticatedChatArea = ({ user }: { user: NonNullable<ReturnType<typeof useAuth>['user']> }) => {
   const { selectedVideos, removeVideo, clearSelection } = useVideoSelection()
-  const { activeConversationId } = useConversation()
+  const { activeConversationId, refreshConversations } = useConversation()
   const { videos } = useVideos()
   const scrollAreaRef = useRef<HTMLDivElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const [input, setInput] = useState('')
   const [initialMessages, setInitialMessages] = useState<UIMessage[]>([])
+  const [isLoadingMessages, setIsLoadingMessages] = useState(false)
 
   useEffect(() => {
     console.log('selectedVideos', selectedVideos)
   }, [user, selectedVideos])
+
+  // Helper function to extract citations from message parts
+  const extractCitationsFromMessage = (messageParts: unknown[]): unknown[] | null => {
+    for (const part of messageParts) {
+      const toolPart = part as unknown as { 
+        type: string
+        state?: string
+        output?: { results?: unknown[] }
+      }
+      
+      // Check for tool-searchKnowledgeBase type
+      if (toolPart.type === 'tool-searchKnowledgeBase') {
+        console.log('🔍 Found tool call:', toolPart)
+        
+        // Check if tool has output with results
+        if (toolPart.state === 'output-available' && toolPart.output?.results) {
+          console.log('🔧 Tool has results:', toolPart.output.results)
+          return toolPart.output.results
+        }
+      }
+    }
+    
+    return null
+  }
 
   // Load messages when conversation changes
   useEffect(() => {
     const loadMessages = async () => {
       if (!activeConversationId) {
         setInitialMessages([])
+        setIsLoadingMessages(false)
         return
       }
 
+      setIsLoadingMessages(true)
       try {
         const dbMessages = await getMessagesByConversationId(activeConversationId)
         
@@ -116,6 +143,8 @@ const AuthenticatedChatArea = ({ user }: { user: NonNullable<ReturnType<typeof u
       } catch (error) {
         console.error('Error loading messages:', error)
         setInitialMessages([])
+      } finally {
+        setIsLoadingMessages(false)
       }
     }
 
@@ -142,33 +171,40 @@ const AuthenticatedChatArea = ({ user }: { user: NonNullable<ReturnType<typeof u
         return
       }
 
+      console.log('Message:', message)
+
       try {
         // The message parameter is already the assistant message
         console.log('📝 Assistant message parts:', message.parts)
         
         // Extract text content from the message
         let assistantContent = ''
-        
-        // Try to get text from message.parts first
         const parts = message.parts || []
+        console.log('📝 Message parts:', parts)
+        
+        // Extract text content from parts
         for (const part of parts) {
           if (part.type === 'text') {
             assistantContent += part.text
           }
         }
         
+        // Extract citations from message.parts
+        const citations = extractCitationsFromMessage(parts)
+        
         console.log('📝 Extracted content length:', assistantContent.length)
         console.log('📝 Content preview:', assistantContent.substring(0, 100))
-
-        // Extract citations from the message (if available in the future)
-        const citations = null // TODO: Extract citations from streaming response
+        console.log('📋 Citations extracted:', citations ? citations.length : 0)
+        if (citations && citations.length > 0) {
+          console.log('📋 Citations:', JSON.stringify(citations, null, 2))
+        }
 
         console.log('💾 Saving assistant message to database...')
         await saveMessage({
           conversationId: activeConversationId,
           role: 'ASSISTANT',
           content: assistantContent,
-          citations: citations
+          citations: citations as unknown[] | null
         })
         console.log('✅ Assistant message saved to database')
 
@@ -176,6 +212,9 @@ const AuthenticatedChatArea = ({ user }: { user: NonNullable<ReturnType<typeof u
         console.log('🔄 Updating conversation updatedAt...')
         await updateConversationUpdatedAt(activeConversationId)
         console.log('✅ Conversation updatedAt updated')
+        
+        // Refresh conversation list to show updated order
+        refreshConversations()
       } catch (error) {
         console.error('❌ Error saving assistant message:', error)
         console.error('❌ Error details:', error instanceof Error ? error.stack : String(error))
@@ -209,6 +248,9 @@ const AuthenticatedChatArea = ({ user }: { user: NonNullable<ReturnType<typeof u
           // Update conversation updatedAt timestamp
           await updateConversationUpdatedAt(activeConversationId)
           console.log('✅ User message saved to database')
+          
+          // Refresh conversation list to show updated order
+          refreshConversations()
         } catch (error) {
           console.error('Error saving user message:', error)
           // TODO: Add user-facing error notification
@@ -244,6 +286,9 @@ const AuthenticatedChatArea = ({ user }: { user: NonNullable<ReturnType<typeof u
           // Update conversation updatedAt timestamp
           await updateConversationUpdatedAt(activeConversationId)
           console.log('✅ User message saved to database')
+          
+          // Refresh conversation list to show updated order
+          refreshConversations()
         } catch (error) {
           console.error('Error saving user message:', error)
           // TODO: Add user-facing error notification
@@ -272,7 +317,14 @@ const AuthenticatedChatArea = ({ user }: { user: NonNullable<ReturnType<typeof u
 
       {/* Messages */}
       <ScrollArea ref={scrollAreaRef} className="flex-1 p-6">
-        {messages.length === 0 ? (
+        {isLoadingMessages ? (
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center">
+              <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-2" />
+              <p className="text-sm text-muted-foreground">Loading conversation...</p>
+            </div>
+          </div>
+        ) : messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center px-4">
             <div className="relative mb-6">
               <MessageCircle className="h-16 w-16 text-muted-foreground/30" />
