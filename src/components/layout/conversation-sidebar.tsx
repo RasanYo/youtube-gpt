@@ -3,7 +3,7 @@
 import { MessageSquare, LogOut, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { ThemeToggle } from './ThemeToggle'
+import { ThemeToggle } from './theme-toggle'
 import { useAuth } from '@/contexts/AuthContext'
 import { useConversation } from '@/contexts/ConversationContext'
 import { ScrollArea } from '@/components/ui/scroll-area'

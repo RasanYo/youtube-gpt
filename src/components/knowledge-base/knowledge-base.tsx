@@ -19,7 +19,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { processYouTubeUrl } from '@/lib/youtube'
-import { VideoList } from './VideoList'
+import { VideoList } from './video-list'
 import { useVideos } from '@/hooks/useVideos'
 import { useVideoSelection } from '@/contexts/VideoSelectionContext'
 import { useAuth } from '@/contexts/AuthContext'

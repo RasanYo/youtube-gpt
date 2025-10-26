@@ -2,7 +2,7 @@
 
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { VideoCard, VideoCardSkeleton } from './VideoCard'
+import { VideoCard, VideoCardSkeleton } from './video-card'
 import { Video as VideoIcon, Search } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useMemo } from 'react'
