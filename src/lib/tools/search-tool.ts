@@ -16,10 +16,10 @@ export const createSearchKnowledgeBase = (
   videoScope: string[] | undefined
 ) => {
   return async ({ query, videoIds }: { query: string; videoIds?: string[] }) => {
-    const searchParams = { query, videoIds, userId, videoScope }
-    console.log('[searchKnowledgeBase] Search params:', JSON.stringify(searchParams, null, 2))
-    
     const searchVideoIds = videoIds || videoScope
+    console.log(`🔍 Tool Called: searchKnowledgeBase`)
+    console.log(`   Query: "${query}"`)
+    console.log(`   Video IDs: ${searchVideoIds ? searchVideoIds.join(', ') : 'All videos'}`)
     
     try {
       const results = await searchVideos({
@@ -52,7 +52,10 @@ export const createSearchKnowledgeBase = (
         totalFound: results.length
       }
       
-      console.log('[searchKnowledgeBase] Formatted tool result:', JSON.stringify(toolResult, null, 2))
+      console.log(`✅ Tool Result: Found ${results.length} results`)
+      formattedResults.forEach((result, index) => {
+        console.log(`   ${index + 1}. ${result.videoId} at ${result.timestamp} (score: ${result.score.toFixed(2)})`)
+      })
       
       return toolResult
     } catch (error: unknown) {
@@ -62,8 +65,7 @@ export const createSearchKnowledgeBase = (
         totalFound: 0
       }
       
-      console.error('[searchKnowledgeBase] Search error:', JSON.stringify(errorResult, null, 2))
-      console.error('[searchKnowledgeBase] Original error:', error)
+      console.log(`❌ Tool Error: ${errorResult.error}`)
       
       return errorResult
     }

@@ -7,14 +7,13 @@ import { searchTool, createSearchKnowledgeBase } from '@/lib/tools/search-tool'
 export async function POST(request: NextRequest) {
   try {
     const { messages, userId, scope }: ChatRequest = await request.json()
+    console.log('messages', messages)
+    console.log('userId', userId)
+    console.log('scope', scope)
     
     if (!messages || !Array.isArray(messages)) {
       return new Response('Messages array is required', { status: 400 })
     }
-    
-    console.log(`[chat] Processing chat request for user: ${userId}`)
-    console.log(`[chat] Scope:`, scope)
-    console.log(`[chat] Messages count:`, messages.length)
     
     // Get the latest user message
     const lastMessage = messages[messages.length - 1]
@@ -22,18 +21,18 @@ export async function POST(request: NextRequest) {
       return new Response('Last message must be from user', { status: 400 })
     }
     
-    // Extract text content from the last user message for logging
-    const lastMessageText = lastMessage.parts?.find(part => part.type === 'text')?.text || ''
-    console.log('[chat] Last user message:', lastMessageText)
+    // Extract and log the user's request
+    const userRequest = lastMessage.parts?.find(part => part.type === 'text')?.text || ''
+    console.log(`\n🤖 AI Request: "${userRequest}"`)
     
     
     // Determine video scope based on the request
     let videoScope: string[] | undefined
     if (scope && scope.type === 'selected' && scope.videoIds && scope.videoIds.length > 0) {
       videoScope = scope.videoIds
-      console.log(`[chat] Using selected videos scope:`, videoScope)
+      console.log(`📹 Scope: Selected videos (${videoScope.length})`)
     } else {
-      console.log(`[chat] Using all videos scope`)
+      console.log(`📹 Scope: All videos`)
     }
     
     // Create the system prompt
@@ -60,11 +59,8 @@ Current user context:
 - User ID: ${userId}
 - Video scope: ${videoScope ? `Selected videos (${videoScope.length}): ${videoScope.join(', ')}` : 'All videos'}`
 
-    // Create the search function
+    // Create the search function with enhanced logging
     const searchKnowledgeBase = createSearchKnowledgeBase(userId, videoScope)
-
-    // Messages are already in UIMessage format - no conversion needed!
-    console.log('[chat] Using messages directly (already UIMessage format)')
 
     // Stream the AI response with multi-step tool calling enabled
     const result = await streamText({
@@ -79,13 +75,21 @@ Current user context:
         }
       },
       temperature: 0.7,
-      stopWhen: stepCountIs(5) // Allow up to 5 steps for multi-step tool calling
+      stopWhen: stepCountIs(5), // Allow up to 5 steps for multi-step tool calling
+      onFinish: async (result) => {
+        // Extract and log the AI's response from the final step
+        const finalStep = result.steps[result.steps.length - 1]
+        if (finalStep?.text) {
+          console.log(`💬 AI Response: "${finalStep.text}"`)
+        }
+        console.log('─'.repeat(50))
+      }
     })
 
     return result.toUIMessageStreamResponse()
     
   } catch (error: unknown) {
-    console.error('[chat] API error:', error)
+    console.log(`❌ Chat Error: ${error instanceof Error ? error.message : 'Unknown error'}`)
     return new Response(
       JSON.stringify({ 
         error: 'Internal server error',

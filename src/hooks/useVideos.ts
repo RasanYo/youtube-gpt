@@ -26,8 +26,6 @@ export function useVideos() {
       return
     }
 
-    console.log('useVideos useEffect triggered, user:', user?.id)
-
     // Initial fetch
     const fetchVideos = async () => {
       try {
@@ -52,8 +50,7 @@ export function useVideos() {
 
     fetchVideos()
 
-    // Subscribe to real-time changes
-    console.log('Creating subscription for user:', user?.id, 'at:', new Date().toISOString())
+    
     subscriptionRef.current = true
     
     const channel = supabase
@@ -94,7 +91,6 @@ export function useVideos() {
     channelRef.current = channel
 
     return () => {
-      console.log('Cleaning up subscription for user:', user?.id, 'at:', new Date().toISOString())
       if (channelRef.current) {
         supabase.removeChannel(channelRef.current)
         channelRef.current = null

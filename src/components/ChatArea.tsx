@@ -34,46 +34,9 @@ export const ChatArea = () => {
   const scrollAreaRef = useRef<HTMLDivElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  // Debug user state
-  console.log('User state:', { user, userId: user?.id, isAuthenticated: !!user })
 
   // Local state for input
   const [input, setInput] = useState('')
-
-  // Use the useChat hook from AI SDK
-  const { messages, sendMessage, status } = useChat({
-    transport: new DefaultChatTransport({
-      api: '/api/chat',
-      body: {
-        userId: user?.id,
-        scope: selectedVideos.size > 0 
-          ? { type: 'selected', videoIds: Array.from(selectedVideos) }
-          : { type: 'all' }
-      }
-    })
-  })
-
-  const isLoading = status === 'streaming'
-
-  // Auto-scroll to bottom when new messages arrive
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages])
-
-  // Handle form submission
-  const onSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (input.trim() && !isLoading) {
-      console.log('Sending message:', input)
-      sendMessage({ text: input })
-      setInput('')
-    }
-  }
-
-  // Handle suggested prompt clicks
-  const handleSuggestedPrompt = (prompt: string) => {
-    setInput(prompt)
-  }
 
   // Check if user is authenticated
   if (!user) {
@@ -107,6 +70,78 @@ export const ChatArea = () => {
         </div>
       </div>
     )
+  }
+
+  return <AuthenticatedChatArea user={user} />
+}
+
+// Separate component for authenticated chat
+const AuthenticatedChatArea = ({ user }: { user: NonNullable<ReturnType<typeof useAuth>['user']> }) => {
+  const [toolUsage, setToolUsage] = useState<ToolUsageState>({
+    isActive: false,
+    toolName: '',
+    status: 'completed'
+  })
+  const { selectedVideos, removeVideo, clearSelection } = useVideoSelection()
+  const { videos } = useVideos()
+  const scrollAreaRef = useRef<HTMLDivElement>(null)
+  const messagesEndRef = useRef<HTMLDivElement>(null)
+  const [input, setInput] = useState('')
+
+  useEffect(() => {
+    console.log('selectedVideos', selectedVideos)
+  }, [user, selectedVideos])
+
+  // Use the useChat hook from AI SDK - only runs when user is authenticated
+  const { messages, sendMessage, status } = useChat({
+    transport: new DefaultChatTransport({
+      api: '/api/chat',
+      body: {
+        userId: user.id // Only userId in transport body - scope passed per message
+      }
+    })
+  })
+
+  const isLoading = status === 'streaming'
+
+  // Auto-scroll to bottom when new messages arrive
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages])
+
+  // Handle form submission
+  const onSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (input.trim() && !isLoading) {
+      console.log('Sending message:', input)
+      sendMessage(
+        { text: input },
+        {
+          body: {
+            scope: selectedVideos.size > 0 
+              ? { type: 'selected', videoIds: Array.from(selectedVideos) }
+              : { type: 'all' }
+          }
+        }
+      )
+      setInput('')
+    }
+  }
+
+  // Handle suggested prompt clicks
+  const handleSuggestedPrompt = (prompt: string) => {
+    if (!isLoading) {
+      sendMessage(
+        { text: prompt },
+        {
+          body: {
+            scope: selectedVideos.size > 0 
+              ? { type: 'selected', videoIds: Array.from(selectedVideos) }
+              : { type: 'all' }
+          }
+        }
+      )
+    }
   }
 
   return (
