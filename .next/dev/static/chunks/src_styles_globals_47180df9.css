@@ -2173,10 +2173,6 @@ body {
   background-color: hsl(var(--accent) / .5);
 }
 
-.hover\:bg-destructive\/10:hover {
-  background-color: hsl(var(--destructive) / .1);
-}
-
 .hover\:bg-destructive\/80:hover {
   background-color: hsl(var(--destructive) / .8);
 }
@@ -2205,6 +2201,11 @@ body {
   background-color: hsl(var(--primary) / .9);
 }
 
+.hover\:bg-red-100:hover {
+  --tw-bg-opacity: 1;
+  background-color: rgb(254 226 226 / var(--tw-bg-opacity, 1));
+}
+
 .hover\:bg-red-50\/80:hover {
   background-color: #fef2f2cc;
 }
@@ -2223,10 +2224,6 @@ body {
 
 .hover\:text-accent-foreground:hover {
   color: hsl(var(--accent-foreground));
-}
-
-.hover\:text-destructive:hover {
-  color: hsl(var(--destructive));
 }
 
 .hover\:text-foreground:hover {

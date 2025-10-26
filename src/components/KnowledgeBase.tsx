@@ -8,6 +8,16 @@ import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { Input } from '@/components/ui/input'
 import { useToast } from '@/hooks/use-toast'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { processYouTubeUrl } from '@/lib/youtube'
 import { VideoList } from './VideoList'
 import { useVideos } from '@/hooks/useVideos'
@@ -21,30 +31,56 @@ interface KBHeaderProps {
   selectedVideos: Set<string>
   onRemove: () => void
   isDeleting: boolean
+  showDialog: boolean
+  onOpenDialog: () => void
+  onCloseDialog: () => void
 }
 
-const KBHeader = ({ isCollapsed, onToggleCollapse, selectedVideos, onRemove, isDeleting }: KBHeaderProps) => {
+const KBHeader = ({ isCollapsed, onToggleCollapse, selectedVideos, onRemove, isDeleting, showDialog, onOpenDialog, onCloseDialog }: KBHeaderProps) => {
   const selectedCount = selectedVideos.size
+  
   return (
     <div className="flex h-14 items-center border-b px-4">
       {!isCollapsed ? (
         <>
           <h2 className="text-sm font-semibold">Knowledge Base</h2>
           <div className="flex items-center gap-2 ml-auto">
-            <Button 
-              variant="ghost" 
-              size="sm"
-              onClick={onRemove}
-              disabled={selectedCount === 0 || isDeleting}
-              className={selectedCount > 0 ? "text-red-600 hover:bg-red-100 hover:text-red-700" : ""}
-              title={selectedCount > 0 ? `Delete ${selectedCount} video${selectedCount !== 1 ? 's' : ''}` : "Select videos to delete"}
-            >
-              {isDeleting ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Trash2 className="h-4 w-4" />
-              )}
-            </Button>
+            <AlertDialog open={showDialog} onOpenChange={onCloseDialog}>
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={onOpenDialog}
+                disabled={selectedCount === 0 || isDeleting}
+                className={selectedCount > 0 ? "text-red-600 hover:bg-red-100 hover:text-red-700" : ""}
+                title={selectedCount > 0 ? `Delete ${selectedCount} video${selectedCount !== 1 ? 's' : ''}` : "Select videos to delete"}
+              >
+                {isDeleting ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Trash2 className="h-4 w-4" />
+                )}
+              </Button>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete {selectedCount} video{selectedCount !== 1 ? 's' : ''}?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This action cannot be undone. The videos will be permanently removed from your knowledge base.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction 
+                    onClick={() => {
+                      onRemove()
+                      onCloseDialog()
+                    }}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    Delete
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
             <Button variant="ghost" size="sm">
               <Folder className="h-4 w-4" />
             </Button>
@@ -191,6 +227,8 @@ export const KnowledgeBase = () => {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [previewingVideo, setPreviewingVideo] = useState<{ youtubeId: string; title: string; channelName?: string | null } | null>(null)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
   const { selectedVideos, addVideo, removeVideo, clearSelection } = useVideoSelection()
   const { toast } = useToast()
 
@@ -304,7 +342,10 @@ export const KnowledgeBase = () => {
           // TODO: Implement delete handler
           console.log('Remove selection clicked')
         }}
-        isDeleting={false}
+        isDeleting={isDeleting}
+        showDialog={showDeleteConfirm}
+        onOpenDialog={() => setShowDeleteConfirm(true)}
+        onCloseDialog={() => setShowDeleteConfirm(false)}
       />
       
       {/* Collapsible Content */}
