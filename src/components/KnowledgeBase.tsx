@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { FileText, Folder, Video as VideoIcon, Calendar, Loader2, Cloud, ChevronLeft, ChevronRight } from 'lucide-react'
+import { FileText, Folder, Video as VideoIcon, Calendar, Loader2, Cloud, ChevronLeft, ChevronRight, X } from 'lucide-react'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -12,11 +12,167 @@ import { processYouTubeUrl } from '@/lib/youtube'
 import { VideoList } from './VideoList'
 import { useVideos } from '@/hooks/useVideos'
 import { useVideoSelection } from '@/contexts/VideoSelectionContext'
+import { AspectRatio } from '@/components/ui/aspect-ratio'
+
+// Header Component
+interface KBHeaderProps {
+  isCollapsed: boolean
+  onToggleCollapse: () => void
+}
+
+const KBHeader = ({ isCollapsed, onToggleCollapse }: KBHeaderProps) => {
+  return (
+    <div className="flex h-14 items-center border-b px-4">
+      {!isCollapsed ? (
+        <>
+          <h2 className="text-sm font-semibold">Knowledge Base</h2>
+          <div className="flex items-center gap-2 ml-auto">
+            <Button variant="ghost" size="sm">
+              <Folder className="h-4 w-4" />
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="sm"
+              onClick={onToggleCollapse}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </>
+      ) : (
+        <div className="flex justify-center w-full">
+          <Button 
+            variant="ghost" 
+            size="sm"
+            onClick={onToggleCollapse}
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Video Preview Component
+interface KBVideoPreviewProps {
+  video: { youtubeId: string; title: string; channelName?: string | null }
+  onClose: () => void
+}
+
+const KBVideoPreview = ({ video, onClose }: KBVideoPreviewProps) => {
+  return (
+    <div className="border-b p-4 space-y-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex-1 min-w-0">
+          <h3 className="text-sm font-medium leading-tight line-clamp-2">
+            {video.title}
+          </h3>
+          {video.channelName && (
+            <p className="text-xs text-muted-foreground mt-1">
+              {video.channelName}
+            </p>
+          )}
+        </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-8 w-8 p-0 flex-shrink-0"
+          onClick={onClose}
+          title="Close preview"
+        >
+          <X className="h-4 w-4" />
+        </Button>
+      </div>
+      
+      <AspectRatio ratio={16 / 9} className="bg-black rounded-md overflow-hidden">
+        <iframe
+          src={`https://www.youtube.com/embed/${video.youtubeId}`}
+          title={video.title}
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowFullScreen
+          className="w-full h-full"
+        />
+      </AspectRatio>
+    </div>
+  )
+}
+
+// URL Input Form Component
+interface KBUrlInputProps {
+  urlInput: string
+  setUrlInput: (value: string) => void
+  isSubmitting: boolean
+  onSubmit: (e: React.FormEvent) => void
+}
+
+const KBUrlInput = ({ urlInput, setUrlInput, isSubmitting, onSubmit }: KBUrlInputProps) => {
+  return (
+    <div className="border-b">
+      <form onSubmit={onSubmit} className="p-4">
+        <div className="relative">
+          <Input
+            type="url"
+            placeholder="Paste YouTube video/channel URL"
+            value={urlInput}
+            onChange={(e) => setUrlInput(e.target.value)}
+            disabled={isSubmitting}
+            className="w-full pr-12"
+          />
+          <Button 
+            type="submit" 
+            size="sm"
+            className="absolute right-1 top-1 h-8 w-8 p-0" 
+            disabled={isSubmitting || !urlInput.trim()}
+          >
+            {isSubmitting ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Cloud className="h-4 w-4" />
+            )}
+          </Button>
+        </div>
+      </form>
+    </div>
+  )
+}
+
+// Footer Component
+interface KBFooterProps {
+  totalVideos: number
+  lastIngestion: string
+}
+
+const KBFooter = ({ totalVideos, lastIngestion }: KBFooterProps) => {
+  return (
+    <div className="border-t">
+      <div className="bg-muted/30 px-4 py-3">
+        <div className="space-y-2 text-xs">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <VideoIcon className="h-3.5 w-3.5" />
+              <span>Total videos:</span>
+            </div>
+            <span className="font-medium text-foreground">{totalVideos}</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <Calendar className="h-3.5 w-3.5" />
+              <span>Last ingestion:</span>
+            </div>
+            <span className="font-medium text-foreground">{lastIngestion}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 export const KnowledgeBase = () => {
   const [urlInput, setUrlInput] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isCollapsed, setIsCollapsed] = useState(false)
+  const [previewingVideo, setPreviewingVideo] = useState<{ youtubeId: string; title: string; channelName?: string | null } | null>(null)
   const { selectedVideos, addVideo, removeVideo, clearSelection } = useVideoSelection()
   const { toast } = useToast()
 
@@ -38,6 +194,18 @@ export const KnowledgeBase = () => {
       removeVideo(videoId)
     } else {
       addVideo(videoId)
+    }
+  }
+
+  // Handle video preview - separate from selection
+  const handleVideoPreview = (videoId: string) => {
+    const video = videos.find(v => v.id === videoId)
+    if (video && video.youtubeId) {
+      setPreviewingVideo({
+        youtubeId: video.youtubeId,
+        title: video.title || 'Video',
+        channelName: video.channelName
+      })
     }
   }
 
@@ -110,96 +278,45 @@ export const KnowledgeBase = () => {
     <div className={`flex h-screen flex-col border-l bg-card transition-all duration-300 ${
       isCollapsed ? 'w-12' : 'w-[480px]'
     }`}>
-      {/* Header */}
-      <div className="flex h-14 items-center border-b px-4">
-        {!isCollapsed ? (
-          <>
-            <h2 className="text-sm font-semibold">Knowledge Base</h2>
-            <div className="flex items-center gap-2 ml-auto">
-              <Button variant="ghost" size="sm">
-                <Folder className="h-4 w-4" />
-              </Button>
-              <Button 
-                variant="ghost" 
-                size="sm"
-                onClick={() => setIsCollapsed(!isCollapsed)}
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-          </>
-        ) : (
-          <div className="flex justify-center w-full">
-            <Button 
-              variant="ghost" 
-              size="sm"
-              onClick={() => setIsCollapsed(!isCollapsed)}
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-          </div>
-        )}
-      </div>
+      <KBHeader 
+        isCollapsed={isCollapsed} 
+        onToggleCollapse={() => setIsCollapsed(!isCollapsed)} 
+      />
+      
       {/* Collapsible Content */}
       {!isCollapsed && (
         <>
-          {/* URL Input Form - Moved to top */}
-          <div className="border-b">
-            <form onSubmit={handleSubmit} className="p-4">
-              <div className="relative">
-                <Input
-                  type="url"
-                  placeholder="Paste YouTube video/channel URL"
-                  value={urlInput}
-                  onChange={(e) => setUrlInput(e.target.value)}
-                  disabled={isSubmitting}
-                  className="w-full pr-12"
-                />
-                <Button 
-                  type="submit" 
-                  size="sm"
-                  className="absolute right-1 top-1 h-8 w-8 p-0" 
-                  disabled={isSubmitting || !urlInput.trim()}
-                >
-                  {isSubmitting ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Cloud className="h-4 w-4" />
-                  )}
-                </Button>
-              </div>
-            </form>
-          </div>
+          {/* URL Input Form */}
+          <KBUrlInput
+            urlInput={urlInput}
+            setUrlInput={setUrlInput}
+            isSubmitting={isSubmitting}
+            onSubmit={handleSubmit}
+          />
+
+          {/* Video Preview Player */}
+          {previewingVideo && (
+            <KBVideoPreview 
+              video={previewingVideo} 
+              onClose={() => setPreviewingVideo(null)} 
+            />
+          )}
+          
           {/* Video List */}
           <VideoList
             videos={videos}
             onVideoClick={handleVideoClick}
+            onVideoPreview={handleVideoPreview}
             onRetry={handleVideoRetry}
             isLoading={isLoading}
             selectedVideos={selectedVideos}
           />
 
           {/* Footer with Metrics */}
-          <div className="border-t">
-            <div className="bg-muted/30 px-4 py-3">
-              <div className="space-y-2 text-xs">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <VideoIcon className="h-3.5 w-3.5" />
-                    <span>Total videos:</span>
-                  </div>
-                  <span className="font-medium text-foreground">{totalVideos}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Calendar className="h-3.5 w-3.5" />
-                    <span>Last ingestion:</span>
-                  </div>
-                  <span className="font-medium text-foreground">{lastIngestion}</span>
-                </div>
-              </div>
-            </div>
-          </div>
+          <KBFooter 
+            totalVideos={totalVideos} 
+            lastIngestion={lastIngestion} 
+          />
         </>
       )}
     </div>

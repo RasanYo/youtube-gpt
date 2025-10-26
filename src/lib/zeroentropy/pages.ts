@@ -35,6 +35,7 @@ export async function indexTranscriptPage(
       metadata: {
         videoId: segment.videoId,
         userId: segment.userId,
+        videoTitle: segment.videoTitle,
         startTime: segment.start.toString(),
         endTime: segment.end.toString(),
         duration: segment.duration.toString(),

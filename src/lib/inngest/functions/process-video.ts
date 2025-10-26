@@ -55,19 +55,73 @@ async function updateVideoStatus(video: Video, status: VideoStatus, errorMessage
 }
 
 /**
+ * Step 3: Extract transcript from YouTube video with retry logic
+ */
+async function extractTranscriptWithRetry(video: Video, maxRetries = 3): Promise<TranscriptData> {
+  console.log(`[extractTranscriptWithRetry] Starting transcript extraction with retry for video: ${video.id}`)
+  console.log(`[extractTranscriptWithRetry] YouTube ID: ${video.youtubeId}`)
+  console.log(`[extractTranscriptWithRetry] Max retries: ${maxRetries}`)
+  
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(`[extractTranscriptWithRetry] Attempt ${attempt}/${maxRetries} for video: ${video.id}`)
+      return await extractTranscript(video, attempt)
+    } catch (error) {
+      console.error(`[extractTranscriptWithRetry] Attempt ${attempt} failed:`, {
+        message: error instanceof Error ? error.message : 'Unknown error',
+        youtubeId: video.youtubeId,
+        attempt,
+        maxRetries
+      })
+      
+      if (attempt === maxRetries) {
+        console.error(`[extractTranscriptWithRetry] All ${maxRetries} attempts failed for video: ${video.id}`)
+        throw error
+      }
+      
+      // Wait before retry with exponential backoff
+      const delay = Math.pow(2, attempt) * 1000
+      console.log(`[extractTranscriptWithRetry] Waiting ${delay}ms before retry...`)
+      await new Promise(resolve => setTimeout(resolve, delay))
+    }
+  }
+  
+  throw new Error('This should never be reached')
+}
+
+/**
  * Step 3: Extract transcript from YouTube video
  */
-async function extractTranscript(video: Video): Promise<TranscriptData> {
-  console.log(`[extractTranscript] Starting transcript extraction for video: ${video.id}`)
+async function extractTranscript(video: Video, attempt = 1): Promise<TranscriptData> {
+  console.log(`[extractTranscript] Starting transcript extraction for video: ${video.id} (attempt ${attempt})`)
   console.log(`[extractTranscript] YouTube ID: ${video.youtubeId}`)
   
   try {
     const startTime = Date.now()
     
-    // Extract transcript using youtube-transcript-plus
-    const transcript = await fetchTranscript(video.youtubeId, {
-      cacheTTL: 3600, // Cache for 1 hour
-    }) as TranscriptResponse[]
+    // Try different configurations based on attempt number
+    let transcript: TranscriptResponse[]
+    
+    if (attempt === 1) {
+      // First attempt: try without cache
+      console.log(`[extractTranscript] Attempt ${attempt}: Trying without cache...`)
+      transcript = await fetchTranscript(video.youtubeId) as TranscriptResponse[]
+    } else if (attempt === 2) {
+      // Second attempt: try with custom user agent and no cache
+      console.log(`[extractTranscript] Attempt ${attempt}: Trying with custom user agent...`)
+      transcript = await fetchTranscript(video.youtubeId, {
+        userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        cacheTTL: 0, // Disable caching
+      }) as TranscriptResponse[]
+    } else {
+      // Third attempt: try with cache and different settings
+      console.log(`[extractTranscript] Attempt ${attempt}: Trying with cache and different settings...`)
+      transcript = await fetchTranscript(video.youtubeId, {
+        cacheTTL: 3600, // Cache for 1 hour
+        userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        disableHttps: false,
+      }) as TranscriptResponse[]
+    }
     
     const processingTime = Date.now() - startTime
     console.log(`[extractTranscript] Transcript extraction completed in ${processingTime}ms for video: ${video.id}`)
@@ -117,7 +171,13 @@ async function extractTranscript(video: Video): Promise<TranscriptData> {
     }
     
   } catch (error) {
-    console.error(`[extractTranscript] Transcript extraction failed for video: ${video.id}`, error)
+    console.error(`[extractTranscript] Transcript extraction failed for video: ${video.id}`, {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+      name: error instanceof Error ? error.name : 'UnknownError',
+      youtubeId: video.youtubeId,
+      attempt
+    })
     
     // Handle specific error types with appropriate messages
     if (error instanceof YoutubeTranscriptDisabledError) {
@@ -153,7 +213,7 @@ async function processTranscriptSegmentsForZeroEntropy(
   const typedTranscriptData = transcriptData as TranscriptData
   
   // Process transcript segments with user and video context
-  const segments = processTranscriptSegments(typedTranscriptData, video.userId, video.id)
+  const segments = processTranscriptSegments(typedTranscriptData, video.userId, video.id, video.title)
   
   // Validate transcript quality
   const validation = validateTranscriptQuality(typedTranscriptData)
@@ -242,8 +302,8 @@ export const processVideo = inngest.createFunction(
     // Step 2: Update status from PROCESSING to TRANSCRIPT_EXTRACTING
     await step.run('update-status-to-transcript-extracting', () => updateVideoStatus(video, 'TRANSCRIPT_EXTRACTING'))
     
-    // Step 3: Extract transcript from YouTube video
-    const transcriptData = await step.run('extract-transcript', () => extractTranscript(video))
+    // Step 3: Extract transcript from YouTube video with retry logic
+    const transcriptData = await step.run('extract-transcript', () => extractTranscriptWithRetry(video))
     
     // Step 4: Update status to ZEROENTROPY_PROCESSING
     await step.run('update-status-to-zeroentropy-processing', () => updateVideoStatus(video, 'ZEROENTROPY_PROCESSING'))
@@ -278,7 +338,7 @@ export const processVideo = inngest.createFunction(
           updatedAt: new Date().toISOString()
         })
         .eq('id', video.id)
-        .eq('user_id', video.userId)
+        .eq('userId', video.userId)
       
       if (error) {
         console.error(`[processVideo] Failed to update video with collection ID:`, error)
