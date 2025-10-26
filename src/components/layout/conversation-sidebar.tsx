@@ -9,6 +9,93 @@ import { useConversation } from '@/contexts/ConversationContext'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { formatDistanceToNow } from 'date-fns'
+import { cn } from '@/lib/utils'
+
+// ============================================================================
+// SUB-COMPONENTS
+// ============================================================================
+
+interface ConversationItemProps {
+  conversation: { id: string; title: string; updatedAt: string | null }
+  isActive: boolean
+  onClick: () => void
+}
+
+const ConversationItem = ({ conversation, isActive, onClick }: ConversationItemProps) => {
+  return (
+    <Button
+      variant="ghost"
+      className={cn(
+        'w-full justify-start text-left h-auto py-3 px-3 hover:bg-accent',
+        isActive && 'bg-accent border-l-2 border-primary'
+      )}
+      onClick={onClick}
+    >
+      <div className="flex items-start gap-2 w-full">
+        <MessageSquare className="h-4 w-4 mt-0.5 flex-shrink-0 text-muted-foreground" />
+        <div className="flex-1 min-w-0">
+          <div className="text-sm font-medium truncate text-sidebar-foreground">
+            {conversation.title}
+          </div>
+          <div className="text-xs text-muted-foreground">
+            {conversation.updatedAt
+              ? formatDistanceToNow(new Date(conversation.updatedAt), {
+                  addSuffix: true,
+                })
+              : 'Unknown'}
+          </div>
+        </div>
+      </div>
+    </Button>
+  )
+}
+
+interface ConversationSidebarProfileProps {
+  user: ReturnType<typeof useAuth>['user']
+  logout: () => void
+}
+
+const ConversationSidebarProfile = ({ user, logout }: ConversationSidebarProfileProps) => {
+  return (
+    <div className="border-t bg-sidebar-accent/50">
+      <Separator />
+      <div className="p-4 space-y-3">
+        <div className="flex items-center gap-3">
+          <Avatar className="h-9 w-9">
+            <AvatarFallback className="bg-primary text-primary-foreground">
+              {user?.email?.charAt(0).toUpperCase() || 'U'}
+            </AvatarFallback>
+          </Avatar>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium truncate text-sidebar-foreground">
+              {user?.email?.split('@')[0]}
+            </p>
+            <p className="text-xs text-muted-foreground truncate">
+              {user?.email}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={logout}
+            className="flex-1 justify-start"
+          >
+            <LogOut className="h-4 w-4 mr-2" />
+            Logout
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ============================================================================
+// MAIN COMPONENT
+// ============================================================================
 
 export const ConversationSidebar = () => {
   const { user, logout } = useAuth()
@@ -65,71 +152,18 @@ export const ConversationSidebar = () => {
         ) : (
           <div className="space-y-1">
             {conversations.map((conv) => (
-              <Button
+              <ConversationItem
                 key={conv.id}
-                variant="ghost"
-                className={`w-full justify-start text-left h-auto py-3 px-3 hover:bg-accent ${
-                  activeConversationId === conv.id
-                    ? 'bg-accent border-l-2 border-primary'
-                    : ''
-                }`}
+                conversation={conv}
+                isActive={activeConversationId === conv.id}
                 onClick={() => setActiveConversationId(conv.id)}
-              >
-                <div className="flex items-start gap-2 w-full">
-                  <MessageSquare className="h-4 w-4 mt-0.5 flex-shrink-0 text-muted-foreground" />
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium truncate text-sidebar-foreground">
-                      {conv.title}
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      {conv.updatedAt
-                        ? formatDistanceToNow(new Date(conv.updatedAt), {
-                            addSuffix: true,
-                          })
-                        : 'Unknown'}
-                    </div>
-                  </div>
-                </div>
-              </Button>
+              />
             ))}
           </div>
         )}
       </ScrollArea>
 
-      {/* Profile Section */}
-      <div className="border-t bg-sidebar-accent/50">
-        <Separator />
-        <div className="p-4 space-y-3">
-          <div className="flex items-center gap-3">
-            <Avatar className="h-9 w-9">
-              <AvatarFallback className="bg-primary text-primary-foreground">
-                {user?.email?.charAt(0).toUpperCase() || 'U'}
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate text-sidebar-foreground">
-                {user?.email?.split('@')[0]}
-              </p>
-              <p className="text-xs text-muted-foreground truncate">
-                {user?.email}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <ThemeToggle />
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={logout}
-              className="flex-1 justify-start"
-            >
-              <LogOut className="h-4 w-4 mr-2" />
-              Logout
-            </Button>
-          </div>
-        </div>
-      </div>
+      <ConversationSidebarProfile user={user} logout={logout} />
     </div>
   )
 }
