@@ -586,10 +586,6 @@ body {
   margin-left: .25rem;
 }
 
-.ml-2 {
-  margin-left: .5rem;
-}
-
 .ml-auto {
   margin-left: auto;
 }
@@ -604,6 +600,10 @@ body {
 
 .mt-0\.5 {
   margin-top: .125rem;
+}
+
+.mt-1 {
+  margin-top: .25rem;
 }
 
 .mt-1\.5 {
@@ -628,10 +628,6 @@ body {
 
 .mt-auto {
   margin-top: auto;
-}
-
-.mt-1 {
-  margin-top: .25rem;
 }
 
 .line-clamp-2 {
@@ -784,10 +780,6 @@ body {
 
 .max-h-\[300px\] {
   max-height: 300px;
-}
-
-.max-h-\[90vh\] {
-  max-height: 90vh;
 }
 
 .max-h-screen {
@@ -952,10 +944,6 @@ body {
 
 .max-w-3xl {
   max-width: 48rem;
-}
-
-.max-w-4xl {
-  max-width: 56rem;
 }
 
 .max-w-\[--skeleton-width\] {
