@@ -39,6 +39,7 @@ export const ConversationProvider: React.FC<{
   const [isLoading, setIsLoading] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [isInitialized, setIsInitialized] = useState(false)
 
   /**
    * Load all conversations for the current user
@@ -47,6 +48,7 @@ export const ConversationProvider: React.FC<{
     if (!user) {
       setConversations([])
       setError(null)
+      setIsInitialized(false)
       return
     }
 
@@ -54,6 +56,7 @@ export const ConversationProvider: React.FC<{
     setError(null)
     try {
       const data = await getConversationsByUserId(user.id)
+      console.log("Loading conversations", data.length)
       setConversations(data)
 
       // Auto-load the most recent conversation if none is active
@@ -68,6 +71,8 @@ export const ConversationProvider: React.FC<{
       setError(error instanceof Error ? error.message : 'Failed to load conversations')
     } finally {
       setIsLoading(false)
+      // Mark as initialized after load completes
+      setIsInitialized(true)
     }
   }, [user])
 
@@ -111,22 +116,25 @@ export const ConversationProvider: React.FC<{
     } else {
       setConversations([])
       setActiveConversationId(null)
+      setIsInitialized(false)
     }
   }, [user, loadConversations])
 
-  // Auto-create first conversation if user has no conversations
+  // Auto-create first conversation if user has no conversations (only after initialization)
   useEffect(() => {
     const shouldCreateFirstConversation =
       user &&
+      isInitialized &&  // Only check after initial load is complete
       !isLoading &&
       conversations.length === 0 &&
       !activeConversationId &&
       !isCreating
 
     if (shouldCreateFirstConversation) {
+      console.log("Creating first conversation")
       createNewConversation()
     }
-  }, [user, isLoading, conversations.length, activeConversationId, isCreating, createNewConversation])
+  }, [user, isInitialized, isLoading, conversations.length, activeConversationId, isCreating, createNewConversation])
 
   const value: ConversationContextType = {
     conversations,
