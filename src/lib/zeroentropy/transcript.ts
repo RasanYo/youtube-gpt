@@ -7,12 +7,14 @@ import type { TranscriptData, TranscriptSegment, ProcessedTranscriptSegment } fr
  * @param transcriptData - Raw transcript data from YouTube
  * @param userId - User ID for scoping
  * @param videoId - Video ID
+ * @param videoTitle - Video title
  * @returns Array of processed transcript segments ready for ZeroEntropy indexing
  */
 export function processTranscriptSegments(
   transcriptData: TranscriptData, 
   userId: string, 
-  videoId: string
+  videoId: string,
+  videoTitle: string
 ): ProcessedTranscriptSegment[] {
   console.log(`[processTranscriptSegments] Processing ${transcriptData.transcript.length} segments`)
   
@@ -42,7 +44,8 @@ export function processTranscriptSegments(
       language: segment.language || 'en',
       segmentIndex: index,
       userId,
-      videoId
+      videoId,
+      videoTitle
     }
     
     processedSegments.push(processedSegment)
@@ -150,7 +153,8 @@ export function handleTranscriptEdgeCases(segments: ProcessedTranscriptSegment[]
         language: segment.language,
         segmentIndex: segment.segmentIndex,
         userId: segment.userId,
-        videoId: segment.videoId
+        videoId: segment.videoId,
+        videoTitle: segment.videoTitle
       }
       
       handledSegments.push(mergedSegment)

@@ -40,6 +40,7 @@ export const createSearchKnowledgeBase = (
         return {
           content: result.content,
           videoId: result.videoId,
+          videoTitle: result.videoTitle,
           timestamp: formatTime(result.startTime),
           startTime: result.startTime,
           endTime: result.endTime,

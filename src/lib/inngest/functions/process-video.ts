@@ -213,7 +213,7 @@ async function processTranscriptSegmentsForZeroEntropy(
   const typedTranscriptData = transcriptData as TranscriptData
   
   // Process transcript segments with user and video context
-  const segments = processTranscriptSegments(typedTranscriptData, video.userId, video.id)
+  const segments = processTranscriptSegments(typedTranscriptData, video.userId, video.id, video.title)
   
   // Validate transcript quality
   const validation = validateTranscriptQuality(typedTranscriptData)

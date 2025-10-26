@@ -27,6 +27,7 @@ export interface ProcessedTranscriptSegment {
   // Additional fields for ZeroEntropy
   userId: string
   videoId: string
+  videoTitle: string
 }
 
 /**

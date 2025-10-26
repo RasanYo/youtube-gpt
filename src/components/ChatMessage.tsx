@@ -52,7 +52,7 @@ export const ChatMessage = ({ message, isLoading, videos = [] }: ChatMessageProp
                 
                 // Show video references when output is available
                 if (part.state === 'output-available' && part.output && typeof part.output === 'object' && 'results' in part.output) {
-                  const output = part.output as { results: Array<{ videoId: string; timestamp: string }> }
+                  const output = part.output as { results: Array<{ videoId: string; timestamp: string; videoTitle?: string }> }
                   const results = output.results
                   
                   // Deduplicate by videoId and timestamp
@@ -71,11 +71,12 @@ export const ChatMessage = ({ message, isLoading, videos = [] }: ChatMessageProp
                         <p className="text-xs font-medium text-muted-foreground mb-2">Video References</p>
                         <div className="flex flex-wrap gap-2">
                           {uniqueRefs.map((ref, idx) => {
-                            const video = videos.find(v => v.id === ref.videoId)
+                            // Use videoTitle from search result, fallback to videos prop lookup, or generic
+                            const videoTitle = ref.videoTitle || videos.find(v => v.id === ref.videoId)?.title || `Video ${ref.videoId}`
                             return (
                               <VideoReferenceCard
                                 key={`${message.id}-${i}-${idx}`}
-                                videoTitle={video?.title || `Video ${ref.videoId}`}
+                                videoTitle={videoTitle}
                                 timestamp={ref.timestamp}
                               />
                             )
