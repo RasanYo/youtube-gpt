@@ -1,32 +1,88 @@
 'use client'
 
 import { useState } from 'react'
-import { FileText, Folder, Video as VideoIcon, Calendar, Loader2, Cloud, ChevronLeft, ChevronRight, X } from 'lucide-react'
+import { FileText, Folder, Video as VideoIcon, Calendar, Loader2, Cloud, ChevronLeft, ChevronRight, X, Trash2 } from 'lucide-react'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { Input } from '@/components/ui/input'
 import { useToast } from '@/hooks/use-toast'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { processYouTubeUrl } from '@/lib/youtube'
 import { VideoList } from './VideoList'
 import { useVideos } from '@/hooks/useVideos'
 import { useVideoSelection } from '@/contexts/VideoSelectionContext'
+import { useAuth } from '@/contexts/AuthContext'
 import { AspectRatio } from '@/components/ui/aspect-ratio'
+import { inngest } from '@/lib/inngest/client'
 
 // Header Component
 interface KBHeaderProps {
   isCollapsed: boolean
   onToggleCollapse: () => void
+  selectedVideos: Set<string>
+  onRemove: () => void
+  isDeleting: boolean
+  showDialog: boolean
+  onOpenDialog: () => void
+  onCloseDialog: () => void
 }
 
-const KBHeader = ({ isCollapsed, onToggleCollapse }: KBHeaderProps) => {
+const KBHeader = ({ isCollapsed, onToggleCollapse, selectedVideos, onRemove, isDeleting, showDialog, onOpenDialog, onCloseDialog }: KBHeaderProps) => {
+  const selectedCount = selectedVideos.size
+  
   return (
     <div className="flex h-14 items-center border-b px-4">
       {!isCollapsed ? (
         <>
           <h2 className="text-sm font-semibold">Knowledge Base</h2>
           <div className="flex items-center gap-2 ml-auto">
+            <AlertDialog open={showDialog} onOpenChange={onCloseDialog}>
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={onOpenDialog}
+                disabled={selectedCount === 0 || isDeleting}
+                className={selectedCount > 0 ? "text-red-600 hover:bg-red-100 hover:text-red-700" : ""}
+                title={selectedCount > 0 ? `Delete ${selectedCount} video${selectedCount !== 1 ? 's' : ''}` : "Select videos to delete"}
+              >
+                {isDeleting ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Trash2 className="h-4 w-4" />
+                )}
+              </Button>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete {selectedCount} video{selectedCount !== 1 ? 's' : ''}?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This action cannot be undone. The videos will be permanently removed from your knowledge base.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction 
+                    onClick={() => {
+                      onRemove()
+                      onCloseDialog()
+                    }}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    Delete
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
             <Button variant="ghost" size="sm">
               <Folder className="h-4 w-4" />
             </Button>
@@ -173,8 +229,11 @@ export const KnowledgeBase = () => {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [previewingVideo, setPreviewingVideo] = useState<{ youtubeId: string; title: string; channelName?: string | null } | null>(null)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
   const { selectedVideos, addVideo, removeVideo, clearSelection } = useVideoSelection()
   const { toast } = useToast()
+  const { user } = useAuth()
 
   // Use the useVideos hook for real-time data
   const { videos, isLoading, error } = useVideos()
@@ -217,6 +276,68 @@ export const KnowledgeBase = () => {
       title: 'Retry Requested',
       description: `Retrying processing for video ${videoId}`,
     })
+  }
+
+  // Handle video deletion
+  const handleDeleteVideos = async () => {
+    if (!user) {
+      toast({
+        title: 'Error',
+        description: 'You must be logged in to delete videos',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    if (selectedVideos.size === 0) {
+      return
+    }
+
+    const videoIds = Array.from(selectedVideos)
+    const count = videoIds.length
+
+    setIsDeleting(true)
+    
+    try {
+      // Show loading toast
+      toast({
+        title: 'Deleting videos...',
+        description: `Removing ${count} video${count !== 1 ? 's' : ''} from your knowledge base`,
+      })
+
+      // Send deletion events to Inngest for each video
+      const deletionEvents = videoIds.map(videoId => 
+        inngest.send({
+          name: 'video.documents.deletion.requested',
+          data: { 
+            videoId, 
+            userId: user.id 
+          }
+        })
+      )
+
+      // Wait for all events to be sent
+      await Promise.all(deletionEvents)
+
+      // Show success toast
+      toast({
+        title: 'Success',
+        description: `Successfully deleted ${count} video${count !== 1 ? 's' : ''}`,
+      })
+
+      // Clear selection
+      clearSelection()
+    } catch (error) {
+      console.error('Deletion failed:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to delete videos. Please try again.',
+        variant: 'destructive',
+      })
+    } finally {
+      setIsDeleting(false)
+      setShowDeleteConfirm(false)
+    }
   }
 
   // Handle form submission
@@ -280,7 +401,13 @@ export const KnowledgeBase = () => {
     }`}>
       <KBHeader 
         isCollapsed={isCollapsed} 
-        onToggleCollapse={() => setIsCollapsed(!isCollapsed)} 
+        onToggleCollapse={() => setIsCollapsed(!isCollapsed)}
+        selectedVideos={selectedVideos}
+        onRemove={handleDeleteVideos}
+        isDeleting={isDeleting}
+        showDialog={showDeleteConfirm}
+        onOpenDialog={() => setShowDeleteConfirm(true)}
+        onCloseDialog={() => setShowDeleteConfirm(false)}
       />
       
       {/* Collapsible Content */}
