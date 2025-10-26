@@ -19,6 +19,45 @@ import { nanoid } from 'nanoid'
 export const ChatArea = () => {
   const { user } = useAuth()
   const { activeConversationId, isLoading: isConversationLoading } = useConversation()
+  const [conversationMessages, setConversationMessages] = useState<UIMessage[]>([])
+  const [isLoadingMessages, setIsLoadingMessages] = useState(false)
+
+  // Load messages for active conversation
+  useEffect(() => {
+    const loadMessages = async () => {
+      if (!activeConversationId || !user) {
+        setConversationMessages([])
+        setIsLoadingMessages(false)
+        return
+      }
+
+      setIsLoadingMessages(true)
+      try {
+        const dbMessages = await getMessagesByConversationId(activeConversationId)
+        
+        const convertedMessages: UIMessage[] = dbMessages.map(msg => ({
+          id: msg.id,
+          role: msg.role === 'USER' ? 'user' : 'assistant',
+          parts: [
+            {
+              type: 'text',
+              text: msg.content
+            }
+          ]
+        }))
+        
+        setConversationMessages(convertedMessages)
+        console.log(`✅ Loaded ${convertedMessages.length} messages for conversation ${activeConversationId}`)
+      } catch (error) {
+        console.error('Error loading messages:', error)
+        setConversationMessages([])
+      } finally {
+        setIsLoadingMessages(false)
+      }
+    }
+
+    loadMessages()
+  }, [activeConversationId, user])
 
   // Check if user is authenticated
   if (!user) {
@@ -55,7 +94,7 @@ export const ChatArea = () => {
   }
 
   // Show loading state while conversations are being loaded or created
-  if (isConversationLoading || !activeConversationId) {
+  if (isConversationLoading || !activeConversationId || isLoadingMessages) {
     return (
       <div className="flex h-screen flex-1 flex-col">
         <div className="flex h-14 items-center border-b px-6">
@@ -71,60 +110,35 @@ export const ChatArea = () => {
     )
   }
 
-  return <AuthenticatedChatArea user={user} />
+  return <AuthenticatedChatArea 
+    key={activeConversationId} 
+    user={user} 
+    initialMessages={conversationMessages}
+  />
 }
 
 // Separate component for authenticated chat
-const AuthenticatedChatArea = ({ user }: { user: NonNullable<ReturnType<typeof useAuth>['user']> }) => {
+const AuthenticatedChatArea = ({ 
+  user, 
+  initialMessages 
+}: { 
+  user: NonNullable<ReturnType<typeof useAuth>['user']>
+  initialMessages: UIMessage[]
+}) => {
   const { selectedVideos, removeVideo, clearSelection } = useVideoSelection()
   const { activeConversationId } = useConversation()
   const { videos } = useVideos()
   const scrollAreaRef = useRef<HTMLDivElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const [input, setInput] = useState('')
-  const [initialMessages, setInitialMessages] = useState<UIMessage[]>([])
 
   useEffect(() => {
     console.log('selectedVideos', selectedVideos)
   }, [user, selectedVideos])
 
-  // Load messages when conversation changes
-  useEffect(() => {
-    const loadMessages = async () => {
-      if (!activeConversationId) {
-        setInitialMessages([])
-        return
-      }
-
-      try {
-        const dbMessages = await getMessagesByConversationId(activeConversationId)
-        
-        // Convert database messages to UIMessage format for useChat
-        const convertedMessages: UIMessage[] = dbMessages.map(msg => ({
-          id: msg.id,
-          role: msg.role === 'USER' ? 'user' : 'assistant',
-          parts: [
-            {
-              type: 'text',
-              text: msg.content
-            }
-          ]
-        }))
-        
-        setInitialMessages(convertedMessages)
-        console.log(`✅ Loaded ${convertedMessages.length} messages for conversation ${activeConversationId}`)
-      } catch (error) {
-        console.error('Error loading messages:', error)
-        setInitialMessages([])
-      }
-    }
-
-    loadMessages()
-  }, [activeConversationId])
-
-  // Use the useChat hook from AI SDK - only runs when user is authenticated
+  // Use the useChat hook from AI SDK - receives messages from parent
   const { messages, sendMessage, status } = useChat({
-    // initialMessages: initialMessages, // Commented out - useChat doesn't support dynamic initialMessages
+    messages: initialMessages, // Messages already loaded from parent
     transport: new DefaultChatTransport({
       api: '/api/chat',
       body: {
