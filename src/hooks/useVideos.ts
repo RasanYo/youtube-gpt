@@ -14,7 +14,14 @@ export function useVideos() {
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null)
 
   useEffect(() => {
+    console.log('[useVideos] useEffect triggered', {
+      userId: user?.id,
+      hasSubscription: subscriptionRef.current,
+      timestamp: new Date().toISOString()
+    })
+    
     if (!user?.id) {
+      console.log('[useVideos] No user ID, clearing videos')
       setVideos([])
       setIsLoading(false)
       return
@@ -22,13 +29,14 @@ export function useVideos() {
 
     // Check if subscription already exists
     if (subscriptionRef.current) {
-      console.log('Subscription already exists, skipping...')
+      console.log('[useVideos] Subscription already exists, skipping...')
       return
     }
 
     // Initial fetch
     const fetchVideos = async () => {
       try {
+        console.log('[useVideos] Fetching videos for user:', user.id)
         setIsLoading(true)
         setError(null)
         const { data, error } = await supabase
@@ -38,10 +46,13 @@ export function useVideos() {
           .order('createdAt', { ascending: false })
         
         if (error) throw error
+        console.log('[useVideos] Fetched videos successfully:', {
+          count: data?.length || 0,
+          videoIds: data?.map(v => v.id)
+        })
         setVideos(data || [])
-        console.log('Videos:', data)
       } catch (err) {
-        console.error('Error fetching videos:', err)
+        console.error('[useVideos] Error fetching videos:', err)
         setError(err instanceof Error ? err.message : 'Failed to fetch videos')
       } finally {
         setIsLoading(false)
@@ -53,8 +64,15 @@ export function useVideos() {
     
     subscriptionRef.current = true
     
+    const channelName = `video-changes-${user.id}-${Date.now()}`
+    console.log('[useVideos] Setting up subscription:', {
+      userId: user.id,
+      channelName,
+      timestamp: Date.now()
+    })
+    
     const channel = supabase
-      .channel(`video-changes-${user.id}-${Date.now()}`) // Make channel name unique
+      .channel(channelName)
       .on(
         'postgres_changes',
         {
@@ -64,7 +82,7 @@ export function useVideos() {
           filter: `userId=eq.${user.id}`,
         },
         (payload) => {
-          console.log('Video change detected:', payload)
+          console.log('[useVideos] Video change detected:', payload)
           
           if (payload.eventType === 'INSERT') {
             setVideos((prev) => [payload.new as Video, ...prev])
@@ -79,18 +97,46 @@ export function useVideos() {
           }
         }
       )
-      .subscribe((status) => {
+      .subscribe((status, err) => {
+        console.log('[useVideos] Subscription status:', {
+          status,
+          channelName,
+          userId: user.id,
+          error: err,
+          timestamp: new Date().toISOString()
+        })
+        
         if (status === 'SUBSCRIBED') {
-          console.log('Successfully subscribed to video changes')
+          console.log('[useVideos] Successfully subscribed to video changes')
         } else if (status === 'CHANNEL_ERROR') {
-          console.error('Error subscribing to video changes')
+          console.error('[useVideos] Error subscribing to video changes', {
+            status,
+            channelName,
+            userId: user.id,
+            error: err
+          })
           setError('Failed to connect to real-time updates')
+        } else if (status === 'TIMED_OUT') {
+          console.warn('[useVideos] Subscription timed out', {
+            channelName,
+            userId: user.id
+          })
+          setError('Connection to real-time updates timed out')
+        } else if (status === 'CLOSED') {
+          console.warn('[useVideos] Subscription closed', {
+            channelName,
+            userId: user.id
+          })
         }
       })
 
     channelRef.current = channel
 
     return () => {
+      console.log('[useVideos] Cleanup triggered', {
+        hasChannel: !!channelRef.current,
+        userId: user.id
+      })
       if (channelRef.current) {
         supabase.removeChannel(channelRef.current)
         channelRef.current = null

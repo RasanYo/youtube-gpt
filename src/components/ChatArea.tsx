@@ -10,33 +10,11 @@ import { Badge } from '@/components/ui/badge'
 import { useAuth } from '@/contexts/AuthContext'
 import { useVideoSelection } from '@/contexts/VideoSelectionContext'
 import { useVideos } from '@/hooks/useVideos'
-import { ToolUsageNotification } from '@/components/ToolUsageNotification'
 import { useChat } from '@ai-sdk/react'
 import { DefaultChatTransport } from 'ai'
 
-interface ToolUsageState {
-  isActive: boolean
-  toolName: string
-  status: 'starting' | 'active' | 'completed' | 'error'
-  progress?: string
-  startTime?: number
-}
-
 export const ChatArea = () => {
-  const [toolUsage, setToolUsage] = useState<ToolUsageState>({
-    isActive: false,
-    toolName: '',
-    status: 'completed'
-  })
   const { user } = useAuth()
-  const { selectedVideos, removeVideo, clearSelection } = useVideoSelection()
-  const { videos } = useVideos()
-  const scrollAreaRef = useRef<HTMLDivElement>(null)
-  const messagesEndRef = useRef<HTMLDivElement>(null)
-
-
-  // Local state for input
-  const [input, setInput] = useState('')
 
   // Check if user is authenticated
   if (!user) {
@@ -77,11 +55,6 @@ export const ChatArea = () => {
 
 // Separate component for authenticated chat
 const AuthenticatedChatArea = ({ user }: { user: NonNullable<ReturnType<typeof useAuth>['user']> }) => {
-  const [toolUsage, setToolUsage] = useState<ToolUsageState>({
-    isActive: false,
-    toolName: '',
-    status: 'completed'
-  })
   const { selectedVideos, removeVideo, clearSelection } = useVideoSelection()
   const { videos } = useVideos()
   const scrollAreaRef = useRef<HTMLDivElement>(null)
@@ -214,7 +187,7 @@ const AuthenticatedChatArea = ({ user }: { user: NonNullable<ReturnType<typeof u
                   message.role === 'user' ? 'justify-end' : 'justify-start'
                 }`}
               >
-                {message.role === 'assistant' && (
+                  {message.role === 'assistant' && (
                   <Avatar className="h-8 w-8 flex-shrink-0">
                     <AvatarFallback className="bg-primary text-primary-foreground">
                       <Bot className="h-4 w-4" />
@@ -228,41 +201,25 @@ const AuthenticatedChatArea = ({ user }: { user: NonNullable<ReturnType<typeof u
                       : 'bg-muted'
                   }`}
                 >
-                  {/* Tool Usage Notification - show only for streaming AI messages */}
-                  {message.role === 'assistant' && isLoading && toolUsage.isActive && (
-                    <div className="mb-3">
-                      <ToolUsageNotification
-                        isActive={toolUsage.isActive}
-                        toolName={toolUsage.toolName}
-                        status={toolUsage.status}
-                        progress={toolUsage.progress}
-                      />
-                    </div>
-                  )}
-                  
                   <div className="text-sm whitespace-pre-wrap">
                     {message.parts.map((part, i) => {
                       switch (part.type) {
                         case 'text':
                           return <div key={`${message.id}-${i}`}>{part.text}</div>
-                        case 'tool-call':
-                          return (
-                            <div key={`${message.id}-${i}`} className="mt-2 p-2 bg-muted/50 rounded text-xs">
-                              <div className="font-medium">🔧 Tool Call</div>
-                              <div className="text-muted-foreground">
-                                {JSON.stringify(part, null, 2)}
+                        
+                        case 'tool-searchKnowledgeBase':
+                          // Show tool usage notification for searching state
+                          if (part.state === 'input-streaming' || part.state === 'input-available') {
+                            return (
+                              <div key={`${message.id}-${i}`} className="inline-flex items-center gap-2 text-xs text-muted-foreground italic">
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                                <span>Searching through videos...</span>
                               </div>
-                            </div>
-                          )
-                        case 'tool-result':
-                          return (
-                            <div key={`${message.id}-${i}`} className="mt-2 p-2 bg-muted/30 rounded text-xs">
-                              <div className="font-medium">✅ Tool Result</div>
-                              <div className="text-muted-foreground">
-                                {JSON.stringify(part, null, 2)}
-                              </div>
-                            </div>
-                          )
+                            )
+                          }
+                          // Don't show output as per user request
+                          return null
+                        
                         default:
                           return null
                       }
