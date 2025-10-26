@@ -6,10 +6,11 @@ import { searchTool, createSearchKnowledgeBase } from '@/lib/tools/search-tool'
 
 export async function POST(request: NextRequest) {
   try {
-    const { messages, userId, scope }: ChatRequest = await request.json()
+    const { messages, userId, scope, conversationId }: ChatRequest = await request.json()
     console.log('messages', messages)
     console.log('userId', userId)
     console.log('scope', scope)
+    console.log('conversationId', conversationId)
     
     if (!messages || !Array.isArray(messages)) {
       return new Response('Messages array is required', { status: 400 })
@@ -82,6 +83,48 @@ Current user context:
         if (finalStep?.text) {
           console.log(`💬 AI Response: "${finalStep.text}"`)
         }
+        
+        // Extract citations from tool calls
+        const citations: Array<{ videoId: string; videoTitle: string; timestamp: string }> = []
+        
+        // Loop through all steps to find search tool calls
+        for (const step of result.steps) {
+          if (step.toolCalls) {
+            for (const toolCall of step.toolCalls) {
+              if (toolCall.toolName === 'searchKnowledgeBase') {
+                const toolResult = step.toolResults?.find(r => r.toolCallId === toolCall.toolCallId)
+                // Access the tool result data correctly
+                // @ts-ignore - AI SDK has complex nested types for tool results
+                const resultData = toolResult?.result
+                if (resultData?.results) {
+                  const searchResults = resultData.results as Array<{
+                    videoId: string
+                    videoTitle: string
+                    timestamp: string
+                  }>
+                  // Extract unique citations
+                  for (const searchResult of searchResults) {
+                    if (searchResult.videoId && searchResult.videoTitle && searchResult.timestamp) {
+                      citations.push({
+                        videoId: searchResult.videoId,
+                        videoTitle: searchResult.videoTitle,
+                        timestamp: searchResult.timestamp
+                      })
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        
+        console.log(`📋 Citations found: ${citations.length}`)
+        if (citations.length > 0) {
+          citations.forEach((citation, index) => {
+            console.log(`   ${index + 1}. ${citation.videoTitle} - ${citation.timestamp}`)
+          })
+        }
+        
         console.log('─'.repeat(50))
       }
     })

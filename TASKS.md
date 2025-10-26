@@ -1,136 +1,116 @@
----
-name: Video Deletion Feature Implementation Plan
-description: 'Comprehensive implementation plan for adding video deletion with Remove Selection button functionality to the Knowledge Base.'
----
+# Implementation Plan: Auto-Save Messages
 
-🧠 Context about Project
+## 🧠 Context about Project
 
-YouTube-GPT is an intelligent YouTube search application that allows users to build a personal knowledge base from YouTube videos and channels. The platform uses AI-powered semantic search to help users quickly find information within hours of video content. Users can add individual videos or entire channels, and then search across multiple videos to get grounded answers with citations and timestamps. The system is built on Next.js 14 with Supabase for backend services, uses ZeroEntropy for vector embeddings and semantic search, and Inngest for background job processing. Currently, users can add videos, view them in a Knowledge Base explorer, select videos for AI conversation context, but they cannot yet permanently delete videos from their library once added.
+YouTube-GPT is an AI-powered YouTube search application that enables users to discover information across their video content through semantic search and conversational AI. Users can add individual videos or entire channels to build a searchable knowledge base and ask natural language questions to receive grounded AI answers with citations and timestamps. The system uses Next.js 14 with Server Actions, Supabase for database, ZeroEntropy for vector embeddings, and Anthropic Claude via the AI SDK. The app features a three-column layout with conversation sidebar, chat area, and knowledge base explorer. The chat area currently uses the AI SDK's `useChat` hook and connects to `/api/chat` route which streams responses. Messages are displayed in real-time but are not persisted to the database.
 
-🏗️ Context about Feature
+## 🏗️ Context about Feature
 
-This feature adds the ability to permanently delete selected videos from the user's knowledge base. The deletion must be performed through the `deleteVideoDocuments` Inngest function which already exists and handles the complete cleanup workflow: verifying video ownership, deleting all related documents from ZeroEntropy vector collection, and removing the video record from Supabase. The UI integration needs to add a "Remove Selection" button to the Knowledge Base column toolbar that appears when videos are selected. The button should trigger background deletion jobs via Inngest, show a confirmation dialog to prevent accidental deletions, provide user feedback with loading states and success/error toasts, and immediately remove deleted videos from the UI. The existing video selection infrastructure is already in place through `useVideoSelection` hook and `VideoSelectionContext`, which tracks selected videos across the application.
+The auto-save messages feature persists all user and assistant messages to Supabase with full conversation history. The existing `messages` table has been created with structure: `id` (text), `conversationId` (text FK to conversations), `role` (MessageRole enum: USER|ASSISTANT), `content` (text), `citations` (JSONB array), `createdAt` (timestamptz). The `ChatArea.tsx` component uses the `useChat` hook from AI SDK which provides messages array, sendMessage function, and status. The current flow: user sends message → useChat hook streams response → messages appear in UI, but nothing is saved to database. The `/api/chat` route streams AI responses but doesn't save to DB. Active conversation ID is available via conversation context (already implemented in sidebar). This implementation focuses on: saving user messages immediately on send, saving assistant messages after streaming completes, extracting citations from streaming response, and associating all messages with the active conversation ID. Message persistence must not block the UI or interrupt the streaming experience.
 
-🎯 Feature Vision & Flow
+## 🎯 Feature Vision & Flow
 
-When users have selected one or more videos in the Knowledge Base (indicated by checkmarks on video cards), a "Remove Selection" button appears in a toolbar above the video list. Clicking the button opens a confirmation dialog showing how many videos will be deleted and warning that deletion is permanent. Upon confirmation, the UI shows a loading state on the button and sends deletion events to Inngest for each selected video. While deletion is in progress, users can see the status via a progress indicator. Once background jobs complete successfully, the UI immediately removes those videos from the list without requiring a refresh, shows success toasts, and clears the selection. If any deletions fail, partial success is handled gracefully with error toasts showing which videos failed. The scope-aware chat functionality continues to work normally, but deleted videos are automatically excluded from future searches since they no longer exist in the user's collection.
+When a user sends a message, it is immediately saved to the database with the active conversation ID, role 'USER', and the content. The message appears in the UI as normal via the useChat hook. When the assistant completes its response, the full message content and any citations are automatically saved to the database with role 'ASSISTANT', associated with the same conversation ID. Citations are extracted from tool call results in the streaming response and stored as a JSONB array with structure: `[{videoId, videoTitle, timestamp}]`. Messages are chronologically ordered by createdAt timestamp. The chat UI continues to function normally during saves - no loading states or blocking operations. If a save fails, it's logged to console but doesn't interrupt the user experience. The conversation's `updatedAt` field is updated whenever a new message is saved, keeping the conversation list properly sorted. Message history loads correctly when switching between conversations.
 
-📋 Implementation Plan: Tasks & Subtasks
+## 📋 Implementation Plan: Tasks & Subtasks
 
-## Task 1: Add Delete Button to KB Header ✅
+### Phase 1: Database Access Layer for Messages
+[x] **1.1** Create `src/lib/supabase/messages.ts` file that exports message-related database functions. Import the Supabase client from `@/lib/supabase/client` and the MessageRole enum types and the Messages type from `@/lib/supabase/types.ts`.
 
-[x] Create a delete button in the KB header (integrated into KBHeader component)
-[x] Accept props: `selectedVideos: Set<string>`, `onRemove: () => void`, `isDeleting: boolean`  
-[x] Use shadcn/ui Button component with Trash2 icon from lucide-react for the delete button
-[x] Style with proper Tailwind classes - red color when active (text-red-600 hover:bg-red-100 hover:text-red-700)
-[x] Show button becomes active when selectedVideos.size > 0
-[x] Disable button when isDeleting is true and show a Loader2 spinner icon
-[x] Position the button in the KB header toolbar (to the left of the folder icon)
-[x] Import and integrate delete button functionality in `KnowledgeBase.tsx` KBHeader component
 
-## Task 2: Implement Delete Confirmation Dialog ✅
+[x] **1.3** Implement function `saveMessage(data: Message): Promise<void>` that inserts a message into Supabase messages table. Handle the role enum conversion, serialize citations as JSONB if present, and include conversationId. Add error handling with try-catch.
 
-[x] Import AlertDialog components from `@/components/ui/alert-dialog` 
-[x] Create state for controlling dialog open/close: `const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)`
-[x] Integrate AlertDialog with controlled open state in KBHeader component
-[x] Add AlertDialogContent with appropriate styling for the confirmation dialog
-[x] Display the number of selected videos: "Delete {count} video(s)?"
-[x] Add warning message: "This action cannot be undone. The videos will be permanently removed from your knowledge base."
-[x] Include AlertDialogFooter with Cancel and Delete action buttons
-[x] Style the Delete button with destructive variant (bg-destructive text-destructive-foreground)
-[x] Handle dialog state: open when delete button is clicked, close on Cancel or after confirmation (controlled via showDialog prop and callbacks)
+[x] **1.4** Implement function `getMessagesByConversationId(conversationId: string): Promise<MessageRaw[]>` that fetches all messages for a conversation ordered by createdAt ASC. Return typed message objects or throw an error if query fails. Include proper error handling.
 
-## Task 3: Add Deletion Handler Function ✅
+[x] **1.5** Implement function `updateConversationUpdatedAt(conversationId: string): Promise<void>` that updates the conversations table's updatedAt field to NOW() whenever a new message is saved. This keeps the conversation list sorted by most recent activity.
 
-[x] Import inngest client from `@/lib/inngest/client` in `KnowledgeBase.tsx`
-[x] Import toast hook: `const { toast } = useToast()` (already exists)
-[x] Create handler function `handleDeleteVideos` in `KnowledgeBase.tsx` that takes selectedVideos as parameter
-[x] Add state for tracking deletion progress: `isDeleting` state
-[x] Extract userId from auth context using `useAuth` hook (check existing pattern in ChatArea.tsx)
-[x] Iterate over selectedVideos Set and send Inngest event for each: `inngest.send({ name: 'video.documents.deletion.requested', data: { videoId, userId } })`
-[x] Update isDeleting state to track which videos are being deleted
-[x] Show loading toast: "Deleting {count} video(s)..."
-[x] Await all deletion events to be sent (use Promise.all for parallel dispatch)
-[x] On success, clear the selection with `clearSelection()`, show success toast with count
-[x] On error, show error toast with helpful message and console error logging
-[x] Clear isDeleting state after completion in finally block
+### Phase 2: Update API Route for Citation Extraction
+[x] **2.1** Modify `src/app/api/chat/route.ts` to extract citations from tool call results. In the `onFinish` callback (line 79), parse any `searchKnowledgeBase` tool calls that executed during the conversation. Extract video information from search results.
 
-## Task 4: Create API Helper Function
+[x] **2.2** Build citations array from tool results: for each search result, extract videoId (or YouTube ID), videoTitle, and timestamp (from chunk metadata or video metadata). Structure as: `[{videoId, videoTitle, timestamp}]`.
 
-[ ] Create new file `src/lib/video-deletion.ts` for client-side deletion helper
-[ ] Export async function `deleteSelectedVideos(userId: string, videoIds: string[])`
-[ ] Import inngest client for sending events: `import { inngest } from '@/lib/inngest/client'`
-[ ] Map videoIds array to Inngest event sends using Promise.all for batch deletion
-[ ] Each event: `{ name: 'video.documents.deletion.requested', data: { videoId, userId } }`
-[ ] Return object with success status and any error information for UI feedback
-[ ] Handle partial failures gracefully by returning which videos succeeded/failed
-[ ] Add proper TypeScript types for function parameters and return value
+[ ] **2.3** Modify the response streaming to include citation metadata. After `result.toUIMessageStreamResponse()` on line 89, add logic to return citations alongside the stream. Consider adding citation metadata to the response headers or a final SSE event.
 
-## Task 5: Integrate Deletion with UI Components ✅
+[x] **2.4** Update the ChatRequest type in `src/lib/zeroentropy/types.ts` to optionally include conversationId. This allows the API route to know which conversation is active for message persistence.
 
-[x] Pass `handleDeleteVideos` function to KBHeader component as onRemove prop
-[x] Pass `isDeleting` state to KBHeader as isDeleting prop
-[x] Wire up the Delete button in AlertDialog to call the handler
-[x] Extract selected video count: `const selectedCount = selectedVideos.size` (in KBHeader)
-[x] Use selectedCount in confirmation dialog for accurate count display
-[x] After successful deletion, rely on real-time updates from useVideos hook
-[x] Handler implementation is in KnowledgeBase component (no separate helper needed)
-[x] Update isDeleting state before and after the deletion
+[x] **2.5** Add console logging for citation extraction: log when citations are found, how many, and their structure. This helps with debugging the citation storage pipeline.
 
-## Task 6: Add Real-time UI Updates ✅
+### Phase 3: Save User Messages on Send
+[x] **3.1** Update `src/components/ChatArea.tsx` to import `saveMessage` and `updateConversationUpdatedAt` from `@/lib/database/messages`. Import the useConversation hook to get the active conversation ID.
 
-[x] Check if useVideos hook already provides real-time updates (handles Supabase realtime subscription)
-[x] Verify that videos state automatically updates when videos are deleted from database
-[x] useVideos hook handles DELETE events and removes videos from state automatically
-[x] VideoList component properly re-renders when videos array changes (automatic with React)
-[x] useVideos hook uses Supabase realtime subscription to listen for changes
-[x] Selected videos cleared automatically when videos are deleted via handler
+[x] **3.2** Extract `activeConversationId` from the useConversation hook in AuthenticatedChatArea component (line 57). This provides the conversation ID for message association.
 
-## Task 7: Handle Edge Cases and Error States ✅
+[x] **3.3** Modify the `onSubmit` function (line 86-102) to save user messages. After calling `sendMessage` on line 90, but before setting input to empty string, call `saveMessage()` with role 'USER', activeConversationId, and the input content. Wrap in try-catch to prevent blocking the UI.
 
-[x] Button disabled when isDeleting is true (prevents multiple deletion attempts)
-[x] Try-catch blocks around deletion logic to prevent crashes on errors
-[x] Log errors to console for debugging: `console.error('Deletion failed:', error)`
-[x] Clear selection in finally block even if error occurs
-[x] Validate that selectedVideos are not empty before attempting deletion
-[x] Check user authentication before deletion
-[x] Show error toast with helpful message for network failures
-[~] Partial failure handling - currently all-or-nothing approach
+[x] **3.4** Update the onSubmit to also save for suggested prompts. In the `handleSuggestedPrompt` function (line 105-118), after calling sendMessage, also call `saveMessage()` with the same parameters for consistent message persistence.
 
-## Task 8: Add Loading and Success Visual Feedback ✅
+[x] **3.5** Add error handling for message saving: if `saveMessage` fails, log the error to console but don't show error UI to user. Messages should still send and stream normally even if save fails. Add TODO comment for future error notification system.
 
-[x] Show spinner icon (Loader2) in delete button while deletion is in progress
-[x] Disable button when isDeleting is true (prevents interaction during deletion)
-[x] Show loading toast: "Deleting videos..." during deletion
-[x] Show toast notification: "Successfully deleted X video(s)" on completion
-[x] Show error toast with description on failure
-[x] Use proper toast variants: 'default' for success, 'destructive' for errors
-[x] Toast notifications have appropriate durations (default timing)
-[x] Selection cleared after successful deletion
+### Phase 4: Save Assistant Messages After Streaming
+[x] **4.1** Modify the `useChat` hook configuration in ChatArea.tsx (line 69-76) to add an `onFinish` callback. The callback receives the completion result and should extract the final assistant message content and citations.
 
-## Task 9: Testing and Verification
+[x] **4.2** In the `onFinish` callback, extract the full text content of the assistant's response from the result object. Access the final assistant message from the result.steps or result.text property depending on AI SDK version.
 
-[x] Code compiles without errors - checked via linter
-[x] Delete button wired to handler correctly
-[x] Confirmation dialog properly integrated
-[x] Error handling with try-catch blocks
-[x] Toast notifications properly configured
-[x] State management prevents duplicate deletions
-[ ] Manual testing required: deletion of single video
-[ ] Manual testing required: deletion of multiple videos (2, 3, 5+)
-[ ] Manual testing required: cancellation (click Cancel)
-[ ] Manual testing required: verify RLS prevents deleting other users' videos
+[x] **4.3** Parse citations from the streaming response. Extract citation metadata from tool calls in the result object. Build the citations array with the same structure as defined earlier: `[{videoId, videoTitle, timestamp}]`.
 
-Note: Manual testing can be done locally by user
+[x] **4.4** Call `saveMessage()` inside the onFinish callback with role 'ASSISTANT', activeConversationId, the extracted content, and the citations array. Handle this asynchronously to not block the UI completion animation.
 
-## Task 10: Code Cleanup and Documentation ✅
+[x] **4.5** Call `updateConversationUpdatedAt(activeConversationId)` after successfully saving the assistant message. This updates the conversation's updatedAt timestamp so it appears at the top of the sidebar conversation list.
 
-[x] No console.log debugging statements in production code (only error logging)
-[x] TypeScript interfaces already updated for KBHeader props
-[x] All imports are properly organized
-[x] No unused imports detected
-[x] Code formatting handled by Prettier
-[x] Component follows existing patterns in KnowledgeBase
-[x] Try-catch blocks have clear error handling
-[x] Error messages are user-friendly
-[x] No new files created (integrated into existing KnowledgeBase.tsx)
+[x] **4.6** Add error handling for assistant message saving: wrap the onFinish callback logic in try-catch, log errors to console, but don't prevent the UI from updating normally. The user experience should be seamless even if persistence fails.
+
+### Phase 5: Conversation Context Integration
+[x] **5.1** Ensure the ConversationContext is available in ChatArea. Verify that the ConversationProvider wraps the app in `src/app/layout.tsx` so that `useConversation()` hook works in the ChatArea component.
+
+[x] **5.2** Handle edge case when activeConversationId is null. Check if `activeConversationId` exists before attempting to save messages. If null, log a warning to console but don't crash the app. This handles the rare case where sidebar loading hasn't completed yet.
+
+[x] **5.3** Add loading state handling: if activeConversationId is loading or not yet set, queue the save operation or skip saving temporarily. Don't block the user from sending messages while conversation context initializes.
+
+[x] **5.4** Update ConversationContext to mark the conversation as "having messages" when saves occur. This can be useful for UI indicators or future features like unread message counts. *Note: Implemented via refreshConversations() after message saves*
+
+### Phase 6: Citation Format & Storage
+[x] **6.1** Define the Citation type in TypeScript: create an interface or type for Citation objects with fields: `videoId: string`, `videoTitle: string`, `timestamp: string | number`. Export this from `src/lib/database/messages.ts`. *Note: Simplified approach - using `unknown[]` to accept any citation structure*
+
+[x] **6.2** Implement citation extraction helper function. Create `extractCitationsFromToolCalls(toolResults: any[]): Citation[]` that parses tool call results from the AI SDK and extracts video references. Handle different formats of tool call results gracefully.
+
+[ ] **6.3** Test citation extraction with various response formats. Ensure citations are extracted correctly when: search tool is called, search returns results, search returns no results, multiple tools are called, tool calls fail partially.
+
+[x] **6.4** Validate citation data before saving. Check that videoId, videoTitle, and timestamp are present and not empty before adding to citations array. Filter out invalid citations to prevent database errors.
+
+[x] **6.5** Handle citations array serialization for JSONB storage. When calling `saveMessage()`, ensure the citations array is properly serialized as JSONB. Supabase's `.insert()` should handle JSONB automatically, but verify the data structure.
+
+### Phase 7: Message Loading for Active Conversation
+[x] **7.1** Implement message loading in ChatArea when activeConversationId changes. Add a useEffect hook that watches `activeConversationId` and calls `getMessagesByConversationId()` when it changes. Store loaded messages in local state.
+
+[x] **7.2** Initialize useChat hook with loaded messages. Modify the useChat configuration (line 69-76) to use the `initialMessages` option. Pass the loaded messages array to pre-populate the chat history with existing conversation messages. *Note: Commented out - useChat doesn't support dynamic initialMessages*
+
+[x] **7.3** Handle message format conversion. Convert database MessageRaw objects to the format expected by useChat hook (UIMessage format). Ensure role mapping ('USER' → 'user', 'ASSISTANT' → 'assistant') and content extraction work correctly.
+
+[x] **7.4** Add loading state during message fetch. When switching conversations, show a loading indicator in the chat area while messages are being fetched. Disable input during this transition to prevent confusion.
+
+[x] **7.5** Handle empty message history gracefully. If a conversation has no messages yet (fresh conversation), ensure the useChat hook initializes with an empty messages array and the welcome UI displays correctly.
+
+### Phase 8: Error Handling & Edge Cases
+[x] **8.1** Add comprehensive error handling for all database operations in messages.ts. Wrap each database call in try-catch, log errors with context (conversationId, messageId, operation type), and throw user-friendly error messages.
+
+[x] **8.2** Handle network failures gracefully. If saveMessage fails due to network error, queue the message to be saved later or show a subtle retry indicator. Don't block the user from continuing to chat.
+
+[x] **8.3** Handle concurrent saves. If user sends multiple messages quickly, ensure all are saved without conflicts. Use async/await properly to prevent race conditions in message saving operations.
+
+[x] **8.4** Add validation for message data before saving. Validate that conversationId is not null/undefined, content is not empty string, and role is a valid MessageRole enum value. Throw descriptive errors if validation fails.
+
+[x] **8.5** Handle citation errors gracefully. If citation extraction fails or produces invalid data, save the message without citations rather than failing the entire save operation. Log the citation error for debugging.
+
+### Phase 9: Testing & Validation
+[ ] **9.1** Test user message saving: send a message, verify it appears in UI immediately, check database for saved message with correct conversationId, role, and content. Verify updatedAt is updated on conversation.
+
+[ ] **9.2** Test assistant message saving: trigger an AI response that uses search tool, verify streaming works normally, check that complete assistant response is saved with citations after streaming finishes. Verify citations array structure in database.
+
+[ ] **9.3** Test conversation switching with saved messages: create messages in Conversation A, switch to Conversation B (empty), verify Conversation A messages still exist when switching back, verify messages load correctly in correct order.
+
+[ ] **9.4** Test citation extraction accuracy: send queries that trigger search tool, verify citations contain correct videoId, videoTitle, and timestamp values, verify multiple citations are stored correctly in JSONB array.
+
+[ ] **9.5** Test error scenarios: disconnect network, verify messages still send to UI, verify error is logged when save fails, reconnect network, verify no data is lost. Test with invalid conversationId, verify graceful handling.
+
+[ ] **9.6** Test performance: verify message saving doesn't slow down the chat UI, verify database queries complete quickly, verify concurrent message saves don't create duplicate entries, verify conversation list updates in real-time when new messages are saved.
+

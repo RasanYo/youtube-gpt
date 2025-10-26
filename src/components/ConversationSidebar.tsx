@@ -5,14 +5,21 @@ import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { ThemeToggle } from './ThemeToggle'
 import { useAuth } from '@/contexts/AuthContext'
+import { useConversation } from '@/contexts/ConversationContext'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
+import { formatDistanceToNow } from 'date-fns'
 
 export const ConversationSidebar = () => {
   const { user, logout } = useAuth()
-
-  // Empty conversations array to show empty state
-  const conversations: Array<{ id: number; title: string; date: string }> = []
+  const {
+    conversations,
+    activeConversationId,
+    setActiveConversationId,
+    createNewConversation,
+    isLoading,
+    error,
+  } = useConversation()
 
   return (
     <div className="flex h-screen w-64 flex-col border-r bg-sidebar">
@@ -26,6 +33,7 @@ export const ConversationSidebar = () => {
           size="icon"
           className="h-8 w-8"
           title="New Chat"
+          onClick={createNewConversation}
         >
           <Plus className="h-4 w-4" />
         </Button>
@@ -33,7 +41,18 @@ export const ConversationSidebar = () => {
 
       {/* Conversations List */}
       <ScrollArea className="flex-1 p-2">
-        {conversations.length === 0 ? (
+        {error ? (
+          <div className="flex flex-col items-center justify-center h-full text-center px-4 py-8">
+            <p className="text-sm text-destructive mb-2">{error}</p>
+            <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
+              Retry
+            </Button>
+          </div>
+        ) : isLoading ? (
+          <div className="flex flex-col items-center justify-center h-full text-center px-4 py-8">
+            <p className="text-sm text-muted-foreground">Loading...</p>
+          </div>
+        ) : conversations.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center px-4 py-8">
             <MessageSquare className="h-12 w-12 text-muted-foreground/50 mb-3" />
             <p className="text-sm text-muted-foreground mb-1 font-medium">
@@ -49,7 +68,12 @@ export const ConversationSidebar = () => {
               <Button
                 key={conv.id}
                 variant="ghost"
-                className="w-full justify-start text-left h-auto py-3 px-3"
+                className={`w-full justify-start text-left h-auto py-3 px-3 hover:bg-accent ${
+                  activeConversationId === conv.id
+                    ? 'bg-accent border-l-2 border-primary'
+                    : ''
+                }`}
+                onClick={() => setActiveConversationId(conv.id)}
               >
                 <div className="flex items-start gap-2 w-full">
                   <MessageSquare className="h-4 w-4 mt-0.5 flex-shrink-0 text-muted-foreground" />
@@ -58,7 +82,11 @@ export const ConversationSidebar = () => {
                       {conv.title}
                     </div>
                     <div className="text-xs text-muted-foreground">
-                      {conv.date}
+                      {conv.updatedAt
+                        ? formatDistanceToNow(new Date(conv.updatedAt), {
+                            addSuffix: true,
+                          })
+                        : 'Unknown'}
                     </div>
                   </div>
                 </div>

@@ -6,6 +6,7 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { VideoSelectionProvider } from '@/contexts/VideoSelectionContext'
+import { ConversationProvider } from '@/contexts/ConversationContext'
 import { useState } from 'react'
 
 export function Providers({ children }: { children: React.ReactNode }) {
@@ -15,11 +16,13 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <AuthProvider>
-          <VideoSelectionProvider>
-            <Toaster />
-            <Sonner />
-            {children}
-          </VideoSelectionProvider>
+          <ConversationProvider>
+            <VideoSelectionProvider>
+              <Toaster />
+              <Sonner />
+              {children}
+            </VideoSelectionProvider>
+          </ConversationProvider>
         </AuthProvider>
       </TooltipProvider>
     </QueryClientProvider>
