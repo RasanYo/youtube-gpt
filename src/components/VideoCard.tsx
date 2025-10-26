@@ -5,8 +5,15 @@ import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { Loader2, AlertCircle, Check, Clock, Video as VideoIcon, CheckCircle } from 'lucide-react'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { Loader2, AlertCircle, Check, Clock, Video as VideoIcon, CheckCircle, Play, MoreVertical, ExternalLink } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Video, VideoStatus } from '@/lib/supabase/types'
 
@@ -96,6 +103,7 @@ export const VideoCard = ({
   const status = convertStatus(video.status)
   const duration = formatDuration(video.duration)
   const publishedAt = video.createdAt
+  const youtubeId = video.youtubeId
 
   const config = statusConfig[status]
   const Icon = config.icon
@@ -104,8 +112,16 @@ export const VideoCard = ({
     onClick?.(videoId)
   }
 
-  const handleDoubleClick = () => {
+  const handlePreviewClick = (e: React.MouseEvent) => {
+    e.stopPropagation()
     onPreview?.(videoId)
+  }
+
+  const handleOpenInYouTube = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (youtubeId) {
+      window.open(`https://www.youtube.com/watch?v=${youtubeId}`, '_blank', 'noopener,noreferrer')
+    }
   }
 
   const formatDate = (dateString?: string | null) => {
@@ -136,9 +152,49 @@ export const VideoCard = ({
           className
         )}
         onClick={handleClick}
-        onDoubleClick={handleDoubleClick}
       >
-        <CardContent className="p-3">
+        <CardContent className="p-3 relative">
+          {/* Checkbox and menu in bottom right corner */}
+          <div className="absolute bottom-2 right-2 flex items-center gap-1 z-20">
+            {/* Selection checkbox */}
+            <Checkbox
+              checked={isSelected}
+              onCheckedChange={() => onClick?.(videoId)}
+              onClick={(e) => e.stopPropagation()}
+              className="h-4 w-4"
+            />
+            
+            {/* More options menu */}
+            {onPreview && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 w-6 p-0"
+                  >
+                    <MoreVertical className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="min-w-[120px]">
+                  <DropdownMenuItem onClick={(e) => {
+                    e.stopPropagation()
+                    onPreview?.(videoId)
+                  }} className="text-xs">
+                    <Play className="mr-2 h-3 w-3" />
+                    Preview
+                  </DropdownMenuItem>
+                  {youtubeId && (
+                    <DropdownMenuItem onClick={handleOpenInYouTube} className="text-xs">
+                      <ExternalLink className="mr-2 h-3 w-3" />
+                      Open in YouTube
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+          </div>
+          
           <div className="flex gap-3">
             {/* Left side - Text content (70%) */}
             <div className="flex-1 min-w-0 space-y-1">
@@ -174,20 +230,30 @@ export const VideoCard = ({
                 )}
               </div>
 
-              {/* Date */}
-              {!isEmpty(publishedAt) ? (
-                <span className="text-xs text-muted-foreground">
-                  {formatDate(publishedAt)}
-                </span>
-              ) : (
-                <Skeleton className="h-3 w-16" />
-              )}
+              {/* Date and Duration */}
+              <div className="flex items-center gap-2">
+                {!isEmpty(publishedAt) ? (
+                  <span className="text-xs text-muted-foreground">
+                    {formatDate(publishedAt)}
+                  </span>
+                ) : (
+                  <Skeleton className="h-3 w-16" />
+                )}
+                {!isEmpty(duration) && status === 'ready' && (
+                  <>
+                    <span className="text-xs text-muted-foreground">•</span>
+                    <span className="text-xs text-muted-foreground">
+                      {duration}
+                    </span>
+                  </>
+                )}
+              </div>
             </div>
 
             {/* Right side - Thumbnail (30%) */}
-            <div className="flex-shrink-0 w-16">
+            <div className="flex-shrink-0 w-12">
               {/* Thumbnail */}
-              <div className="w-16 h-12 relative overflow-hidden rounded-md">
+              <div className="w-12 h-9 relative overflow-hidden rounded-md">
                 {!isEmpty(thumbnailUrl) ? (
                   <img
                     src={thumbnailUrl!}
@@ -231,21 +297,6 @@ export const VideoCard = ({
                   )}
                 </div>
 
-                {/* Selection indicator - top left corner */}
-                {isSelected && (
-                  <div className="absolute top-1 left-1">
-                    <div className="h-4 w-4 flex items-center justify-center rounded-full bg-primary text-primary-foreground">
-                      <CheckCircle className="h-2.5 w-2.5" />
-                    </div>
-                  </div>
-                )}
-                
-                {/* Duration overlay for ready videos */}
-                {!isEmpty(duration) && status === 'ready' && (
-                  <div className="absolute bottom-0 right-0 left-0 bg-black/70 text-white text-xs px-1 py-0.5 text-center">
-                    {duration}
-                  </div>
-                )}
               </div>
             </div>
           </div>
@@ -271,8 +322,8 @@ export const VideoCardSkeleton = ({ className }: { className?: string }) => {
             <Skeleton className="h-3 w-16" />
           </div>
           {/* Right side - Thumbnail and Status (30%) */}
-          <div className="flex-shrink-0 w-16 space-y-1">
-            <Skeleton className="w-16 h-12 rounded-md" />
+          <div className="flex-shrink-0 w-12 space-y-1">
+            <Skeleton className="w-12 h-9 rounded-md" />
             <Skeleton className="h-5 w-full rounded-full" />
           </div>
         </div>
