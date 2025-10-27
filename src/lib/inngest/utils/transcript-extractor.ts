@@ -103,7 +103,7 @@ export async function extractTranscript(
       transcript = await fetchTranscript(video.youtubeId, {
         cacheTTL: 3600, // Cache for 1 hour
         userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        disableHttps: false,
+        disableHttps: true,
       }) as TranscriptResponse[]
     }
 
