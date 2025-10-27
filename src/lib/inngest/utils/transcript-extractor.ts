@@ -1,19 +1,24 @@
 import type { Video } from '@/lib/supabase/types'
 import type { TranscriptData } from '@/lib/zeroentropy/types'
-import {
-  YoutubeTranscript,
-  YoutubeTranscriptDisabledError,
-  YoutubeTranscriptNotAvailableError,
-  YoutubeTranscriptNotAvailableLanguageError,
-  YoutubeTranscriptVideoUnavailableError,
-  YoutubeTranscriptTooManyRequestError,
-  YoutubeTranscriptEmptyError,
-  type TranscriptResponse,
-  type TranscriptConfig
-} from '@danielxceron/youtube-transcript'
+import { Supadata } from '@supadata/js'
 import { createLogger } from './inngest-logger'
 
 const logger = createLogger('transcript-extractor')
+
+/**
+ * Initialize Supadata client with API key from environment variables
+ */
+function getSupadataClient(): Supadata {
+  const apiKey = process.env.SUPADATA_API_KEY
+  
+  if (!apiKey) {
+    throw new Error('SUPADATA_API_KEY environment variable is not set')
+  }
+
+  return new Supadata({
+    apiKey
+  })
+}
 
 /**
  * Extract transcript from YouTube video with retry logic
@@ -83,43 +88,40 @@ export async function extractTranscript(
 
   try {
     const startTime = Date.now()
+    const supadata = getSupadataClient()
 
-    // Try different configurations based on attempt number
-    let transcript: TranscriptResponse[]
-    let config: TranscriptConfig = {}
+    logger.info(`Attempt ${attempt}: Fetching transcript from Supadata...`)
+    
+    // Fetch transcript using Supadata
+    const response = await supadata.youtube.transcript({
+      videoId: video.youtubeId
+    })
 
-    if (attempt === 1) {
-      // First attempt: try default configuration
-      logger.info(`Attempt ${attempt}: Trying with default configuration...`)
-      transcript = await YoutubeTranscript.fetchTranscript(video.youtubeId)
-    } else if (attempt === 2) {
-      // Second attempt: try with specific language
-      logger.info(`Attempt ${attempt}: Trying with 'en' language...`)
-      config = { lang: 'en' }
-      transcript = await YoutubeTranscript.fetchTranscript(video.youtubeId, config)
-    } else {
-      // Third attempt: try with different language
-      logger.info(`Attempt ${attempt}: Trying with 'en-US' language...`)
-      config = { lang: 'en-US' }
-      transcript = await YoutubeTranscript.fetchTranscript(video.youtubeId, config)
+    // Supadata returns: { lang: string, content: TranscriptChunk[] | string }
+    // If content is a string, that's just the raw text, not the segmented format we need
+    if (typeof response.content === 'string') {
+      throw new Error('Transcript returned as plain text string, expected segmented format')
     }
+
+    const transcript = response.content || []
 
     const processingTime = Date.now() - startTime
     logger.info(`Transcript extraction completed in ${processingTime}ms for video: ${video.id}`, {
-      segmentCount: transcript.length
+      segmentCount: transcript.length,
+      language: response.lang
     })
 
     // Validate transcript quality
     if (!transcript || transcript.length === 0) {
-      throw new Error('No transcript data received from YouTube')
+      throw new Error('No transcript data received from Supadata')
     }
 
     // Calculate total duration and text length
-    const totalDuration = transcript.reduce((sum, segment) => sum + segment.duration, 0)
+    const totalDuration = transcript.reduce((sum, segment) => sum + segment.duration, 0) / 1000 // Convert ms to seconds
     const totalTextLength = transcript.reduce((sum, segment) => sum + segment.text.length, 0)
 
     logger.info('Transcript validation', {
-      duration: `${totalDuration}s`,
+      duration: `${totalDuration.toFixed(2)}s`,
       textLength: `${totalTextLength} chars`
     })
 
@@ -132,12 +134,12 @@ export async function extractTranscript(
       throw new Error('Video too short - minimum 10 seconds required')
     }
 
-    // Format transcript for storage
+    // Format transcript for storage (Supadata uses offset in ms, we need to convert to seconds)
     const formattedTranscript = transcript.map(segment => ({
       text: segment.text.trim(),
-      start: segment.offset,
-      duration: segment.duration,
-      language: segment.lang || 'en'
+      start: segment.offset, // Already in ms
+      duration: segment.duration, // Already in ms
+      language: segment.lang || response.lang || 'en'
     }))
 
     logger.info(`Transcript extraction successful for video: ${video.id}`, {
@@ -148,9 +150,9 @@ export async function extractTranscript(
       transcript: formattedTranscript,
       metadata: {
         totalSegments: transcript.length,
-        totalDuration,
+        totalDuration: totalDuration,
         totalTextLength,
-        language: transcript[0]?.lang || 'en',
+        language: response.lang || 'en',
         extractedAt: new Date().toISOString(),
         processingTimeMs: processingTime
       }
@@ -165,21 +167,23 @@ export async function extractTranscript(
       attempt
     })
 
-    // Handle specific error types with appropriate messages
-    if (error instanceof YoutubeTranscriptDisabledError) {
-      throw new Error('Transcript extraction failed: Captions are disabled for this video')
-    } else if (error instanceof YoutubeTranscriptNotAvailableError) {
-      throw new Error('Transcript extraction failed: No transcript available for this video')
-    } else if (error instanceof YoutubeTranscriptNotAvailableLanguageError) {
-      throw new Error('Transcript extraction failed: No transcript available in the requested language')
-    } else if (error instanceof YoutubeTranscriptVideoUnavailableError) {
-      throw new Error('Transcript extraction failed: Video is unavailable or private')
-    } else if (error instanceof YoutubeTranscriptTooManyRequestError) {
-      throw new Error('Transcript extraction failed: Too many requests - rate limited')
-    } else if (error instanceof YoutubeTranscriptEmptyError) {
-      throw new Error('Transcript extraction failed: Transcript is empty')
-    } else if (error instanceof Error) {
-      throw new Error(`Transcript extraction failed: ${error.message}`)
+    // Handle errors with appropriate messages
+    if (error instanceof Error) {
+      const errorMessage = error.message.toLowerCase()
+      
+      if (errorMessage.includes('disabled') || errorMessage.includes('captions')) {
+        throw new Error('Transcript extraction failed: Captions are disabled for this video')
+      } else if (errorMessage.includes('not available') || errorMessage.includes('no transcript')) {
+        throw new Error('Transcript extraction failed: No transcript available for this video')
+      } else if (errorMessage.includes('unavailable') || errorMessage.includes('private')) {
+        throw new Error('Transcript extraction failed: Video is unavailable or private')
+      } else if (errorMessage.includes('rate limit') || errorMessage.includes('too many requests')) {
+        throw new Error('Transcript extraction failed: Too many requests - rate limited')
+      } else if (errorMessage.includes('invalid') || errorMessage.includes('not found')) {
+        throw new Error('Transcript extraction failed: Invalid YouTube video ID')
+      } else {
+        throw new Error(`Transcript extraction failed: ${error.message}`)
+      }
     } else {
       throw new Error('Transcript extraction failed: Unknown error occurred')
     }

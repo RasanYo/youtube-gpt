@@ -1,11 +1,17 @@
-import { fetchTranscript } from 'youtube-transcript-plus';
+import { Supadata } from '@supadata/js';
 
 async function testTranscript() {
   try {
     console.log('Testing youtube-transcript library...');
     console.log('Fetching transcript...\n');
     
-    const transcript = await fetchTranscript('ArJoVGAv_PQ');
+    const supadata = new Supadata({
+      apiKey: "sd_b86be59870f1957cfcb4ef963ff46b3a",
+    });
+    
+    const transcript = await supadata.youtube.transcript({
+      videoId: "_uvuPcJCcKk",
+    });
     console.log(transcript);
     console.log('Transcript fetched successfully!');
     console.log('Number of transcript segments:', transcript.length);
