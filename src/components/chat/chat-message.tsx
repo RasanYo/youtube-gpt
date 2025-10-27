@@ -2,8 +2,8 @@
 
 import { Loader2, Bot, User } from 'lucide-react'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { VideoReferenceCard } from './video-reference-card'
 import { Response } from '@/components/ai-elements/response'
+import { CitationResponse } from './citation-response'
 import type { UIMessage } from 'ai'
 
 interface ChatMessageProps {
@@ -38,7 +38,7 @@ export const ChatMessage = ({ message, isLoading, videos = [] }: ChatMessageProp
           {message.parts.map((part, i) => {
             switch (part.type) {
               case 'text':
-                return <Response key={`${message.id}-${i}`}>{part.text}</Response>
+                return <CitationResponse key={`${message.id}-${i}`} text={part.text} videos={videos} />
               
               case 'tool-searchKnowledgeBase':
                 // Show tool usage notification for searching state
@@ -51,43 +51,7 @@ export const ChatMessage = ({ message, isLoading, videos = [] }: ChatMessageProp
                   )
                 }
                 
-                // Show video references when output is available
-                if (part.state === 'output-available' && part.output && typeof part.output === 'object' && 'results' in part.output) {
-                  const output = part.output as { results: Array<{ videoId: string; timestamp: string; videoTitle?: string }> }
-                  const results = output.results
-                  
-                  // Deduplicate by videoId and timestamp
-                  const uniqueRefs = Array.from(
-                    new Map(
-                      results.map(result => [
-                        `${result.videoId}-${result.timestamp}`,
-                        result
-                      ])
-                    ).values()
-                  )
-                  
-                  if (uniqueRefs.length > 0) {
-                    return (
-                      <div key={`${message.id}-${i}`} className="mt-3 space-y-2">
-                        <p className="text-xs font-medium text-muted-foreground mb-2">Video References</p>
-                        <div className="flex flex-wrap gap-2">
-                          {uniqueRefs.map((ref, idx) => {
-                            // Use videoTitle from search result, fallback to videos prop lookup, or generic
-                            const videoTitle = ref.videoTitle || videos.find(v => v.id === ref.videoId)?.title || `Video ${ref.videoId}`
-                            return (
-                              <VideoReferenceCard
-                                key={`${message.id}-${i}-${idx}`}
-                                videoTitle={videoTitle}
-                                timestamp={ref.timestamp}
-                              />
-                            )
-                          })}
-                        </div>
-                      </div>
-                    )
-                  }
-                }
-                
+                // Don't display tool output - citations are now inline in the text response
                 return null
               
               default:

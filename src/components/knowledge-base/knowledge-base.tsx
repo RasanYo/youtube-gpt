@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { VideoList } from './video-list'
 import { useVideos } from '@/hooks/useVideos'
 import { useVideoSelection } from '@/contexts/VideoSelectionContext'
@@ -12,12 +12,13 @@ import { KnowledgeBaseHeader } from './knowledge-base-header'
 import { KnowledgeBasePreview } from './knowledge-base-preview'
 import { KnowledgeBaseUrlInput } from './knowledge-base-url-input'
 import { KnowledgeBaseFooter } from './knowledge-base-footer'
+import { useVideoPreview } from '@/contexts/VideoPreviewContext'
 
 export const KnowledgeBase = () => {
   const [urlInput, setUrlInput] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isCollapsed, setIsCollapsed] = useState(false)
-  const [previewingVideo, setPreviewingVideo] = useState<{ youtubeId: string; title: string; channelName?: string | null } | null>(null)
+  const { previewVideo, openPreview, closePreview, registerExpandCallback } = useVideoPreview()
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const { selectedVideos, addVideo, removeVideo, clearSelection } = useVideoSelection()
@@ -26,6 +27,21 @@ export const KnowledgeBase = () => {
 
   // Use the useVideos hook for real-time data
   const { videos, isLoading, error } = useVideos()
+
+  // Register collapse control callback with context
+  useEffect(() => {
+    // Register callback to expand knowledge base when opening video from citation
+    registerExpandCallback(() => {
+      if (isCollapsed) {
+        setIsCollapsed(false)
+      }
+    })
+    
+    // Cleanup: unregister callback on unmount
+    return () => {
+      registerExpandCallback(null)
+    }
+  }, [isCollapsed, registerExpandCallback])
 
   const totalVideos = videos.length
   const lastIngestion = videos.length > 0 
@@ -47,14 +63,8 @@ export const KnowledgeBase = () => {
 
   // Handle video preview - separate from selection
   const handleVideoPreview = (videoId: string) => {
-    const video = videos.find(v => v.id === videoId)
-    if (video && video.youtubeId) {
-      setPreviewingVideo({
-        youtubeId: video.youtubeId,
-        title: video.title || 'Video',
-        channelName: video.channelName
-      })
-    }
+    // Use context's openPreview with timestamp 0 (start from beginning)
+    openPreview(videoId, 0)
   }
 
   // Handle video retry
@@ -209,10 +219,15 @@ export const KnowledgeBase = () => {
           />
 
           {/* Video Preview Player */}
-          {previewingVideo && (
+          {previewVideo && (
             <KnowledgeBasePreview 
-              video={previewingVideo} 
-              onClose={() => setPreviewingVideo(null)} 
+              video={{
+                youtubeId: previewVideo.youtubeId,
+                title: previewVideo.title,
+                channelName: previewVideo.channelName
+              }}
+              timestamp={previewVideo.timestamp}
+              onClose={closePreview}
             />
           )}
           
