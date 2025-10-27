@@ -94,3 +94,27 @@ export async function updateConversationTitle(
   }
 }
 
+/**
+ * Delete a conversation
+ * @param conversationId - The conversation ID
+ * @remarks This will cascade delete all associated messages due to ON DELETE CASCADE
+ */
+export async function deleteConversation(
+  conversationId: string
+): Promise<void> {
+  try {
+    const { error } = await supabase
+      .from('conversations')
+      .delete()
+      .eq('id', conversationId)
+
+    if (error) {
+      console.error('Error deleting conversation:', error)
+      throw new Error(`Failed to delete conversation: ${error.message}`)
+    }
+  } catch (error) {
+    console.error('Error in deleteConversation:', error)
+    throw error
+  }
+}
+

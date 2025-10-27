@@ -40,6 +40,7 @@ interface ConversationItemProps {
   isActive: boolean
   onClick: () => void
   onEditTitle?: (conversationId: string, newTitle: string) => Promise<void>
+  onDelete?: (conversationId: string) => Promise<void>
 }
 
 interface EditTitleDialogProps {
@@ -169,8 +170,7 @@ const DeleteConversationDialog = ({ open, onOpenChange, onConfirm }: DeleteConve
 // MAIN COMPONENT
 // ============================================================================
 
-export const ConversationItem = ({ conversation, isActive, onClick, onEditTitle }: ConversationItemProps) => {
-  const [showMenu, setShowMenu] = useState(false)
+export const ConversationItem = ({ conversation, isActive, onClick, onEditTitle, onDelete }: ConversationItemProps) => {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
 
@@ -180,9 +180,14 @@ export const ConversationItem = ({ conversation, isActive, onClick, onEditTitle 
     }
   }
 
-  const handleDelete = () => {
-    console.log('Delete conversation:', conversation.id)
-    // TODO: Implement delete functionality when available in context
+  const handleDelete = async () => {
+    if (onDelete) {
+      try {
+        await onDelete(conversation.id)
+      } catch (error) {
+        console.error('Failed to delete conversation:', error)
+      }
+    }
   }
 
   return (
@@ -191,8 +196,6 @@ export const ConversationItem = ({ conversation, isActive, onClick, onEditTitle 
         'w-full rounded-lg transition-colors relative',
         isActive ? 'bg-accent/30' : ''
       )}
-      onMouseEnter={() => setShowMenu(true)}
-      onMouseLeave={() => setShowMenu(false)}
     >
       {/* Conversation Item Content */}
       <Button
@@ -217,15 +220,13 @@ export const ConversationItem = ({ conversation, isActive, onClick, onEditTitle 
         </div>
       </Button>
 
-      {/* Menu Button */}
-      {showMenu && (
-        <div className="absolute bottom-2 right-2" onClick={(e) => e.stopPropagation()}>
-          <ConversationItemMenu
-            onEdit={() => setIsEditDialogOpen(true)}
-            onDelete={() => setIsDeleteDialogOpen(true)}
-          />
-        </div>
-      )}
+      {/* Menu Button - Always visible */}
+      <div className="absolute bottom-2 right-2" onClick={(e) => e.stopPropagation()}>
+        <ConversationItemMenu
+          onEdit={() => setIsEditDialogOpen(true)}
+          onDelete={() => setIsDeleteDialogOpen(true)}
+        />
+      </div>
 
       {/* Dialogs */}
       <EditTitleDialog

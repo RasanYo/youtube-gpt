@@ -16,6 +16,7 @@ export const ConversationSidebar = () => {
     setActiveConversationId,
     createNewConversation,
     updateConversationTitle,
+    deleteConversation,
     isLoading,
     error,
   } = useConversation()
@@ -70,6 +71,7 @@ export const ConversationSidebar = () => {
                 isActive={activeConversationId === conv.id}
                 onClick={() => setActiveConversationId(conv.id)}
                 onEditTitle={updateConversationTitle}
+                onDelete={deleteConversation}
               />
             ))}
           </div>
