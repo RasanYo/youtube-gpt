@@ -117,6 +117,34 @@ YouTube GPT helps users instantly find information hidden inside hours of video 
    - Select "Transaction" mode and copy the connection string
    - Replace `[YOUR-PASSWORD]` with your database password
 
+   **OAuth Setup (Optional - for Google/GitHub login):**
+
+   To enable social login with Google and GitHub:
+
+   **Google OAuth:**
+   - Go to [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
+   - Create a new OAuth 2.0 Client ID (Web application)
+   - Add authorized JavaScript origins: `http://localhost:3000`, `http://127.0.0.1:3000`
+   - Add authorized redirect URIs: `https://<your-project-ref>.supabase.co/auth/v1/callback`
+   - Copy the Client ID and Client Secret to `.env.local`:
+     ```bash
+     GOOGLE_CLIENT_ID=your-google-client-id
+     GOOGLE_CLIENT_SECRET=your-google-client-secret
+     ```
+
+   **GitHub OAuth:**
+   - Go to [GitHub Developer Settings](https://github.com/settings/developers)
+   - Create a new OAuth App
+   - Set Homepage URL: `http://localhost:3000`
+   - Set Authorization callback URL: `https://<your-project-ref>.supabase.co/auth/v1/callback`
+   - Copy the Client ID and Client Secret to `.env.local`:
+     ```bash
+     GITHUB_CLIENT_ID=your-github-client-id
+     GITHUB_CLIENT_SECRET=your-github-client-secret
+     ```
+
+   **Note:** You can find your Supabase project reference ID in your project URL or dashboard.
+
 4. **Set up the database**
 
    Set up the database tables in Supabase:
