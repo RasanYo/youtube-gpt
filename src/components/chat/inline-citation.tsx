@@ -1,7 +1,5 @@
 'use client'
 
-import { Link2 } from 'lucide-react'
-import { Button } from '@/components/ui/button'
 import {
   Tooltip,
   TooltipContent,
@@ -64,16 +62,26 @@ export function InlineCitation({
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
-          <Button
-            variant="ghost"
-            size="sm"
-            className={`h-auto p-0 text-primary underline decoration-2 underline-offset-2 hover:no-underline ${className ?? ''}`}
+          <span
+            className={`inline-flex items-center gap-1 cursor-pointer hover:opacity-80 transition-opacity ${className ?? ''}`}
             onClick={handleClick}
+            role="button"
+            tabIndex={0}
             aria-label={`Go to ${videoTitle} at ${timestamp}`}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                handleClick()
+              }
+            }}
           >
-            <Link2 className="mr-1 h-3 w-3" />
-            {timestamp}
-          </Button>
+            <span className="text-muted-foreground italic text-sm">
+              {videoTitle}
+            </span>
+            <span className="text-red-500 font-normal italic text-sm">
+              {timestamp}
+            </span>
+          </span>
         </TooltipTrigger>
         <TooltipContent>
           <div className="max-w-xs">
@@ -86,20 +94,5 @@ export function InlineCitation({
   )
 }
 
-/**
- * Helper function to render a Citation object as an InlineCitation
- * 
- * @param citation - Citation object from parseCitations
- * @returns InlineCitation component
- */
-export function renderCitation(citation: Citation) {
-  return (
-    <InlineCitation
-      key={citation.id}
-      videoId={citation.videoId}
-      videoTitle={citation.videoTitle}
-      timestamp={citation.timestamp}
-      startTime={citation.startTime}
-    />
-  )
-}
+// Removed renderCitation helper function to avoid fast refresh warning
+// Use InlineCitation component directly
