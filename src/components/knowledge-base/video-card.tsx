@@ -207,9 +207,9 @@ const VideoCardStatus = ({ status, onRetry, videoId }: VideoCardStatusProps) => 
           <TooltipTrigger asChild>
             <div className={cn(
               'h-4 w-4 flex items-center justify-center rounded-full bg-black/50 backdrop-blur-sm',
-              status === 'processing' && 'animate-pulse'
+              (status === 'processing' || status === 'transcript_extracting' || status === 'zeroentropy_processing') && 'animate-pulse'
             )}>
-              <Icon className={cn('h-2.5 w-2.5 text-white', (status === 'processing' || status === 'queued') && 'animate-spin')} />
+              <Icon className={cn('h-2.5 w-2.5 text-white', (status === 'processing' || status === 'queued' || status === 'transcript_extracting' || status === 'zeroentropy_processing') && 'animate-spin')} />
             </div>
           </TooltipTrigger>
           <TooltipContent side="top">

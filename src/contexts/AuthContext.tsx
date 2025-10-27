@@ -33,10 +33,16 @@ interface AuthContextType {
   session: Session | null
   /** Send a magic link OTP to the user's email for passwordless login */
   login: (email: string) => Promise<void>
+  /** Sign in with Google OAuth provider */
+  signInWithGoogle: () => Promise<void>
+  /** Sign in with GitHub OAuth provider */
+  signInWithGitHub: () => Promise<void>
   /** Sign out the current user and clear session */
   logout: () => Promise<void>
   /** Loading state for initial session fetch */
   isLoading: boolean
+  /** Loading state for OAuth operations */
+  isOAuthLoading: boolean
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -60,6 +66,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const [user, setUser] = useState<User | null>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [isOAuthLoading, setIsOAuthLoading] = useState(false)
   const [isHydrated, setIsHydrated] = useState(false)
 
   useEffect(() => {
@@ -122,36 +129,122 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   /**
    * Sign out the current user and clear the session
-   * 
+   *
    * Logs the user out of the application and clears all session data.
    * The auth state change listener will automatically update the context state.
-   * 
+   *
    * @throws {Error} If the Supabase API call fails
    */
   const logout = async () => {
     console.log('[AuthContext] Logging out user')
-    
+
     const { error } = await supabase.auth.signOut()
-    
+
     if (error) {
       console.error('[AuthContext] Logout error:', error)
       throw error
     }
-    
+
     console.log('[AuthContext] User logged out successfully')
+  }
+
+  /**
+   * Sign in with Google OAuth provider
+   *
+   * Redirects the user to Google's consent screen for authentication.
+   * After successful authentication, the user is redirected back to the app
+   * where the Supabase client automatically detects and handles the OAuth callback.
+   *
+   * @throws {Error} If the OAuth initiation fails (network error, popup blocked, etc.)
+   */
+  const signInWithGoogle = async () => {
+    console.log('[AuthContext] Initiating Google OAuth sign-in')
+
+    try {
+      setIsOAuthLoading(true)
+
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+      })
+
+      if (error) {
+        console.error('[AuthContext] Google OAuth error:', error)
+        throw error
+      }
+
+      console.log('[AuthContext] Google OAuth initiated successfully')
+    } catch (error) {
+      console.error('[AuthContext] Google OAuth failed:', error)
+      setIsOAuthLoading(false)
+      throw error
+    }
+  }
+
+  /**
+   * Sign in with GitHub OAuth provider
+   *
+   * Redirects the user to GitHub's consent screen for authentication.
+   * After successful authentication, the user is redirected back to the app
+   * where the Supabase client automatically detects and handles the OAuth callback.
+   *
+   * @throws {Error} If the OAuth initiation fails (network error, popup blocked, etc.)
+   */
+  const signInWithGitHub = async () => {
+    console.log('[AuthContext] Initiating GitHub OAuth sign-in')
+
+    try {
+      setIsOAuthLoading(true)
+
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'github',
+      })
+
+      if (error) {
+        console.error('[AuthContext] GitHub OAuth error:', error)
+        throw error
+      }
+
+      console.log('[AuthContext] GitHub OAuth initiated successfully')
+    } catch (error) {
+      console.error('[AuthContext] GitHub OAuth failed:', error)
+      setIsOAuthLoading(false)
+      throw error
+    }
   }
 
   // Prevent hydration mismatch by not rendering until hydrated
   if (!isHydrated) {
     return (
-      <AuthContext.Provider value={{ user: null, session: null, login, logout, isLoading: true }}>
+      <AuthContext.Provider
+        value={{
+          user: null,
+          session: null,
+          login,
+          signInWithGoogle,
+          signInWithGitHub,
+          logout,
+          isLoading: true,
+          isOAuthLoading: false,
+        }}
+      >
         {children}
       </AuthContext.Provider>
     )
   }
 
   return (
-    <AuthContext.Provider value={{ user, session, login, logout, isLoading }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        session,
+        login,
+        signInWithGoogle,
+        signInWithGitHub,
+        logout,
+        isLoading,
+        isOAuthLoading,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   )

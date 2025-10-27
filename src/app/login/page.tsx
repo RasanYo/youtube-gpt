@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/card'
 import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/hooks/use-toast'
+import { OAuthButtons } from '@/components/auth/oauth-buttons'
 import { Mail, Sparkles } from 'lucide-react'
 
 export default function LoginPage() {
@@ -79,31 +80,49 @@ export default function LoginPage() {
         </CardHeader>
         <CardContent>
           {!emailSent ? (
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <label htmlFor="email" className="text-sm font-medium">
-                  Email address
-                </label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="you@example.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="pl-10"
-                    disabled={isLoading}
-                  />
+            <div className="space-y-4">
+              {/* OAuth Buttons */}
+              <OAuthButtons />
+
+              {/* Divider */}
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-background px-2 text-muted-foreground">
+                    Or continue with email
+                  </span>
                 </div>
               </div>
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? 'Sending magic link...' : 'Send magic link'}
-              </Button>
-              <p className="text-xs text-center text-muted-foreground">
-                We'll send you a magic link to sign in without a password
-              </p>
-            </form>
+
+              {/* Magic Link Form */}
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <label htmlFor="email" className="text-sm font-medium">
+                    Email address
+                  </label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="you@example.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="pl-10"
+                      disabled={isLoading}
+                    />
+                  </div>
+                </div>
+                <Button type="submit" className="w-full" disabled={isLoading}>
+                  {isLoading ? 'Sending magic link...' : 'Send magic link'}
+                </Button>
+                <p className="text-xs text-center text-muted-foreground">
+                  We'll send you a magic link to sign in without a password
+                </p>
+              </form>
+            </div>
           ) : (
             <div className="text-center space-y-4">
               <div className="flex justify-center">

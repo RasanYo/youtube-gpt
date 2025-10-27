@@ -3,6 +3,7 @@
  */
 
 import { UIMessage } from 'ai'
+import type { CommandId } from '@/lib/chat-commands/types'
 
 /**
  * Raw transcript segment from YouTube
@@ -67,5 +68,7 @@ export interface ChatRequest {
   userId: string
   scope: ChatScope
   conversationId?: string
+  /** Optional command ID for server-side prompt enhancement */
+  commandId?: CommandId
 }
 
