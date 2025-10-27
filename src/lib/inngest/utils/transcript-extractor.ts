@@ -1,15 +1,16 @@
 import type { Video } from '@/lib/supabase/types'
 import type { TranscriptData } from '@/lib/zeroentropy/types'
 import {
-  fetchTranscript,
+  YoutubeTranscript,
   YoutubeTranscriptDisabledError,
   YoutubeTranscriptNotAvailableError,
   YoutubeTranscriptNotAvailableLanguageError,
   YoutubeTranscriptVideoUnavailableError,
   YoutubeTranscriptTooManyRequestError,
-  YoutubeTranscriptInvalidVideoIdError
-} from 'youtube-transcript-plus'
-import { TranscriptResponse } from 'youtube-transcript-plus/dist/types'
+  YoutubeTranscriptEmptyError,
+  type TranscriptResponse,
+  type TranscriptConfig
+} from '@danielxceron/youtube-transcript'
 import { createLogger } from './inngest-logger'
 
 const logger = createLogger('transcript-extractor')
@@ -85,26 +86,22 @@ export async function extractTranscript(
 
     // Try different configurations based on attempt number
     let transcript: TranscriptResponse[]
+    let config: TranscriptConfig = {}
 
     if (attempt === 1) {
-      // First attempt: try without cache
-      logger.info(`Attempt ${attempt}: Trying without cache...`)
-      transcript = await fetchTranscript(video.youtubeId) as TranscriptResponse[]
+      // First attempt: try default configuration
+      logger.info(`Attempt ${attempt}: Trying with default configuration...`)
+      transcript = await YoutubeTranscript.fetchTranscript(video.youtubeId)
     } else if (attempt === 2) {
-      // Second attempt: try with custom user agent and no cache
-      logger.info(`Attempt ${attempt}: Trying with custom user agent...`)
-      transcript = await fetchTranscript(video.youtubeId, {
-        userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        cacheTTL: 0, // Disable caching
-      }) as TranscriptResponse[]
+      // Second attempt: try with specific language
+      logger.info(`Attempt ${attempt}: Trying with 'en' language...`)
+      config = { lang: 'en' }
+      transcript = await YoutubeTranscript.fetchTranscript(video.youtubeId, config)
     } else {
-      // Third attempt: try with cache and different settings
-      logger.info(`Attempt ${attempt}: Trying with cache and different settings...`)
-      transcript = await fetchTranscript(video.youtubeId, {
-        cacheTTL: 3600, // Cache for 1 hour
-        userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        disableHttps: true,
-      }) as TranscriptResponse[]
+      // Third attempt: try with different language
+      logger.info(`Attempt ${attempt}: Trying with 'en-US' language...`)
+      config = { lang: 'en-US' }
+      transcript = await YoutubeTranscript.fetchTranscript(video.youtubeId, config)
     }
 
     const processingTime = Date.now() - startTime
@@ -179,8 +176,8 @@ export async function extractTranscript(
       throw new Error('Transcript extraction failed: Video is unavailable or private')
     } else if (error instanceof YoutubeTranscriptTooManyRequestError) {
       throw new Error('Transcript extraction failed: Too many requests - rate limited')
-    } else if (error instanceof YoutubeTranscriptInvalidVideoIdError) {
-      throw new Error('Transcript extraction failed: Invalid YouTube video ID')
+    } else if (error instanceof YoutubeTranscriptEmptyError) {
+      throw new Error('Transcript extraction failed: Transcript is empty')
     } else if (error instanceof Error) {
       throw new Error(`Transcript extraction failed: ${error.message}`)
     } else {
