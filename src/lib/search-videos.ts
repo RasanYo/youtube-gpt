@@ -68,25 +68,34 @@ export async function searchVideos(params: SearchVideosParams): Promise<SearchRe
     // Transform results to our format
     const results: SearchResult[] = response.results.map(snippet => {
       // Extract video metadata from the document path
-      // Path format: "videoId-segmentIndex"
-      const pathParts = snippet.path.split('-')
-      const videoId = pathParts[0]
-      const segmentIndex = parseInt(pathParts[1] || '0')
-      
+      // Path format: "{videoId}-chunk{chunkIndex}" (new) or "{videoId}-{segmentIndex}" (legacy)
+
+      let videoId: string
+
+      // Try to parse as chunk format first: videoId-chunk0, videoId-chunk1, etc.
+      const chunkMatch = snippet.path.match(/^(.+)-chunk(\d+)$/)
+      if (chunkMatch) {
+        videoId = chunkMatch[1]
+      } else {
+        // Fall back to legacy segment format: videoId-0, videoId-1, etc.
+        const pathParts = snippet.path.split('-')
+        videoId = pathParts.slice(0, -1).join('-') // Handle video IDs with dashes
+      }
+
       // Get document metadata for this snippet
       const documentResult = response.document_results.find(doc => doc.path === snippet.path)
-      
-      // Extract timing information from metadata
-      const startTime = documentResult?.metadata?.startTime 
-        ? parseFloat(documentResult.metadata.startTime as string) 
+
+      // Extract timing information from metadata (chunk-level timestamps)
+      const startTime = documentResult?.metadata?.startTime
+        ? parseFloat(documentResult.metadata.startTime as string)
         : 0
-      const endTime = documentResult?.metadata?.endTime 
-        ? parseFloat(documentResult.metadata.endTime as string) 
+      const endTime = documentResult?.metadata?.endTime
+        ? parseFloat(documentResult.metadata.endTime as string)
         : startTime + 30 // Default 30 second duration
-      
+
       // Extract video title from metadata
       const videoTitle = documentResult?.metadata?.videoTitle as string | undefined
-      
+
       return {
         content: snippet.content,
         videoId,

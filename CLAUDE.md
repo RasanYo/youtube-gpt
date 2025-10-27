@@ -16,6 +16,7 @@
     
     General preferences:
     
+    - IMPORTANT: Always use `pnpm` instead of `npm`
     - Follow the user's requirements carefully & to the letter.
     - Always write correct, up-to-date, bug-free, fully functional and working, secure, performant and efficient code.
     - Focus on readability over being performant.
