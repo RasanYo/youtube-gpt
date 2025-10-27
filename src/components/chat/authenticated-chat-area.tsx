@@ -16,7 +16,6 @@ import { useChat } from '@ai-sdk/react'
 import { DefaultChatTransport, type UIMessage } from 'ai'
 import { VideoScopeBar } from '@/components/video/video-scope-bar'
 import { saveMessage, updateConversationUpdatedAt } from '@/lib/supabase/messages'
-import { getEnhancedPrompt } from '@/lib/chat-commands/utils'
 import type { CommandId } from '@/lib/chat-commands/types'
 
 interface AuthenticatedChatAreaProps {
@@ -125,17 +124,20 @@ export const AuthenticatedChatArea = ({
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (input.trim() && !isLoading) {
-      // Get enhanced prompt if command is selected
-      const enhancedPrompt = getEnhancedPrompt(input, selectedCommand)
+      // Save original user input (not enhanced prompt)
+      await saveUserMessage(input)
       
-      // Log the enhanced prompt for debugging
+      // Send original input with commandId if selected
+      const scopeBody = getScopeBody()
       if (selectedCommand) {
-        console.log('✅ Command selected:', selectedCommand)
-        console.log('📝 Enhanced prompt:', enhancedPrompt)
+        sendMessage(
+          { text: input },
+          { body: { ...scopeBody, commandId: selectedCommand } }
+        )
+      } else {
+        sendMessage({ text: input }, { body: scopeBody })
       }
       
-      await saveUserMessage(input)
-      sendMessage({ text: enhancedPrompt }, { body: getScopeBody() })
       setInput('')
       // Reset selected command after submission
       setSelectedCommand(null)

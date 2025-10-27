@@ -4,17 +4,35 @@ import { anthropic } from '@ai-sdk/anthropic'
 import type { ChatRequest, ChatScope } from '@/lib/zeroentropy/types'
 import { searchTool, createSearchKnowledgeBase } from '@/lib/tools/search-tool'
 import { langfuse, isLangfuseConfigured } from '@/lib/langfuse/client'
+import { getEnhancedPrompt } from '@/lib/chat-commands/utils'
+import { CommandId } from '@/lib/chat-commands/types'
 
 export async function POST(request: NextRequest) {
   try {
-    const { messages, userId, scope, conversationId }: ChatRequest = await request.json()
+    const { messages, userId, scope, conversationId, commandId }: ChatRequest = await request.json()
     console.log('messages', messages)
     console.log('userId', userId)
     console.log('scope', scope)
     console.log('conversationId', conversationId)
+    console.log('commandId', commandId)
     
     if (!messages || !Array.isArray(messages)) {
       return new Response('Messages array is required', { status: 400 })
+    }
+    
+    // Validate commandId if present
+    if (commandId && !Object.values(CommandId).includes(commandId as CommandId)) {
+      console.error(`❌ Invalid commandId: ${commandId}`)
+      return new Response(
+        JSON.stringify({ 
+          error: 'Invalid command ID',
+          message: `Unknown command: ${commandId}`
+        }), 
+        { 
+          status: 400,
+          headers: { 'Content-Type': 'application/json' }
+        }
+      )
     }
     
     // Get the latest user message
@@ -24,7 +42,25 @@ export async function POST(request: NextRequest) {
     }
     
     // Extract and log the user's request
-    const userRequest = lastMessage.parts?.find(part => part.type === 'text')?.text || ''
+    let userRequest = lastMessage.parts?.find(part => part.type === 'text')?.text || ''
+    
+    // Enhance prompt server-side if commandId is present
+    if (commandId && lastMessage.parts) {
+      const originalInput = userRequest
+      const enhancedPrompt = getEnhancedPrompt(originalInput, commandId)
+      
+      // Find the text part and update it
+      const textPart = lastMessage.parts.find(part => part.type === 'text')
+      if (textPart && 'text' in textPart) {
+        textPart.text = enhancedPrompt
+        userRequest = enhancedPrompt
+      }
+      
+      console.log(`\n🎯 Command enhanced: ${commandId}`)
+      console.log(`Original input: "${originalInput}"`)
+      console.log(`Enhanced prompt: "${enhancedPrompt.substring(0, 100)}..."`)
+    }
+    
     console.log(`\n🤖 AI Request: "${userRequest}"`)
     
     
