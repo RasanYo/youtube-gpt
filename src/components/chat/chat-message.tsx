@@ -4,6 +4,7 @@ import { Loader2, Bot, User } from 'lucide-react'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { VideoReferenceCard } from './video-reference-card'
 import { Response } from '@/components/ai-elements/response'
+import { CitationResponse } from './citation-response'
 import type { UIMessage } from 'ai'
 
 interface ChatMessageProps {
@@ -38,7 +39,7 @@ export const ChatMessage = ({ message, isLoading, videos = [] }: ChatMessageProp
           {message.parts.map((part, i) => {
             switch (part.type) {
               case 'text':
-                return <Response key={`${message.id}-${i}`}>{part.text}</Response>
+                return <CitationResponse key={`${message.id}-${i}`} text={part.text} videos={videos} />
               
               case 'tool-searchKnowledgeBase':
                 // Show tool usage notification for searching state

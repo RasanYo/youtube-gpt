@@ -1,327 +1,352 @@
-# Implementation Plan: Conversation Rename & Delete Features
+# Implementation Plan: Inline Video Citations in AI Chat
 
 ## 🧠 Context about Project
 
 **YouTube-GPT** is an AI-powered full-stack SaaS application that enables users to search, analyze, and extract information from YouTube video content. The platform allows users to add individual videos or entire channels to build a searchable knowledge base. Users can ask AI-powered questions across their video library and receive grounded answers with citations and timestamps.
 
-The application uses Next.js 14 with App Router, Supabase for authentication and database operations, and implements a ChatGPT-style three-column interface. The system is built with full-stack vertical slices, focusing on reliability, scalability, and design quality. At its current stage, the app has basic conversation management, video ingestion, and chat functionality implemented, but lacks complete CRUD operations for conversations.
+The application uses Next.js 14 with App Router, Supabase for authentication and database operations, and implements a ChatGPT-style three-column interface. The system is built with full-stack vertical slices, focusing on reliability, scalability, and design quality. The chat interface uses Vercel AI SDK (`@ai-sdk/react`) with Claude for natural language understanding and semantic search through ZeroEntropy for video content retrieval.
+
+**Current Implementation**: The chat system displays video citations as a separate "Video References" block at the bottom of assistant messages. All search results are shown, regardless of whether they were actually used to support specific statements in the response. This creates visual clutter and reduces the contextual relevance of citations.
 
 ## 🏗️ Context about Feature
 
-The conversation management system is currently built on top of the `ConversationContext`, which provides state management for the user's conversation list. The UI includes dropdown menus with "Edit title" and "Delete" options in the conversation item component (`conversation-item.tsx`), but only the edit functionality is fully implemented. The database operations are separated into `src/lib/supabase/conversations.ts`, which currently provides `getConversationsByUserId`, `createConversation`, and `updateConversationTitle` functions.
+The current chat system uses the AI SDK's `streamText` function with tool calling capabilities. When the AI responds, it:
+1. Calls the `searchKnowledgeBase` tool which returns 5 search results
+2. Generates a text response based on those results
+3. Displays ALL search results as citation cards in a separate section
 
-The messages table has a foreign key relationship to conversations with `ON DELETE CASCADE`, which means deleting a conversation will automatically delete all associated messages. The rename feature is already complete—it's wired through the context and database layers. However, the delete functionality needs to be implemented at the database, context, and UI layers.
+The AI SDK structures messages with a `parts` array containing:
+- `text` parts: The AI's response content
+- `tool-searchKnowledgeBase` parts: The tool invocation and results
+
+The rendering happens in `src/components/chat/chat-message.tsx`, where text parts are rendered using `Response` component (which wraps Streamdown for markdown rendering), and tool parts show all search results as `VideoReferenceCard` components.
+
+**Architecture Constraints**:
+- AI SDK doesn't provide built-in annotation/metadata for linking text segments to tool results
+- Citations must be embedded in the text response itself
+- The system prompt controls how Claude formats citations
+- We need to parse citations from text and render them as interactive UI elements
 
 ## 🎯 Feature Vision & Flow
 
-Users should be able to:
-1. **Rename conversations** (already implemented): Click the three-dot menu on any conversation, select "Edit title," modify the title in a dialog, and have the change persist to the database and update the UI immediately.
-2. **Delete conversations**: Click the three-dot menu, select "Delete," confirm in an alert dialog, and have the conversation removed from the database (with cascading message deletion) and updated in the UI. If the deleted conversation was the active one, the UI should switch to another conversation or show an empty state.
+Users should see video citations **inline with the text** where they're relevant, not as a separate block at the bottom. When the AI mentions "customer obsession at 10:15", users should see an inline citation chip that they can click to jump to that video timestamp.
 
-The system must handle error states gracefully, preserve data integrity through RLS policies, and maintain optimistic UI updates where appropriate.
+The flow should be:
+1. User asks a question → AI calls search tool
+2. AI receives search results and generates response
+3. AI includes formatted citations like `[Video Title at 10:15](videoId:video-id:615)` directly in the text
+4. The UI parses these citations and renders them as interactive elements
+5. Users click citations to navigate to the specific video timestamp
+6. Only citations actually mentioned in the text are displayed (no unused search results)
+
+**Success Criteria**:
+- Citations appear inline where they're relevant in the response
+- Clicking a citation navigates to the video at the correct timestamp
+- Unused search results don't appear as citations
+- System prompt enforces proper citation formatting
+- Error handling for malformed citations
+- Maintains existing tool usage notifications and video reference cards as fallback
 
 ## 📋 Implementation Plan: Tasks & Subtasks
 
-### Phase 1: Database Layer - Add Delete Function
+### Phase 1: Citation Parser Library
 
-- [x] **Task 1.1**: Add `deleteConversation` function to `src/lib/supabase/conversations.ts`
-  - [x] Add the function signature: `export async function deleteConversation(conversationId: string): Promise<void>`
-  - [x] Implement Supabase `.delete()` call with proper error handling matching the existing pattern
-  - [x] Add JSDoc documentation explaining the function's purpose and parameters
-  - [x] Ensure the function follows the same try-catch pattern as other functions in the file
-  
-  **Files to modify**: `src/lib/supabase/conversations.ts`
-  
-  **Validation**: 
-  - Function should delete by `id` column
-  - Function should throw meaningful error messages
-  - Function should log errors to console
-  - Function should match the error handling pattern of existing functions
+**Documentation References**:
+- [AI SDK Message Parts](https://sdk.vercel.ai/docs/ai-sdk-core/concepts/messages)
+- [AI SDK Tool Calling](https://sdk.vercel.ai/docs/ai-sdk-core/concepts/tools)
 
----
-
-### Phase 2: Context Layer - Expose Delete Functionality
-
-- [x] **Task 2.1**: Import `deleteConversation` in `src/contexts/ConversationContext.tsx`
-  - [x] Add import to the import statement at line 29-33
-  - [x] Use named import: `deleteConversation as deleteConversationInDB` (following the existing pattern with `updateConversationTitle`)
+- [x] **Task 1.1**: Create citation parser utility module ✅
+  - [x] Create new file `src/lib/citations/parser.ts` ✅
+  - [x] Define `Citation` interface with fields: `id`, `videoId`, `videoTitle`, `timestamp`, `startTime`, `matchIndex`, `text` ✅
+  - [x] Define `TextSegment` interface with type 'text' | 'citation' and optional `citation` property ✅
+  - [x] Implement `parseCitations` function that uses regex to extract citations in format `[Video Title at M:SS](videoId:VIDEO_ID:START_TIME)` ✅
+  - [x] Return object with `segments` array and `citations` array ✅
+  - [x] Handle edge cases: no citations, malformed citations, multiple citations in one text ✅
+  - [x] Add JSDoc documentation for all interfaces and functions ✅
   
-  **Files to modify**: `src/contexts/ConversationContext.tsx` (line 29-33)
+  **Files to create**: `src/lib/citations/parser.ts`
   
-  **Validation**: 
-  - Import should match the pattern of `updateConversationTitle as updateConversationTitleInDB`
-  - No TypeScript errors in the import statement
-
-- [x] **Task 2.2**: Add `deleteConversation` and `clearError` to `ConversationContextType` interface
-  - [x] Add method signature after line 57: `deleteConversation: (conversationId: string) => Promise<void>`
-  - [x] Include JSDoc comment: `/** Delete a conversation */`
-  - [x] Add method signature: `clearError: () => void`
-  - [x] Include JSDoc comment: `/** Clear the current error state */`
-  
-  **Files to modify**: `src/contexts/ConversationContext.tsx` (lines 39-58)
-  
-  **Validation**: 
-  - Type definitions should be consistent with other methods
-  - JSDoc comments should follow existing pattern
-  - Both methods should be properly typed
-
-- [x] **Task 2.3**: Implement `deleteConversation` function in the provider
-  - [x] Add the function implementation after `updateConversationTitle` (after line 252)
-  - [x] Follow the same pattern: check for user authentication, call database function, update local state
-  - [x] Handle the active conversation switch: if deleted conversation is active, switch to the next available one or set to null
-  - [x] Add proper error handling with try-catch, error state updates, and re-throw
-  - [x] Use `useCallback` with appropriate dependencies: `[user, activeConversationId, conversations]`
-  
-  **Files to modify**: `src/contexts/ConversationContext.tsx` (after line 252)
-  
-  **Validation**: 
-  - Function should delete from database first, then update local state
-  - Function should handle switching active conversation if needed
-  - Function should update `conversations` state to remove deleted conversation
-  - Function should update `activeConversationId` if deleted conversation was active
-  - Function should set error state on failure
-  - Function should be wrapped in `useCallback` with correct dependencies
-
-- [x] **Task 2.3a**: Add conversation existence validation (Security Enhancement)
-  - [x] Check if conversation exists in local `conversations` array before attempting deletion
-  - [x] Log a warning if conversation is not found in local state
-  - [x] Early return if conversation doesn't exist (prevent unnecessary database calls)
-  - [x] Add validation: `const conversationExists = conversations.some(conv => conv.id === conversationId)`
-  
-  **Files to modify**: `src/contexts/ConversationContext.tsx` (within Task 2.3 implementation)
-  
-  **Validation**: 
-  - Should check conversation exists in local state before proceeding
-  - Should log warning if conversation not found
-  - Should not throw error if conversation missing (graceful degradation)
-  - Should prevent unnecessary database calls for non-existent conversations
-
-- [x] **Task 2.3b**: Add race condition protection for delete operations (Security Enhancement)
-  - [x] Add `isDeleting` state variable (similar to existing `isCreating` state)
-  - [x] Check `isDeleting` flag at start of function to prevent concurrent deletions
-  - [x] Set `isDeleting` to true before deletion, false after completion
-  - [x] Early return with warning log if deletion already in progress
-  - [x] Initialize state: `const [isDeleting, setIsDeleting] = useState(false)`
-  
-  **Files to modify**: `src/contexts/ConversationContext.tsx` (add state at line 86, update Task 2.3)
-  
-  **Validation**: 
-  - Should prevent multiple simultaneous delete operations
-  - Should log warning if delete attempted while one is in progress
-  - Should follow same pattern as `isCreating` state management
-  - Should not affect other operations (create, update)
-
-- [x] **Task 2.3c**: Improve error recovery and user feedback (UX Enhancement)
-  - [x] Add `clearError` method to context interface to allow manual error clearing
-  - [x] Expose `clearError` method in context value for user-triggered error dismissal
-  - [x] Implement `clearError` function that resets error state to null
-  - [ ] Update error display in sidebar to show dismiss button
-  - [x] Add JSDoc: `/** Clear the current error state */`
-  
-  **Files to modify**: `src/contexts/ConversationContext.tsx` (interface at line 57, implementation, expose at line 294)
-  
-  **Validation**: 
-  - `clearError` method should be accessible from context
-  - Should reset error state to null
-  - Should be callable from error UI components
-  - Should not interfere with current error handling flow
-
-- [x] **Task 2.4**: Expose `deleteConversation` and `clearError` in context value
-  - [x] Add `deleteConversation` to the `value` object at line 285-295
-  - [x] Add `clearError` to the `value` object (from Task 2.3c)
-  
-  **Files to modify**: `src/contexts/ConversationContext.tsx` (line 294)
-  
-  **Validation**: 
-  - Both methods should be added to the context value object
-  - Context value should include all existing properties plus new methods
-  - No TypeScript errors in context value definition
+  **Validation**:
+  - Function correctly parses citation format: `[Video Title at 10:15](videoId:abc-123:615)`
+  - Function splits text into segments with citations properly isolated
+  - Function extracts videoId, videoTitle, timestamp, and startTime correctly
+  - Function returns empty citations array when no citations found
+  - Function handles malformed citations gracefully (returns text as-is)
+  - No regex vulnerabilities (limited character classes)
 
 ---
 
-### Phase 3: Component Layer - Wire Up Delete Handler
+### Phase 2: Inline Citation UI Component
 
-- [x] **Task 3.1**: Add `onDelete` prop to `ConversationItemProps` interface
-  - [x] Add optional prop: `onDelete?: (conversationId: string) => Promise<void>` at line 42
+- [x] **Task 2.1**: Create inline citation button component ✅
+  - [x] Create new file `src/components/chat/inline-citation.tsx` ✅
+  - [x] Define `InlineCitationProps` interface with: `videoId`, `videoTitle`, `timestamp`, `startTime` ✅
+  - [x] Implement button styled to look like an underlined link with timestamp ✅
+  - [x] Add onClick handler that logs citation info (placeholder for video navigation) ✅
+  - [x] Add hover states and tooltip showing full video title and timestamp ✅
+  - [x] Use shadcn Button component with ghost variant for subtle appearance ✅
+  - [x] Include Link2 icon from lucide-react ✅
   
-  **Files to modify**: `src/components/conversations/conversation-item.tsx` (line 42)
+  **Files to create**: `src/components/chat/inline-citation.tsx` ✅
   
-  **Validation**: 
-  - Prop should be optional (using `?`)
-  - Prop signature should match the context method
-  - Prop should accept conversationId as parameter
+  **Validation**:
+  - Component renders as inline button with timestamp ✅
+  - Button is clickable and logs correct citation data ✅
+  - Hover shows tooltip with video title ✅
+  - Visually distinct but not intrusive in text flow ✅
+  - Accessible (keyboard navigable, proper ARIA labels) ✅
 
-- [x] **Task 3.2**: Update `ConversationItem` to accept and use `onDelete` prop
-  - [x] Add `onDelete` to the destructured props at line 172
-  - [x] Update `handleDelete` function (lines 183-186) to call `onDelete` with proper error handling
-  - [x] Handle async operations and error logging
-  - [x] Ensure dialog closes appropriately (automatic via context state)
+- [x] **Task 2.2**: Create citation-enhanced response component ✅
+  - [x] Create new file `src/components/chat/citation-response.tsx` ✅
+  - [x] Import `parseCitations` from lib and `InlineCitation` component ✅
+  - [x] Define `CitationResponseProps` with `text` and optional `videos` array ✅
+  - [x] Implement component that: calls `parseCitations`, maps segments to JSX, renders text segments as spans, renders citation segments as `InlineCitation` components ✅
+  - [x] Use `Response` component wrapper for markdown rendering of text segments ✅
+  - [x] Fallback to plain Response when no citations found ✅
+  - [x] Look up video title from `videos` prop as fallback if missing from citation ✅
   
-  **Files to modify**: `src/components/conversations/conversation-item.tsx` (lines 172, 183-186)
+  **Files to create**: `src/components/chat/citation-response.tsx` ✅
   
-  **Validation**: 
-  - `onDelete` should be destructured from props
-  - `handleDelete` should check if `onDelete` exists before calling
-  - `handleDelete` should be async and await the onDelete call
-  - `handleDelete` should have try-catch for error handling
-  - `handleDelete` should log errors but not prevent dialog from closing
-  - Function should handle undefined onDelete gracefully
-
----
-
-### Phase 4: Integration - Connect Parent and Child Components
-
-- [x] **Task 4.1**: Extract `deleteConversation` from context in `conversation-sidebar.tsx`
-  - [x] Add `deleteConversation` to the destructured context values at line 13-21
-  
-  **Files to modify**: `src/components/conversations/conversation-sidebar.tsx` (lines 13-21)
-  
-  **Validation**: 
-  - `deleteConversation` should be included in useConversation destructuring
-  - No unused variable warnings
-
-- [x] **Task 4.2**: Pass `deleteConversation` to each `ConversationItem`
-  - [x] Add `onDelete={deleteConversation}` prop to the `ConversationItem` component at line 67-73
-  
-  **Files to modify**: `src/components/conversations/conversation-sidebar.tsx` (line 73)
-  
-  **Validation**: 
-  - Prop should be passed to ConversationItem
-  - Prop name should match the interface definition
-  - No TypeScript errors in parent component
+  **Validation**:
+  - Component correctly parses citations from text ✅
+  - Citations render as interactive inline buttons ✅
+  - Text segments render normally ✅
+  - Falls back gracefully when no citations present ✅
+  - No console errors or warnings ✅
+  - Maintains responsive design ✅
 
 ---
 
-### Phase 5: Testing & Validation
+### Phase 3: Update Chat Message Rendering
 
-- [ ] **Task 5.1**: Test rename functionality
-  - [ ] Open the application and navigate to the conversations sidebar
-  - [ ] Click the three-dot menu on any conversation
-  - [ ] Select "Edit title" and verify the dialog opens
-  - [ ] Enter a new title and click "Save"
-  - [ ] Verify the title updates in the UI immediately
-  - [ ] Refresh the page and verify the title persists
-  - [ ] Test with empty title (should be prevented)
-  - [ ] Test with very long title (should truncate gracefully)
-  
-  **Validation**: 
-  - Rename dialog should open when clicking menu option
-  - Title should update in UI after save
-  - Title should persist after page refresh
-  - Empty title save should be prevented
-  - No console errors during rename operation
+**Documentation References**:
+- [AI SDK UIMessage Structure](https://sdk.vercel.ai/docs/ai-sdk-core/concepts/messages)
+- [AI SDK useChat Hook](https://sdk.vercel.ai/docs/reference/react/use-chat)
 
-- [ ] **Task 5.2**: Test delete functionality
-  - [ ] Create a test conversation
-  - [ ] Click the three-dot menu and select "Delete"
-  - [ ] Verify the confirmation dialog appears
-  - [ ] Click "Cancel" and verify conversation remains
-  - [ ] Open menu again, select "Delete" and confirm
-  - [ ] Verify conversation disappears from list
-  - [ ] Verify all associated messages are deleted (check database if possible)
-  - [ ] Test deleting the active conversation: verify UI switches to another conversation
-  - [ ] Test deleting the last conversation: verify empty state appears
-  - [ ] Verify no console errors during delete operations
+- [x] **Task 3.1**: Update chat message component to use citation rendering ✅
+  - [x] Open `src/components/chat/chat-message.tsx` ✅
+  - [x] Import `CitationResponse` component ✅
+  - [x] Replace line 41: Change `<Response>{part.text}</Response>` to `<CitationResponse text={part.text} videos={videos} />` ✅
+  - [x] Ensure `videos` prop is passed through to CitationResponse ✅
+  - [x] Keep tool-searchKnowledgeBase rendering for "Searching..." notification ✅
+  - [x] Keep VideoReferenceCard for backward compatibility and as fallback ✅
   
-  **Validation**: 
-  - Delete dialog should appear with confirmation message
-  - Cancel should abort the operation
-  - Delete should remove conversation from UI
-  - Deleted conversation should not appear after page refresh
-  - When deleting active conversation, UI should switch to next available
-  - When deleting last conversation, empty state should appear
-  - No console errors during delete operation
-  - Database should have no orphaned messages
+  **Files to modify**: `src/components/chat/chat-message.tsx` ✅
+  
+  **Validation**:
+  - Citations render inline with text when present ✅
+  - No citations shown when absent (normal text rendering) ✅
+  - Videos prop is properly passed to CitationResponse ✅
+  - Tool usage notification still appears during search ✅
+  - VideoReferenceCard still renders for backward compatibility ✅
+  - No TypeScript errors or warnings ✅
 
-- [ ] **Task 5.3**: Test error handling
-  - [ ] Test delete operation without authentication (should not be possible in normal flow)
-  - [ ] Test with invalid conversation ID (edge case)
-  - [ ] Test concurrent operations (rapid clicking)
-  - [ ] Verify error messages are logged to console
-  - [ ] Verify UI state remains consistent on errors
-  
-  **Validation**: 
-  - Errors should be logged with meaningful messages
-  - UI should not break on errors
-  - Error state should be accessible to user (via context error property)
-  - No unhandled promise rejections
+---
 
-- [ ] **Task 5.4**: Test race condition protection
-  - [ ] Rapidly click delete on multiple conversations to trigger concurrent operations
-  - [ ] Verify only one deletion proceeds at a time
-  - [ ] Verify warning logs appear for blocked concurrent attempts
-  - [ ] Verify `isDeleting` flag prevents duplicate deletions
-  - [ ] Test canceling a deletion in progress and immediately attempting another
-  
-  **Validation**: 
-  - Should prevent multiple simultaneous delete operations
-  - Warning logs should appear in console for blocked attempts
-  - Second deletion should wait for first to complete
-  - No database errors from concurrent operations
-  - UI should remain responsive during deletion
+### Phase 4: Update System Prompt to Enforce Citation Format
 
-- [ ] **Task 5.5**: Test conversation existence validation
-  - [ ] Attempt to delete a conversation that was just deleted by another tab/session
-  - [ ] Verify graceful handling when conversation not found in local state
-  - [ ] Verify warning is logged but no error is thrown
-  - [ ] Verify UI remains stable even with stale conversation IDs
-  
-  **Validation**: 
-  - Should handle missing conversations gracefully
-  - Should log warning without throwing errors
-  - Should not make unnecessary database calls
-  - UI should remain consistent after handling
+**Documentation References**:
+- [AI SDK System Prompts](https://sdk.vercel.ai/docs/ai-sdk-core/concepts/system-prompts)
+- [AI SDK Tool Usage](https://sdk.vercel.ai/docs/ai-sdk-core/concepts/tools)
 
-- [ ] **Task 5.6**: Test error recovery UX
-  - [ ] Trigger a delete error (e.g., by disconnecting network)
-  - [ ] Verify error message appears in the sidebar
-  - [ ] Test `clearError` function is accessible (if implemented in UI)
-  - [ ] Verify retry mechanism works
-  - [ ] Verify error state can be manually cleared
+- [x] **Task 4.1**: Update system prompt to require specific citation format ✅
+  - [x] Open `src/app/api/chat/route.ts` ✅
+  - [x] Locate system prompt at lines 60-81 ✅
+  - [x] Update instruction to require exact format: `[Video Title at M:SS](videoId:VIDEO_ID:START_TIME_IN_SECONDS)` ✅
+  - [x] Add explicit example: "e.g., [Amazon Documentary at 10:15](videoId:abc-123:615)" ✅
+  - [x] Emphasize calculating START_TIME as seconds (not minutes) ✅
+  - [x] Add rule: "Only include citations for videos you actually reference in your response" ✅
+  - [x] Keep existing instructions about when to search and how to use tool results ✅
+  - [x] Maintain user context at the bottom ✅
   
-  **Validation**: 
-  - Error should be visible to user
-  - Error should be dismissible/clearable
-  - Retry should reload conversations after error
-  - No orphaned error states in UI
+  **Files to modify**: `src/app/api/chat/route.ts` (lines 60-81) ✅
+  
+  **Validation**:
+  - System prompt clearly specifies citation format ✅
+  - Includes concrete example of correct format ✅
+  - Emphasizes only citing videos actually mentioned ✅
+  - No breaking changes to existing functionality ✅
+  - All existing instructions preserved ✅
+
+- [x] **Task 4.2**: Add citation format validation helper (optional) ✅
+  - [x] Consider adding a small comment in code explaining expected format ✅
+  - [x] Add JSDoc to systemPrompt explaining citation requirements ✅
+  - [x] This makes format expectations visible to developers ✅
+  
+  **Files to modify**: `src/app/api/chat/route.ts` ✅
+  
+  **Validation**:
+  - Comments explain citation format expectations ✅
+  - Future developers can understand requirements ✅
+  - No impact on runtime behavior ✅
+
+---
+
+### Phase 5: Tool Output Enhancement (Optional)
+
+- [x] **Task 5.1**: Update tool output to include more citation-friendly data ✅ (Already Complete)
+  - [x] Open `src/lib/tools/search-tool.ts` ✅
+  - [x] Verify `startTime` is already included in result for accurate citation generation ✅
+  - [x] Tool already includes `videoTitle`, `videoId`, and `startTime` ✅
+  - [x] Keep existing error handling and logging ✅
+  
+  **Files to modify**: `src/lib/tools/search-tool.ts` (already has required fields)
+  
+  **Validation**:
+  - Tool output contains all data needed for citation formatting ✅
+  - No breaking changes to existing tool call handling ✅
+  - Formatting time display remains correct ✅
+
+---
+
+### Phase 6: Testing & Validation
+
+- [x] **Task 6.1**: Test citation parsing ✅ (FIXED)
+  - [x] Create unit tests for `parseCitations` function ✅
+  - [x] Test with: valid citations, no citations, malformed citations, multiple citations ✅
+  - [x] Test edge cases: empty text, very long text, special characters ✅
+  - [x] Verify timestamp calculation (MM:SS to seconds conversion) ✅
+  - [x] **FIX: Updated regex to support decimal seconds (e.g., 418.4)** ✅
+  
+  **Validation**:
+  - All unit tests pass ✅
+  - Parsing handles all edge cases ✅
+  - No crashes on malformed input ✅
+  - Timestamps calculated correctly ✅
+  - Decimal seconds now supported ✅
+
+- [ ] **Task 6.2**: Test inline citation rendering
+  - [ ] Create a test conversation with citations
+  - [ ] Verify citations render as inline buttons
+  - [ ] Verify clicking citation logs correct data
+  - [ ] Test with missing video titles (fallback behavior)
+  - [ ] Test with multiple citations in one message
+  - [ ] Verify citations appear where text mentions them
+  
+  **Validation**:
+  - Citations render in correct positions
+  - Click handlers work correctly
+  - Fallbacks work when data missing
+  - No UI glitches or layout issues
+  - Responsive on mobile
+
+- [ ] **Task 6.3**: Test system prompt enforcement
+  - [ ] Ask AI a question that triggers search
+  - [ ] Verify response contains properly formatted citations
+  - [ ] Verify citations match the expected format
+  - [ ] Check that unused search results don't appear as citations
+  - [ ] Test with edge cases: no results, single result, many results
+  
+  **Validation**:
+  - AI generates citations in specified format
+  - Only mentioned videos appear as citations
+  - Citations have correct videoId and timestamp
+  - System prompt instructions are followed
+
+- [ ] **Task 6.4**: Test backward compatibility
+  - [ ] Load existing conversations without citations
+  - [ ] Verify they render normally
+  - [ ] Verify no errors or warnings
+  - [ ] Test video reference cards still work as fallback
+  - [ ] Test mixed scenarios (some messages with citations, some without)
+  
+  **Validation**:
+  - Old messages render without issues
+  - No regression in existing functionality
+  - Fallback behavior works correctly
+  - No console errors or warnings
+
+- [ ] **Task 6.5**: Test error handling
+  - [ ] Test with malformed citations in text
+  - [ ] Test with missing video data
+  - [ ] Test with invalid timestamps
+  - [ ] Verify graceful degradation
+  - [ ] Verify error logging
+  
+  **Validation**:
+  - Errors don't break the UI
+  - Errors are logged appropriately
+  - User sees readable content even with errors
+  - No uncaught exceptions
 
 ---
 
 ## 🎯 Success Criteria
 
-✅ **Rename Feature** (Already Complete):
-- Users can click edit from dropdown and modify conversation titles
-- Changes persist to database and update UI immediately
-- All existing functionality continues to work
+✅ **Citation Parsing**:
+- Regex correctly extracts citations in the format `[Title at time](videoId:id:seconds)`
+- Text is split into segments (text and citation)
+- Edge cases handled gracefully
 
-✅ **Delete Feature** (To Be Implemented):
-- Users can delete conversations from the dropdown menu
-- Confirmation dialog prevents accidental deletions
-- Deleted conversations are removed from database and UI
-- Associated messages are automatically deleted (cascade)
-- Active conversation handling works correctly
-- Error states are handled gracefully
-- No data integrity issues or console errors
-- Race condition protection prevents concurrent deletions
-- Existence validation prevents unnecessary database calls
-- User-triggered error recovery via `clearError` method
+✅ **Inline Citations**:
+- Citations render as interactive buttons inline with text
+- Clicking citation logs or navigates to video
+- Citations look like underlined links with timestamps
+- Hover shows full video title
 
-## 📝 Notes
+✅ **System Prompt**:
+- AI generates citations in the specified format
+- Only videos actually mentioned appear as citations
+- Citations are accurate (correct video and timestamp)
 
-### Database Security
-- The database has `ON DELETE CASCADE` enabled, so messages will be automatically deleted
-- RLS policies ensure users can only delete their own conversations at the database level
-- `auth.uid() = user_id` policy prevents unauthorized access even if client is compromised
+✅ **User Experience**:
+- Citations appear where they're relevant in the response
+- No unused search results shown as citations
+- Existing functionality preserved
+- Responsive and accessible
 
-### Implementation Security
-- **Race condition protection**: `isDeleting` state prevents concurrent delete operations
-- **Existence validation**: Pre-checks conversation exists in local state before database calls
-- **Error recovery**: Graceful degradation with user-triggered error clearing
-- **UI consistency**: Error handling prevents orphaned states in the UI
+✅ **Code Quality**:
+- TypeScript strict mode compliant
+- Proper error handling
+- JSDoc documentation
+- No console warnings or errors
 
-### Technical Details
-- The implementation follows existing patterns in the codebase
-- No migrations needed as database schema already supports DELETE operations
-- Both features use existing UI components (Dialog, AlertDialog) from shadcn/ui
-- Supabase client uses PKCE flow for enhanced security on authentication
-- Session persistence and auto-refresh ensure continuous authentication
+---
+
+## 📝 Technical Notes
+
+### Citation Format Specification
+The citation format is: `[Video Title at M:SS](videoId:VIDEO_ID:START_TIME_IN_SECONDS)`
+
+**Breakdown**:
+- `Video Title`: The title to display (e.g., "Amazon Documentary")
+- `at M:SS`: Human-readable timestamp (e.g., "at 10:15")
+- `videoId`: The internal video ID (UUID)
+- `START_TIME_IN_SECONDS`: Numeric timestamp for navigation (e.g., 615 for 10:15)
+
+**Example**:
+```
+Customer obsession is the first principle [Amazon Documentary at 10:15](videoId:abc-123-def-456:615) mentioned by Bezos.
+```
+
+### AI SDK Message Structure
+UIMessages from AI SDK have:
+```typescript
+{
+  id: string
+  role: 'user' | 'assistant'
+  parts: Array<
+    | { type: 'text', text: string }
+    | { type: 'tool-searchKnowledgeBase', state: string, output?: ToolResult }
+  >
+}
+```
+
+### Parsing Strategy
+1. Use regex to find citation markers in text
+2. Split text into segments (text blocks and citation markers)
+3. Map segments to React components
+4. Render text segments with markdown support
+5. Render citations as interactive buttons
+
+### Error Handling
+- Malformed citations: Render as plain text
+- Missing video data: Use fallback title "Video"
+- Invalid timestamps: Handle gracefully, don't crash
+- Regex failures: Fall back to plain text rendering
+
+### Backward Compatibility
+- Keep VideoReferenceCard rendering as fallback
+- Messages without citations render normally
+- No database migrations required
+- Existing conversations remain functional
