@@ -48,7 +48,8 @@ export const KnowledgeBaseHeader = ({
                 size="sm"
                 onClick={onOpenDialog}
                 disabled={selectedCount === 0 || isDeleting}
-                className={selectedCount > 0 ? 'text-red-600 hover:bg-red-100 hover:text-red-700' : ''}
+                // Destructive color for delete action - theme-aware
+                className={selectedCount > 0 ? 'text-destructive hover:bg-destructive/10' : ''}
                 title={selectedCount > 0 ? `Delete ${selectedCount} video${selectedCount !== 1 ? 's' : ''}` : 'Select videos to delete'}
               >
                 {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
@@ -76,9 +77,6 @@ export const KnowledgeBaseHeader = ({
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
-            <Button variant="ghost" size="sm">
-              <Folder className="h-4 w-4" />
-            </Button>
             <Button variant="ghost" size="sm" onClick={onToggleCollapse}>
               <ChevronRight className="h-4 w-4" />
             </Button>

@@ -277,6 +277,12 @@ img, video {
   --accent-foreground: 0 0% 100%;
   --destructive: 0 84% 60%;
   --destructive-foreground: 0 0% 100%;
+  --warning: 48 96% 53%;
+  --warning-foreground: 0 0% 20%;
+  --info: 217 91% 60%;
+  --info-foreground: 0 0% 100%;
+  --success: 142 76% 36%;
+  --success-foreground: 0 0% 100%;
   --border: 214 32% 91%;
   --input: 214 32% 91%;
   --ring: 217 91% 60%;
@@ -308,6 +314,12 @@ img, video {
   --accent-foreground: 0 0% 100%;
   --destructive: 0 63% 31%;
   --destructive-foreground: 213 31% 91%;
+  --warning: 48 96% 53%;
+  --warning-foreground: 0 0% 20%;
+  --info: 217 91% 60%;
+  --info-foreground: 0 0% 100%;
+  --success: 142 76% 36%;
+  --success-foreground: 0 0% 100%;
   --border: 215 25% 27%;
   --input: 215 25% 27%;
   --ring: 217 91% 60%;
@@ -1745,11 +1757,6 @@ body {
   color: hsl(var(--accent-foreground));
 }
 
-.text-blue-600 {
-  --tw-text-opacity: 1;
-  color: rgb(37 99 235 / var(--tw-text-opacity, 1));
-}
-
 .text-card-foreground {
   color: hsl(var(--card-foreground));
 }
@@ -1774,14 +1781,8 @@ body {
   color: hsl(var(--foreground) / .5);
 }
 
-.text-gray-600 {
-  --tw-text-opacity: 1;
-  color: rgb(75 85 99 / var(--tw-text-opacity, 1));
-}
-
-.text-green-600 {
-  --tw-text-opacity: 1;
-  color: rgb(22 163 74 / var(--tw-text-opacity, 1));
+.text-info {
+  color: hsl(var(--info));
 }
 
 .text-muted-foreground {
@@ -1812,16 +1813,6 @@ body {
   color: hsl(var(--primary-foreground));
 }
 
-.text-purple-600 {
-  --tw-text-opacity: 1;
-  color: rgb(147 51 234 / var(--tw-text-opacity, 1));
-}
-
-.text-red-600 {
-  --tw-text-opacity: 1;
-  color: rgb(220 38 38 / var(--tw-text-opacity, 1));
-}
-
 .text-secondary-foreground {
   color: hsl(var(--secondary-foreground));
 }
@@ -1834,14 +1825,17 @@ body {
   color: hsl(var(--sidebar-foreground) / .7);
 }
 
+.text-success {
+  color: hsl(var(--success));
+}
+
+.text-warning {
+  color: hsl(var(--warning));
+}
+
 .text-white {
   --tw-text-opacity: 1;
   color: rgb(255 255 255 / var(--tw-text-opacity, 1));
-}
-
-.text-yellow-600 {
-  --tw-text-opacity: 1;
-  color: rgb(202 138 4 / var(--tw-text-opacity, 1));
 }
 
 .underline-offset-4 {
@@ -2183,6 +2177,10 @@ body {
   background-color: hsl(var(--accent) / .5);
 }
 
+.hover\:bg-destructive\/10:hover {
+  background-color: hsl(var(--destructive) / .1);
+}
+
 .hover\:bg-destructive\/80:hover {
   background-color: hsl(var(--destructive) / .8);
 }
@@ -2211,15 +2209,6 @@ body {
   background-color: hsl(var(--primary) / .9);
 }
 
-.hover\:bg-red-100:hover {
-  --tw-bg-opacity: 1;
-  background-color: rgb(254 226 226 / var(--tw-bg-opacity, 1));
-}
-
-.hover\:bg-red-50\/80:hover {
-  background-color: #fef2f2cc;
-}
-
 .hover\:bg-secondary:hover {
   background-color: hsl(var(--secondary));
 }
@@ -2246,11 +2235,6 @@ body {
 
 .hover\:text-primary-foreground:hover {
   color: hsl(var(--primary-foreground));
-}
-
-.hover\:text-red-700:hover {
-  --tw-text-opacity: 1;
-  color: rgb(185 28 28 / var(--tw-text-opacity, 1));
 }
 
 .hover\:text-sidebar-accent-foreground:hover {
@@ -2408,9 +2392,8 @@ body {
   background-color: hsl(var(--background));
 }
 
-.group.destructive .group-\[\.destructive\]\:text-red-300 {
-  --tw-text-opacity: 1;
-  color: rgb(252 165 165 / var(--tw-text-opacity, 1));
+.group.destructive .group-\[\.destructive\]\:text-destructive\/70 {
+  color: hsl(var(--destructive) / .7);
 }
 
 .group.toast .group-\[\.toast\]\:text-muted-foreground {
@@ -2443,22 +2426,12 @@ body {
   color: hsl(var(--destructive-foreground));
 }
 
-.group.destructive .group-\[\.destructive\]\:hover\:text-red-50:hover {
-  --tw-text-opacity: 1;
-  color: rgb(254 242 242 / var(--tw-text-opacity, 1));
-}
-
 .group.destructive .group-\[\.destructive\]\:focus\:ring-destructive:focus {
   --tw-ring-color: hsl(var(--destructive));
 }
 
-.group.destructive .group-\[\.destructive\]\:focus\:ring-red-400:focus {
-  --tw-ring-opacity: 1;
-  --tw-ring-color: rgb(248 113 113 / var(--tw-ring-opacity, 1));
-}
-
-.group.destructive .group-\[\.destructive\]\:focus\:ring-offset-red-600:focus {
-  --tw-ring-offset-color: #dc2626;
+.group.destructive .group-\[\.destructive\]\:focus\:ring-offset-destructive:focus {
+  --tw-ring-offset-color: hsl(var(--destructive));
 }
 
 .peer\/menu-button:hover ~ .peer-hover\/menu-button\:text-sidebar-accent-foreground {

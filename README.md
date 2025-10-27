@@ -38,6 +38,35 @@ YouTube GPT helps users instantly find information hidden inside hours of video 
 - [Inngest](https://www.inngest.com/) - Background jobs
 - [youtube-transcript](https://www.npmjs.com/package/youtube-transcript) - Transcript extraction
 
+### Design System
+
+#### Color System
+- **Theme-aware colors**: Full light/dark mode support with semantic color tokens
+- **Semantic tokens**: 
+  - `primary` - Main brand color (blue)
+  - `destructive` - Error states, delete actions (red)
+  - `warning` - Warning states (yellow)
+  - `info` - Informational states (blue)
+  - `success` - Success states (green)
+  - `muted` - Secondary text and backgrounds
+  - `accent` - Accent elements
+- **Accessibility**: WCAG AA compliant contrast ratios in both themes
+- All colors defined in `src/styles/globals.css` using HSL CSS variables
+- Dark mode controlled via `.dark` class on root element
+
+**Usage:**
+```tsx
+// Theme-aware color tokens
+<button className="text-destructive hover:bg-destructive/10">
+  Delete
+</button>
+
+// Status colors
+<div className="text-success">Ready</div>
+<div className="text-warning">Pending</div>
+<div className="text-info">Processing</div>
+```
+
 ## Getting Started
 
 ### Prerequisites
