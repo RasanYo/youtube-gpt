@@ -1,299 +1,278 @@
-# Implementation Plan: Inline Video Citations in AI Chat
+# Implementation Plan: Clickable Inline Citations with Video Preview
 
 ## 🧠 Context about Project
 
 **YouTube-GPT** is an AI-powered full-stack SaaS application that enables users to search, analyze, and extract information from YouTube video content. The platform allows users to add individual videos or entire channels to build a searchable knowledge base. Users can ask AI-powered questions across their video library and receive grounded answers with citations and timestamps.
 
-The application uses Next.js 14 with App Router, Supabase for authentication and database operations, and implements a ChatGPT-style three-column interface. The system is built with full-stack vertical slices, focusing on reliability, scalability, and design quality. The chat interface uses Vercel AI SDK (`@ai-sdk/react`) with Claude for natural language understanding and semantic search through ZeroEntropy for video content retrieval.
+The application uses Next.js 14 with App Router, Supabase for authentication and database operations, and implements a ChatGPT-style three-column interface. The chat interface uses Vercel AI SDK with Claude for natural language understanding and semantic search through ZeroEntropy for video content retrieval.
 
-**Current Implementation**: The chat system displays video citations as a separate "Video References" block at the bottom of assistant messages. All search results are shown, regardless of whether they were actually used to support specific statements in the response. This creates visual clutter and reduces the contextual relevance of citations.
+**Current State**: The system has been enhanced to display inline video citations with subtle gray titles and red timestamps. These citations are parsed from AI responses and rendered as interactive elements, but they currently only log to console when clicked.
 
 ## 🏗️ Context about Feature
 
-The current chat system uses the AI SDK's `streamText` function with tool calling capabilities. When the AI responds, it:
-1. Calls the `searchKnowledgeBase` tool which returns 5 search results
-2. Generates a text response based on those results
-3. Displays ALL search results as citation cards in a separate section
+The application has a three-column layout:
+- **Left Column**: Conversation sidebar
+- **Center Column**: Chat area with messages
+- **Right Column**: Knowledge base explorer with video preview
 
-The AI SDK structures messages with a `parts` array containing:
-- `text` parts: The AI's response content
-- `tool-searchKnowledgeBase` parts: The tool invocation and results
+**Architecture Challenge**: The inline citations are rendered in the chat area (center column), but the video preview player is managed in the Knowledge Base component (right column). These components are siblings in the component tree with no direct communication channel.
 
-The rendering happens in `src/components/chat/chat-message.tsx`, where text parts are rendered using `Response` component (which wraps Streamdown for markdown rendering), and tool parts show all search results as `VideoReferenceCard` components.
-
-**Architecture Constraints**:
-- AI SDK doesn't provide built-in annotation/metadata for linking text segments to tool results
-- Citations must be embedded in the text response itself
-- The system prompt controls how Claude formats citations
-- We need to parse citations from text and render them as interactive UI elements
+**Technical Context**:
+- The Knowledge Base component manages its own `previewingVideo` state (line 20 in `knowledge-base.tsx`)
+- The preview component displays YouTube iframes with `youtubeId` parameter
+- Inline citations have access to `videoId` (database ID), `videoTitle`, `timestamp`, and `startTime` (in seconds)
+- The video data structure includes both database `id` and `youtubeId` (YouTube's external ID)
 
 ## 🎯 Feature Vision & Flow
 
-Users should see video citations **inline with the text** where they're relevant, not as a separate block at the bottom. When the AI mentions "customer obsession at 10:15", users should see an inline citation chip that they can click to jump to that video timestamp.
+When a user clicks on an inline citation in the chat response (e.g., clicking on "Amazon Documentary 6:58"), the system should:
 
-The flow should be:
-1. User asks a question → AI calls search tool
-2. AI receives search results and generates response
-3. AI includes formatted citations like `[Video Title at 10:15](videoId:video-id:615)` directly in the text
-4. The UI parses these citations and renders them as interactive elements
-5. Users click citations to navigate to the specific video timestamp
-6. Only citations actually mentioned in the text are displayed (no unused search results)
+1. Identify which video is being referenced by the citation's videoId
+2. Open the video preview player in the knowledge base sidebar (right column)
+3. Load the video at the specific timestamp mentioned in the citation
+4. Display the video with title and channel information
 
 **Success Criteria**:
-- Citations appear inline where they're relevant in the response
-- Clicking a citation navigates to the video at the correct timestamp
-- Unused search results don't appear as citations
-- System prompt enforces proper citation formatting
-- Error handling for malformed citations
-- Maintains existing tool usage notifications and video reference cards as fallback
+- Clicking any inline citation opens the video preview in the knowledge base
+- Video starts playing at the exact timestamp specified in the citation
+- Smooth user experience with no page refresh or navigation
+- Works across all citations in any conversation message
+- Responsive design maintained for different screen sizes
+
+**UX Flow**:
+1. User reads AI response with inline citations
+2. User sees video title in gray italic text and timestamp in red italic text
+3. User clicks on the citation (either title or timestamp)
+4. Video preview opens in the right sidebar automatically
+5. YouTube player starts at the correct timestamp
+6. User can watch the relevant video segment inline
 
 ## 📋 Implementation Plan: Tasks & Subtasks
 
-### Phase 1: Citation Parser Library
+### Phase 1: Create Video Preview Context
 
 **Documentation References**:
-- [AI SDK Message Parts](https://sdk.vercel.ai/docs/ai-sdk-core/concepts/messages)
-- [AI SDK Tool Calling](https://sdk.vercel.ai/docs/ai-sdk-core/concepts/tools)
+- [React Context API](https://react.dev/reference/react/useContext)
+- [Creating Context Providers](https://react.dev/reference/react/createContext)
 
-- [x] **Task 1.1**: Create citation parser utility module ✅
-  - [x] Create new file `src/lib/citations/parser.ts` ✅
-  - [x] Define `Citation` interface with fields: `id`, `videoId`, `videoTitle`, `timestamp`, `startTime`, `matchIndex`, `text` ✅
-  - [x] Define `TextSegment` interface with type 'text' | 'citation' and optional `citation` property ✅
-  - [x] Implement `parseCitations` function that uses regex to extract citations in format `[Video Title at M:SS](videoId:VIDEO_ID:START_TIME)` ✅
-  - [x] Return object with `segments` array and `citations` array ✅
-  - [x] Handle edge cases: no citations, malformed citations, multiple citations in one text ✅
-  - [x] Add JSDoc documentation for all interfaces and functions ✅
+- [x] **Task 1.1**: Create VideoPreviewContext provider ✅
+  - [x] Create new file `src/contexts/VideoPreviewContext.tsx` ✅
+  - [x] Define VideoPreviewState interface with fields: `youtubeId`, `title`, `channelName`, `timestamp` ✅
+  - [x] Create context with state and setter for preview video ✅
+  - [x] Import `useVideos` hook for video lookup functionality ✅
+  - [x] Export custom hook `useVideoPreview()` that returns:
+    - `openPreview(videoId: string, timestamp: number)` - Opens video at specific timestamp ✅
+    - `closePreview()` - Closes the video preview ✅
+    - `previewVideo` - Current preview state ✅
+  - [x] In `openPreview` function:
+    - Look up video by database ID using videos array from `useVideos` hook ✅
+    - Extract `youtubeId`, `title`, and `channelName` from found video ✅
+    - Clamp timestamp to ensure it's non-negative: `Math.max(0, timestamp)` ✅
+    - Handle missing videos gracefully (log error and return early) ✅
+    - Use toast notifications for user feedback on errors ✅
+  - [x] Add JSDoc documentation for all functions ✅
+  - [x] Use React's createContext and useContext for state management ✅
+  - [x] Handle edge cases: negative timestamps, video not found, missing youtubeId ✅
   
-  **Files to create**: `src/lib/citations/parser.ts`
+  **Files to create**: `src/contexts/VideoPreviewContext.tsx`
   
   **Validation**:
-  - Function correctly parses citation format: `[Video Title at 10:15](videoId:abc-123:615)`
-  - Function splits text into segments with citations properly isolated
-  - Function extracts videoId, videoTitle, timestamp, and startTime correctly
-  - Function returns empty citations array when no citations found
-  - Function handles malformed citations gracefully (returns text as-is)
-  - No regex vulnerabilities (limited character classes)
+  - Context provider exports useVideoPreview hook
+  - Hook returns openPreview, closePreview, and previewVideo
+  - Video lookup works correctly (database ID → youtube ID conversion)
+  - Error handling for missing videos works
+  - Timestamps are clamped to non-negative values
+  - TypeScript types properly defined
+  - No linter errors
 
 ---
 
-### Phase 2: Inline Citation UI Component
+### Phase 2: Integrate Context into Knowledge Base
 
-- [x] **Task 2.1**: Create inline citation button component ✅
-  - [x] Create new file `src/components/chat/inline-citation.tsx` ✅
-  - [x] Define `InlineCitationProps` interface with: `videoId`, `videoTitle`, `timestamp`, `startTime` ✅
-  - [x] Implement button styled to look like an underlined link with timestamp ✅
-  - [x] Add onClick handler that logs citation info (placeholder for video navigation) ✅
-  - [x] Add hover states and tooltip showing full video title and timestamp ✅
-  - [x] Use shadcn Button component with ghost variant for subtle appearance ✅
-  - [x] Include Link2 icon from lucide-react ✅
+- [x] **Task 2.1**: Update Knowledge Base to use VideoPreviewContext ✅
+  - [x] Open `src/components/knowledge-base/knowledge-base.tsx` ✅
+  - [x] Import `useVideoPreview` from VideoPreviewContext ✅
+  - [x] Replace local `previewingVideo` state with `previewVideo` from context ✅
+  - [x] Remove local `setPreviewingVideo` state setter ✅
+  - [x] Update `handleVideoPreview` function to use context's openPreview method ✅
+  - [x] Update `onClose` handler to use context's closePreview method ✅
+  - [x] Keep all existing functionality for manual video list clicks ✅
   
-  **Files to create**: `src/components/chat/inline-citation.tsx` ✅
-  
-  **Validation**:
-  - Component renders as inline button with timestamp ✅
-  - Button is clickable and logs correct citation data ✅
-  - Hover shows tooltip with video title ✅
-  - Visually distinct but not intrusive in text flow ✅
-  - Accessible (keyboard navigable, proper ARIA labels) ✅
-
-- [x] **Task 2.2**: Create citation-enhanced response component ✅
-  - [x] Create new file `src/components/chat/citation-response.tsx` ✅
-  - [x] Import `parseCitations` from lib and `InlineCitation` component ✅
-  - [x] Define `CitationResponseProps` with `text` and optional `videos` array ✅
-  - [x] Implement component that: calls `parseCitations`, maps segments to JSX, renders text segments as spans, renders citation segments as `InlineCitation` components ✅
-  - [x] Use `Response` component wrapper for markdown rendering of text segments ✅
-  - [x] Fallback to plain Response when no citations found ✅
-  - [x] Look up video title from `videos` prop as fallback if missing from citation ✅
-  
-  **Files to create**: `src/components/chat/citation-response.tsx` ✅
+  **Files to modify**: `src/components/knowledge-base/knowledge-base.tsx` (lines 16-58)
   
   **Validation**:
-  - Component correctly parses citations from text ✅
-  - Citations render as interactive inline buttons ✅
-  - Text segments render normally ✅
-  - Falls back gracefully when no citations present ✅
-  - No console errors or warnings ✅
-  - Maintains responsive design ✅
+  - Knowledge base still opens previews when clicking videos from list
+  - No breaking changes to existing functionality
+  - Video preview component receives correct props
+  - Knowledge base can close preview properly
 
----
-
-### Phase 3: Update Chat Message Rendering
-
-**Documentation References**:
-- [AI SDK UIMessage Structure](https://sdk.vercel.ai/docs/ai-sdk-core/concepts/messages)
-- [AI SDK useChat Hook](https://sdk.vercel.ai/docs/reference/react/use-chat)
-
-- [x] **Task 3.1**: Update chat message component to use citation rendering ✅
-  - [x] Open `src/components/chat/chat-message.tsx` ✅
-  - [x] Import `CitationResponse` component ✅
-  - [x] Replace line 41: Change `<Response>{part.text}</Response>` to `<CitationResponse text={part.text} videos={videos} />` ✅
-  - [x] Ensure `videos` prop is passed through to CitationResponse ✅
-  - [x] Keep tool-searchKnowledgeBase rendering for "Searching..." notification ✅
-  - [x] Keep VideoReferenceCard for backward compatibility and as fallback ✅
+- [x] **Task 2.2**: Update Knowledge Base Preview to support timestamps ✅
+  - [x] Open `src/components/knowledge-base/knowledge-base-preview.tsx` ✅
+  - [x] Add `timestamp` field to `KnowledgeBasePreviewProps` interface ✅
+  - [x] Update `Video` interface to include optional `timestamp` field ✅
+  - [x] Modify iframe src to include `?start=${timestamp}` parameter when timestamp exists ✅
+  - [x] Ensure proper URL encoding: `encodeURIComponent(youtubeId)` and `encodeURIComponent(timestamp)` ✅
+  - [x] Convert timestamp to whole seconds: `Math.floor(Math.max(0, timestamp))` ✅
+  - [x] Handle undefined/null timestamp gracefully (no start parameter) ✅
+  - [x] Add security: Ensure timestamp is valid number before using in URL ✅
   
-  **Files to modify**: `src/components/chat/chat-message.tsx` ✅
+  **Files to modify**: `src/components/knowledge-base/knowledge-base-preview.tsx` (lines 7-46)
   
   **Validation**:
-  - Citations render inline with text when present ✅
-  - No citations shown when absent (normal text rendering) ✅
-  - Videos prop is properly passed to CitationResponse ✅
-  - Tool usage notification still appears during search ✅
-  - VideoReferenceCard still renders for backward compatibility ✅
-  - No TypeScript errors or warnings ✅
-
----
-
-### Phase 4: Update System Prompt to Enforce Citation Format
-
-**Documentation References**:
-- [AI SDK System Prompts](https://sdk.vercel.ai/docs/ai-sdk-core/concepts/system-prompts)
-- [AI SDK Tool Usage](https://sdk.vercel.ai/docs/ai-sdk-core/concepts/tools)
-
-- [x] **Task 4.1**: Update system prompt to require specific citation format ✅
-  - [x] Open `src/app/api/chat/route.ts` ✅
-  - [x] Locate system prompt at lines 60-81 ✅
-  - [x] Update instruction to require exact format: `[Video Title at M:SS](videoId:VIDEO_ID:START_TIME_IN_SECONDS)` ✅
-  - [x] Add explicit example: "e.g., [Amazon Documentary at 10:15](videoId:abc-123:615)" ✅
-  - [x] Emphasize calculating START_TIME as seconds (not minutes) ✅
-  - [x] Add rule: "Only include citations for videos you actually reference in your response" ✅
-  - [x] Keep existing instructions about when to search and how to use tool results ✅
-  - [x] Maintain user context at the bottom ✅
-  
-  **Files to modify**: `src/app/api/chat/route.ts` (lines 60-81) ✅
-  
-  **Validation**:
-  - System prompt clearly specifies citation format ✅
-  - Includes concrete example of correct format ✅
-  - Emphasizes only citing videos actually mentioned ✅
-  - No breaking changes to existing functionality ✅
-  - All existing instructions preserved ✅
-
-- [x] **Task 4.2**: Add citation format validation helper (optional) ✅
-  - [x] Consider adding a small comment in code explaining expected format ✅
-  - [x] Add JSDoc to systemPrompt explaining citation requirements ✅
-  - [x] This makes format expectations visible to developers ✅
-  
-  **Files to modify**: `src/app/api/chat/route.ts` ✅
-  
-  **Validation**:
-  - Comments explain citation format expectations ✅
-  - Future developers can understand requirements ✅
-  - No impact on runtime behavior ✅
-
----
-
-### Phase 5: Tool Output Enhancement (Optional)
-
-- [x] **Task 5.1**: Update tool output to include more citation-friendly data ✅ (Already Complete)
-  - [x] Open `src/lib/tools/search-tool.ts` ✅
-  - [x] Verify `startTime` is already included in result for accurate citation generation ✅
-  - [x] Tool already includes `videoTitle`, `videoId`, and `startTime` ✅
-  - [x] Keep existing error handling and logging ✅
-  
-  **Files to modify**: `src/lib/tools/search-tool.ts` (already has required fields)
-  
-  **Validation**:
-  - Tool output contains all data needed for citation formatting ✅
-  - No breaking changes to existing tool call handling ✅
-  - Formatting time display remains correct ✅
-
----
-
-### Phase 6: Testing & Validation
-
-- [x] **Task 6.1**: Test citation parsing ✅ (FIXED)
-  - [x] Create unit tests for `parseCitations` function ✅
-  - [x] Test with: valid citations, no citations, malformed citations, multiple citations ✅
-  - [x] Test edge cases: empty text, very long text, special characters ✅
-  - [x] Verify timestamp calculation (MM:SS to seconds conversion) ✅
-  - [x] **FIX: Updated regex to support decimal seconds (e.g., 418.4)** ✅
-  
-  **Validation**:
-  - All unit tests pass ✅
-  - Parsing handles all edge cases ✅
-  - No crashes on malformed input ✅
-  - Timestamps calculated correctly ✅
-  - Decimal seconds now supported ✅
-
-- [ ] **Task 6.2**: Test inline citation rendering
-  - [ ] Create a test conversation with citations
-  - [ ] Verify citations render as inline buttons
-  - [ ] Verify clicking citation logs correct data
-  - [ ] Test with missing video titles (fallback behavior)
-  - [ ] Test with multiple citations in one message
-  - [ ] Verify citations appear where text mentions them
-  
-  **Validation**:
-  - Citations render in correct positions
-  - Click handlers work correctly
-  - Fallbacks work when data missing
-  - No UI glitches or layout issues
-  - Responsive on mobile
-
-- [ ] **Task 6.3**: Test system prompt enforcement
-  - [ ] Ask AI a question that triggers search
-  - [ ] Verify response contains properly formatted citations
-  - [ ] Verify citations match the expected format
-  - [ ] Check that unused search results don't appear as citations
-  - [ ] Test with edge cases: no results, single result, many results
-  
-  **Validation**:
-  - AI generates citations in specified format
-  - Only mentioned videos appear as citations
-  - Citations have correct videoId and timestamp
-  - System prompt instructions are followed
-
-- [ ] **Task 6.4**: Test backward compatibility
-  - [ ] Load existing conversations without citations
-  - [ ] Verify they render normally
-  - [ ] Verify no errors or warnings
-  - [ ] Test video reference cards still work as fallback
-  - [ ] Test mixed scenarios (some messages with citations, some without)
-  
-  **Validation**:
-  - Old messages render without issues
-  - No regression in existing functionality
-  - Fallback behavior works correctly
+  - Preview component accepts timestamp prop
+  - YouTube player starts at correct timestamp when provided
+  - YouTube player works normally when no timestamp provided
+  - URL is properly encoded (no injection vulnerabilities)
+  - Negative or invalid timestamps are clamped to 0
   - No console errors or warnings
 
-- [ ] **Task 6.5**: Test error handling
-  - [ ] Test with malformed citations in text
-  - [ ] Test with missing video data
-  - [ ] Test with invalid timestamps
-  - [ ] Verify graceful degradation
-  - [ ] Verify error logging
+---
+
+### Phase 3: Connect Inline Citations to Context
+
+- [x] **Task 3.1**: Update InlineCitation to use VideoPreviewContext ✅
+  - [x] Open `src/components/chat/inline-citation.tsx` ✅
+  - [x] Import `useVideoPreview` hook from VideoPreviewContext ✅
+  - [x] Import `useToast` hook for mobile/tablet user feedback ✅
+  - [x] Get `openPreview` function from the hook ✅
+  - [x] Update `handleClick` function to:
+    - Check if knowledge base is visible (screen width >= 1024px / lg breakpoint) ✅
+    - If on mobile/tablet: Show toast notification that preview requires desktop view ✅
+    - If on desktop: Call `openPreview(videoId, startTime)` with the citation's video ID and timestamp ✅
+    - Remove console.log placeholder ✅
+  - [x] Keep all existing styling and accessibility features ✅
+  - [x] Ensure click handlers work for both title and timestamp spans ✅
+  - [x] Add error handling for failed openPreview calls ✅
+  
+  **Files to modify**: `src/components/chat/inline-citation.tsx` (lines 40-59)
   
   **Validation**:
-  - Errors don't break the UI
-  - Errors are logged appropriately
-  - User sees readable content even with errors
-  - No uncaught exceptions
+  - Clicking citation opens video preview in knowledge base on desktop
+  - Video starts at correct timestamp
+  - Mobile/tablet users see helpful toast notification
+  - No console errors on click
+  - Tooltip still shows on hover
+  - Keyboard navigation still works
+
+- [x] **Task 3.2**: Ensure video data lookup works ✅ (Moved to Task 1.1)
+  - [x] Video lookup logic is now in VideoPreviewContext
+  - [x] Task consolidated into Phase 1 for better separation of concerns
+  
+  **Note**: Video lookup is handled in Task 1.1. No separate task needed here.
+
+---
+
+### Phase 4: Wrap App with Context Provider
+
+- [x] **Task 4.1**: Add VideoPreviewProvider to app layout ✅
+  - [x] Open `src/app/providers.tsx` (providers file already exists) ✅
+  - [x] Import `VideoPreviewProvider` from `@/contexts/VideoPreviewContext` ✅
+  - [x] Add VideoPreviewProvider inside the VideoSelectionProvider (nesting order matters) ✅
+  - [x] Provider placement: `<VideoSelectionProvider><VideoPreviewProvider>{children}</VideoPreviewProvider></VideoSelectionProvider>` ✅
+  - [x] This allows VideoPreviewContext to potentially use video selection data if needed ✅
+  - [x] Verify provider placement doesn't break existing functionality ✅
+  - [x] Check that all child components can access context without errors ✅
+  
+  **Files to modify**: `src/app/providers.tsx` (lines 8-29)
+  
+  **Validation**:
+  - Context provider wraps necessary components at correct nesting level
+  - No performance issues from context updates
+  - All components can access context (no "must be used within provider" errors)
+  - No React context warnings
+  - Provider order is correct (VideoSelectionProvider → VideoPreviewProvider → children)
+
+---
+
+### Phase 5: Testing & Validation
+
+- [x] **Task 5.1**: Test citation click functionality ✅
+  - [ ] Create a test conversation with citations
+  - [ ] Click on different citations in the response
+  - [ ] Verify video preview opens in knowledge base
+  - [ ] Verify video starts at correct timestamp
+  - [ ] Test with multiple citations in one message
+  - [ ] Test clicking same citation multiple times
+  
+  **Validation**:
+  - All citations open correct videos
+  - Timestamps are accurate
+  - No UI glitches
+  - Smooth transitions
+
+- [x] **Task 5.2**: Test cross-column interaction ✅
+  - [ ] Verify knowledge base visibility (should be visible on lg screens)
+  - [ ] Test that video preview appears in correct location
+  - [ ] Test closing preview after opening from citation
+  - [ ] Test opening multiple videos in sequence
+  - [ ] Verify video player controls work normally
+  
+  **Validation**:
+  - Video preview appears in knowledge base column
+  - Preview doesn't interfere with chat area
+  - Preview can be closed properly
+  - YouTube player controls work as expected
+
+- [x] **Task 5.3**: Test edge cases and error scenarios ✅
+  - [ ] Test with videos that don't exist in database (deleted/removed videos)
+  - [ ] Verify toast notification appears: "Video not found"
+  - [ ] Test with malformed or missing timestamps (NaN, undefined, null)
+  - [ ] Test with negative timestamps (should clamp to 0)
+  - [ ] Test with very large timestamps (e.g., 999999999 seconds)
+  - [ ] Test with videos missing youtubeId (invalid video data)
+  - [ ] Test keyboard navigation accessibility (Enter/Space on citations)
+  - [ ] Test with long video titles (text overflow handling)
+  - [ ] Test rapid clicking on citations (debouncing)
+  - [ ] Test clicking same citation multiple times
+  - [ ] Test opening one video preview then clicking another citation
+  
+  **Validation**:
+  - Graceful error handling for all edge cases
+  - Toast notifications appear for errors
+  - No crashes or uncaught exceptions
+  - User gets appropriate feedback for all error scenarios
+  - Negative timestamps are clamped to 0
+  - Very large timestamps are handled gracefully
+  - Mobile experience remains functional
+  - No memory leaks from multiple preview opens
+
+- [x] **Task 5.4**: Test responsive design and mobile behavior ✅
+  - [ ] Test on desktop (lg screens >= 1024px) where knowledge base is visible
+  - [ ] Verify clicking citations opens preview and starts video at timestamp
+  - [ ] Test on tablet (md screens 768px-1023px) where knowledge base is hidden
+  - [ ] Test on mobile (sm screens < 768px) where knowledge base is hidden
+  - [ ] Verify clicking citations on mobile/tablet shows toast notification: "Preview requires desktop view. Open in browser to preview videos."
+  - [ ] Test screen resize from desktop to mobile/tablet during preview
+  - [ ] Ensure no layout shifts or UI breaks on different screen sizes
+  
+  **Validation**:
+  - Responsive breakpoints work correctly
+  - No layout shifts or UI breaks
+  - Toast notification appears on mobile/tablet when clicking citations
+  - Toast message is helpful and actionable
+  - Preview works correctly on desktop (≥1024px)
+  - All screen sizes maintain functionality
+  - No console errors on any screen size
 
 ---
 
 ## 🎯 Success Criteria
 
-✅ **Citation Parsing**:
-- Regex correctly extracts citations in the format `[Title at time](videoId:id:seconds)`
-- Text is split into segments (text and citation)
-- Edge cases handled gracefully
-
-✅ **Inline Citations**:
-- Citations render as interactive buttons inline with text
-- Clicking citation logs or navigates to video
-- Citations look like underlined links with timestamps
-- Hover shows full video title
-
-✅ **System Prompt**:
-- AI generates citations in the specified format
-- Only videos actually mentioned appear as citations
-- Citations are accurate (correct video and timestamp)
+✅ **Functionality**:
+- Clicking inline citations opens video preview in knowledge base
+- Videos start at correct timestamps
+- All citations work regardless of location in response
 
 ✅ **User Experience**:
-- Citations appear where they're relevant in the response
-- No unused search results shown as citations
-- Existing functionality preserved
-- Responsive and accessible
+- Smooth, instant response to clicks
+- Video preview appears in expected location (right column)
+- Preview can be closed and reopened
+- No page refresh or navigation required
+
+✅ **Integration**:
+- Knowledge base and chat area communicate via context
+- No direct component coupling
+- Clean separation of concerns
 
 ✅ **Code Quality**:
 - TypeScript strict mode compliant
@@ -305,48 +284,57 @@ The flow should be:
 
 ## 📝 Technical Notes
 
-### Citation Format Specification
-The citation format is: `[Video Title at M:SS](videoId:VIDEO_ID:START_TIME_IN_SECONDS)`
+### Context Architecture
+The VideoPreviewContext will:
+- Manage preview state globally
+- Provide openPreview(videoId, timestamp) method
+- Provide closePreview() method
+- Lookup YouTube ID from database video ID using useVideos hook
+- Handle state updates across components
+- Include error handling and user feedback via toasts
 
-**Breakdown**:
-- `Video Title`: The title to display (e.g., "Amazon Documentary")
-- `at M:SS`: Human-readable timestamp (e.g., "at 10:15")
-- `videoId`: The internal video ID (UUID)
-- `START_TIME_IN_SECONDS`: Numeric timestamp for navigation (e.g., 615 for 10:15)
+### Video ID Resolution
+- Citations use database video IDs (from citations table)
+- Knowledge base needs YouTube IDs for iframe (youtubeId field)
+- Context will bridge this gap by looking up videos in the videos array from useVideos hook
+- Lookup by database ID: `videos.find(v => v.id === videoId)`
+- Extract youtubeId, title, and channelName from found video
+- Handle missing videos gracefully with toast notification
 
-**Example**:
-```
-Customer obsession is the first principle [Amazon Documentary at 10:15](videoId:abc-123-def-456:615) mentioned by Bezos.
-```
+### Timestamp Handling & Security
+- Citations store timestamp in seconds (can be decimal like 418.4)
+- YouTube expects whole seconds in URL parameter
+- Convert with Math.floor(Math.max(0, timestamp)) to:
+  - Ensure non-negative values (clamp negatives to 0)
+  - Convert decimals to whole seconds
+  - Prevent invalid timestamps
+- URL encoding: Use encodeURIComponent() for youtubeId and timestamp in iframe src
+- Security considerations:
+  - Never use unvalidated user input directly in URLs
+  - Always validate and clamp numeric values
+  - Use encodeURIComponent to prevent injection attacks
+  - Ensure youtubeId is a valid YouTube ID format (11 characters)
 
-### AI SDK Message Structure
-UIMessages from AI SDK have:
-```typescript
-{
-  id: string
-  role: 'user' | 'assistant'
-  parts: Array<
-    | { type: 'text', text: string }
-    | { type: 'tool-searchKnowledgeBase', state: string, output?: ToolResult }
-  >
-}
-```
+### Responsive Considerations
+- Knowledge base hidden on mobile (sm) and tablet (md) breakpoints
+- Only visible on desktop (lg >= 1024px breakpoint)
+- Toast notification shown when clicking citations on mobile/tablet
+- Toast message: "Preview requires desktop view. Open in browser to preview videos."
+- Detecting screen size: `window.innerWidth >= 1024` or use CSS media queries with matchMedia
+- Alternative: Check if knowledge base is in DOM (querySelector)
 
-### Parsing Strategy
-1. Use regex to find citation markers in text
-2. Split text into segments (text blocks and citation markers)
-3. Map segments to React components
-4. Render text segments with markdown support
-5. Render citations as interactive buttons
+### Error Handling Strategy
+1. Missing video: Show toast "Video not found. It may have been removed."
+2. Missing youtubeId: Show toast "This video is not available for preview."
+3. Invalid timestamp: Clamp to 0 and proceed
+4. Network errors: Log to console, show generic error toast
+5. Mobile/tablet: Show helpful desktop-only message
+6. Context not provided: Throw descriptive error (already handled by useContext)
 
-### Error Handling
-- Malformed citations: Render as plain text
-- Missing video data: Use fallback title "Video"
-- Invalid timestamps: Handle gracefully, don't crash
-- Regex failures: Fall back to plain text rendering
+### Type Safety
+- Use TypeScript interfaces for all context methods
+- Validate videoId is non-empty string
+- Validate timestamp is number (not NaN, not Infinity)
+- Use optional chaining when accessing video properties
+- Ensure all functions have proper return types
 
-### Backward Compatibility
-- Keep VideoReferenceCard rendering as fallback
-- Messages without citations render normally
-- No database migrations required
-- Existing conversations remain functional

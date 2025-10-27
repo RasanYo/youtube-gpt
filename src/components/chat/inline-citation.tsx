@@ -6,6 +6,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
+import { useVideoPreview } from '@/contexts/VideoPreviewContext'
+import { useToast } from '@/hooks/use-toast'
 import type { Citation } from '@/lib/citations/parser'
 
 export interface InlineCitationProps {
@@ -44,18 +46,34 @@ export function InlineCitation({
   startTime,
   className,
 }: InlineCitationProps) {
-  const handleClick = () => {
-    // TODO: Implement video navigation to timestamp
-    // For now, log the citation info
-    console.log('Citation clicked:', {
-      videoId,
-      videoTitle,
-      timestamp,
-      startTime,
-    })
+  const { openPreview } = useVideoPreview()
+  const { toast } = useToast()
 
-    // Future: Navigate to video at timestamp
-    // Example: router.push(`/video/${videoId}?t=${startTime}`)
+  const handleClick = () => {
+    // Check if knowledge base is visible (desktop >= 1024px)
+    const isDesktop = typeof window !== 'undefined' && window.innerWidth >= 1024
+
+    if (!isDesktop) {
+      // Show toast notification for mobile/tablet users
+      toast({
+        title: 'Preview requires desktop view',
+        description: 'Open in browser to preview videos.',
+        variant: 'default',
+      })
+      return
+    }
+
+    // Open video preview at the specified timestamp
+    try {
+      openPreview(videoId, startTime)
+    } catch (error) {
+      console.error('Failed to open video preview:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to open video preview',
+        variant: 'destructive',
+      })
+    }
   }
 
   return (

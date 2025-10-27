@@ -7,6 +7,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { VideoSelectionProvider } from '@/contexts/VideoSelectionContext'
 import { ConversationProvider } from '@/contexts/ConversationContext'
+import { VideoPreviewProvider } from '@/contexts/VideoPreviewContext'
 import { useState } from 'react'
 
 export function Providers({ children }: { children: React.ReactNode }) {
@@ -18,9 +19,11 @@ export function Providers({ children }: { children: React.ReactNode }) {
         <AuthProvider>
           <ConversationProvider>
             <VideoSelectionProvider>
-              <Toaster />
-              <Sonner />
-              {children}
+              <VideoPreviewProvider>
+                <Toaster />
+                <Sonner />
+                {children}
+              </VideoPreviewProvider>
             </VideoSelectionProvider>
           </ConversationProvider>
         </AuthProvider>

@@ -36,7 +36,7 @@ export function CitationResponse({ text, videos = [] }: CitationResponseProps) {
       console.error('Failed to parse citations:', error)
       // Fallback to plain text
       return {
-        segments: [{ type: 'text', text }],
+        segments: [{ type: 'text' as const, text }],
         citations: [],
       }
     }
@@ -53,7 +53,7 @@ export function CitationResponse({ text, videos = [] }: CitationResponseProps) {
   // For full markdown support with inline citations, we'd need a custom markdown renderer.
   return (
     <>
-      {segments.map((segment: TextSegment, index: number) => {
+      {segments.map((segment, index) => {
         if (segment.type === 'text') {
           // Render text segments with basic formatting
           return (
