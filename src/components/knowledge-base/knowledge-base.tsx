@@ -8,6 +8,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/hooks/use-toast'
 import { processYouTubeUrl } from '@/lib/youtube'
 import { triggerVideoDocumentsDeletion } from '@/lib/inngest/triggers'
+import { supabase } from '@/lib/supabase/client'
 import { KnowledgeBaseHeader } from './knowledge-base-header'
 import { KnowledgeBasePreview } from './knowledge-base-preview'
 import { KnowledgeBaseUrlInput } from './knowledge-base-url-input'
@@ -103,6 +104,19 @@ export const KnowledgeBase = () => {
         title: 'Deleting videos...',
         description: `Removing ${count} video${count !== 1 ? 's' : ''} from your knowledge base`,
       })
+
+      // First, update status to PROCESSING for each video to provide UI feedback
+      await Promise.all(videoIds.map(async (videoId) => {
+        const { error } = await supabase
+          .from('videos')
+          .update({ status: 'PROCESSING', updatedAt: new Date().toISOString() })
+          .eq('id', videoId)
+          .eq('userId', user.id)
+        
+        if (error) {
+          console.error('Failed to update status for video:', videoId, error)
+        }
+      }))
 
       // Send deletion events to Inngest for each video
       await Promise.all(videoIds.map(videoId => 
