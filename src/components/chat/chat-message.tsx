@@ -3,6 +3,7 @@
 import { Loader2, Bot, User } from 'lucide-react'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { VideoReferenceCard } from './video-reference-card'
+import { Response } from '@/components/ai-elements/response'
 import type { UIMessage } from 'ai'
 
 interface ChatMessageProps {
@@ -37,7 +38,7 @@ export const ChatMessage = ({ message, isLoading, videos = [] }: ChatMessageProp
           {message.parts.map((part, i) => {
             switch (part.type) {
               case 'text':
-                return <div key={`${message.id}-${i}`}>{part.text}</div>
+                return <Response key={`${message.id}-${i}`}>{part.text}</Response>
               
               case 'tool-searchKnowledgeBase':
                 // Show tool usage notification for searching state
