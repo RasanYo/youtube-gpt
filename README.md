@@ -27,57 +27,15 @@ pnpm run dev          # Next.js dev server on http://localhost:8080
 
 ## Screenshots/GIFs
 
-### Screenshot 1: Main Interface Overview
-**Description:** Three-column ChatGPT-style interface showing the complete application layout:
-- **Left Column:** Conversation history sidebar with list of past conversations, each with editable titles. Profile section at bottom showing user avatar, name, email, dark/light mode toggle, and logout button.
-- **Center Column:** Real-time chat interface displaying a conversation with the AI assistant. Shows streaming responses with inline citations that are clickable (e.g., "Managing Remote Teams (2:34)"). Input field at bottom with send button.
-- **Right Column:** Knowledge Base Explorer showing:
-  - Input field at top for adding YouTube URLs (video or channel)
-  - List of videos with thumbnails, titles, channel names, and status indicators (READY, PROCESSING, PENDING, FAILED)
-  - Search bar for filtering videos
-  - Checkboxes for multi-select functionality
-  - Selection toolbar showing "Use as Context" button when videos are selected
+### Screenshot 1: Login Screen
+![Login Interface](./docs/login.png)
 
-### Screenshot 2: Video Ingestion Flow
-**Description:** Demonstrating the video ingestion process:
-- User pastes a YouTube channel URL in the input field
-- System detects it's a channel and shows "Ingesting 10 videos..."
-- Shows thumbnail grid of videos being processed with status indicators:
-  - PENDING (queued)
-  - QUEUED (metadata fetched)
-  - PROCESSING (transcript extraction in progress)
-  - READY (available for search)
-  - FAILED (retry button shown)
-- Progress indicators and tooltips showing what each status means
+### Screenshot 2: Main Interface Overview
+![Main Interface](./docs/main%20screen.png)
 
-### Screenshot 3: Scope-Aware Chat with Citations
-**Description:** Showcasing the scoped search functionality:
-- Scope bar at top of chat showing selected video chips (e.g., "Remote Work Best Practices 🎬", "Team Management Tips 🎬")
-- "Reset to All" button to clear scope
-- AI response shown with multiple citations:
-  ```
-  Based on the selected videos, there are three pricing strategies:
-  
-  1. Value-based pricing [Remote Work Video (3:45)]
-  2. Competitive pricing [Team Management Video (5:12)]
-  3. Cost-plus pricing [Remote Work Video (7:23)]
-  ```
-- Visual indicator showing "AI is searching your videos..." when RAG tool is active
-- Clickable citations that highlight the source video and jump to specific timestamps
+### Screenshot 3: Main Interface with video preview
+![Video Preview](./docs/video%20preview.png)
 
-### Screenshot 4: Conversation History
-**Description:** Left sidebar showing conversation management:
-- List of conversations with auto-generated titles based on first message
-- Example titles: "What are the pricing strategies?", "Summarize remote work best practices", "Generate LinkedIn post from video"
-- Each conversation shows last message preview and timestamp
-- "New Chat" button at top
-- Profile section at bottom with user info and settings
-
-### Screenshot 5: Dark/Light Mode Toggle
-**Description:** Side-by-side comparison showing:
-- Left: Light mode with bright background, dark text, YouTube-red accents
-- Right: Dark mode with #141414 background, glowing cyan accents, modern aesthetic
-- Both show the same conversation and layout for easy comparison
 
 ## Setup Instructions
 
@@ -509,11 +467,111 @@ When AI uses the search tool:
 
 ## Design Decisions & Trade-offs
 
-*To be documented*
+### Architecture & Framework
+**Decision:** Built with Next.js 14 App Router
+- **Rationale:** Server-side rendering for better performance, built-in API routes, and React Server Components reduce client-side JavaScript. Server Actions provide type-safe server-side mutations without separate API files.
+- **Trade-off:** Generated initial interface with Lovable which works with Vite. Noticed quite late the limitations and complexity it brought, so huge time loss on battling against it and migrating to Next.js
+
+**Decision:** Three-column ChatGPT-style interface
+- **Rationale:** Familiar UX pattern users already understand, allows simultaneous view of history, chat, and knowledge base
+
+### Technology Stack Choices
+**Decision:** Supabase for auth, database, and real-time
+- **Rationale:** All-in-one solution reduces infrastructure complexity, built-in RLS for multi-tenant security, real-time subscriptions for live updates. Also a requirement for this Task
+
+**Decision:** ZeroEntropy for vector search
+- **Rationale:** Managed service with per-user collections, automatic scaling, simple API, handles embeddings internally. Requirement for this task.
+- **Trade-off** New tool for me, small learning curbe
+
+**Decision:** Inngest for background jobs
+- **Rationale:** Durable event-driven architecture, built-in retries, visual debugging dashboard, automatic status tracking
+- **Trade-off:** Another service to manage and also new to me. Initial hard time syncing with application, leading to consequent time loss. Eventually very intuitive.
+
+**Decision:** Supadata for transcript extraction
+- **Rationale:** `youtube-transcript` was not working in deployed environment. Only worked on local Node.js server. Issue notices by community and never fixed
+- **Trade-off:** Priced API and took some time finding an alternative for `youtube-transcript`
+
+### Scope Management
+**Decision:** Conversation-level scope tracking
+- **Rationale:** Users can restore conversations with their exact video context preserved, maintains conversation continuity
+- **Trade-off:** Additional database storage for scope metadata vs simpler application-level state
+
+**Decision:** Two modes: "All videos" vs "Selected videos" with tool based search function
+- **Rationale:** Flexibility to search broad or narrow, allows users to progressively refine context, intuitive UX
+- **Trade-off:** Sometimes performs a lot of consequent search, leading to higher response time, but for more qualititave result.
+
+
+### Citation Strategy
+**Decision:** Format: `[Video Title] (timestamp)` with clickable links
+- **Rationale:** Clear source attribution, direct navigation to exact moments in videos, familiar notation and comfortable flow
+- **Trade-off:** Additional parsing logic to extract citations from AI responses vs structured output format.
+
+**Decision:** Automatic citation detection via regex
+- **Rationale:** Works with any LLM output format without forcing structured responses, robust fallback parsing
+- **Trade-off:** Regex maintenance for edge cases vs formal schema-based citations. Imprecise LLM formatting in the output can cause bad referencing.
+
+### Chunking Strategy
+**Decision:** 3-minute video transcript chunks
+- **Rationale:** Balance between context size and precision, optimal for semantic search, good match for video segments
+- **Trade-off:** May miss context spanning chunks vs longer chunks with less precision. Video referencing off by a couple seconds or minutes based on query sometimes, but has better context for grounded response.
+
+### Real-time Communication
+**Decision:** Server-Sent Events (SSE) for streaming AI responses
+- **Rationale:** Simpler than WebSockets, works reliably behind firewalls/proxies, one-way communication sufficient for streaming responses
+
+### User Experience
+**Decision:** Show processing status in real-time with visual indicators
+- **Rationale:** Transparent feedback keeps users informed during long-running operations (video ingestion can take minutes)
 
 ## Known Limitations & Next Steps
 
-*To be documented*
+### Current Limitations
+
+1. **Transcript Dependence**
+   - Relies on YouTube auto-generated captions
+   - Videos without captions cannot be processed
+   - Video frames are not embedded. Could be a very useful feature, especially for educational videos (calculus for example) where users could want to ask questions about a specific thing they see in the video
+   - Future: Support for manual transcript upload or audio transcription and video frame embedding
+
+2. **Citation Accuracy**
+   - Citations depend on AI model interpretation
+   - Regex parsing may miss non-standard citation formats
+   - As saif before, chunks of ~3 minutes. Citing video sometime off by a couple seconds/minutes
+   - Future: Structured output mode for guaranteed citation format and finer chunking with more overlap.
+
+3. **Single Knowledgebase**
+   - Single source of truth
+   - Depending on topics/project, a user might want to have different Knowledgebases with different sets of videos
+
+4. **Content Generation**
+   - User has to manually select and copy AI generated content (summary/post)
+   - Unnecessary and uncomfortable flow
+   - Video citations sometimes also inside generated content. If user wants to copy post to Linkedin for example, has to manually remove the citations from the copied selection
+
+5. **UI Bugs**
+   - Minor UI bugs still present that can harm UX
+   - Dropdown menu to edit chat title/delete chat overflows over column width (fixed bug initially, but fix commit must have been lost and only noticed before handout deadline)
+   - AI message generation cursor always on newline. Should be inline next to last character for more natural feel
+
+
+### Next Steps & Roadmap
+
+1. **Web Extension and multiple KBs**
+   - [ ] Give to a user the option to creata multiple KBs with different sets of videos
+   - [ ] Create a web extension which embeds a button on a youtube video page to directly add videos to a KB from youtube (like adding a video to a youtube playlist). Simpler and faster flow than copying URL and pasting on UI everytime
+
+2. **Content Generation**
+   - [ ] UI component to directly copy AI response or generated summary/post with one click, instead of having to manually select and copy output
+
+3. **Collaboration**
+   - [ ] Team workspaces with shared video libraries
+   - [ ] Multi-user conversations with @mentions
+   - [ ] Video annotations and comments
+
+4. **Platform Expansion**
+   - [ ] Support for Vimeo, self-hosted videos
+   - [ ] Audio-only podcast support
+   - [ ] Local video file upload and processing
 
 ---
 

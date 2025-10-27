@@ -1302,6 +1302,10 @@ body {
   border-radius: calc(var(--radius)  - 4px);
 }
 
+.rounded-none {
+  border-radius: 0;
+}
+
 .rounded-t-\[10px\] {
   border-top-left-radius: 10px;
   border-top-right-radius: 10px;
