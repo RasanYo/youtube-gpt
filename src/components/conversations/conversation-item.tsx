@@ -188,8 +188,8 @@ export const ConversationItem = ({ conversation, isActive, onClick, onEditTitle 
   return (
     <div
       className={cn(
-        'w-full rounded-lg border-2 transition-colors relative',
-        isActive ? 'border-primary bg-accent/30' : 'border-transparent'
+        'w-full rounded-lg transition-colors relative',
+        isActive ? 'bg-accent/30' : ''
       )}
       onMouseEnter={() => setShowMenu(true)}
       onMouseLeave={() => setShowMenu(false)}
