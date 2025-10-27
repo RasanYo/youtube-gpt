@@ -1,6 +1,6 @@
 var R=require("../chunks/ssr/[turbopack]_runtime.js")("server/app/page.js")
 R.c("server/chunks/ssr/bdf11_@supabase_node-fetch_lib_index_886f969a.js")
-R.c("server/chunks/ssr/[root-of-the-server]__4ea19b1a._.js")
+R.c("server/chunks/ssr/[root-of-the-server]__ede4e2b7._.js")
 R.c("server/chunks/ssr/eb37f_next_dist_ec4fe5fd._.js")
 R.c("server/chunks/ssr/bcdff_tr46_b21b3851._.js")
 R.c("server/chunks/ssr/484ef_@supabase_storage-js_dist_module_fc6f47c3._.js")
