@@ -16,6 +16,8 @@ import { useChat } from '@ai-sdk/react'
 import { DefaultChatTransport, type UIMessage } from 'ai'
 import { VideoScopeBar } from '@/components/video/video-scope-bar'
 import { saveMessage, updateConversationUpdatedAt } from '@/lib/supabase/messages'
+import { getEnhancedPrompt } from '@/lib/chat-commands/utils'
+import type { CommandId } from '@/lib/chat-commands/types'
 
 interface AuthenticatedChatAreaProps {
   user: NonNullable<ReturnType<typeof useAuth>['user']>
@@ -37,6 +39,7 @@ export const AuthenticatedChatArea = ({
   const scrollAreaRef = useRef<HTMLDivElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const [input, setInput] = useState('')
+  const [selectedCommand, setSelectedCommand] = useState<CommandId | null>(null)
   const [isGeneratingTitle, setIsGeneratingTitle] = useState(false)
   const { generateTitleIfNeeded } = useChatTitleGenerator({
     conversations,
@@ -121,9 +124,20 @@ export const AuthenticatedChatArea = ({
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (input.trim() && !isLoading) {
+      // Get enhanced prompt if command is selected
+      const enhancedPrompt = getEnhancedPrompt(input, selectedCommand)
+      
+      // Log the enhanced prompt for debugging
+      if (selectedCommand) {
+        console.log('✅ Command selected:', selectedCommand)
+        console.log('📝 Enhanced prompt:', enhancedPrompt)
+      }
+      
       await saveUserMessage(input)
-      sendMessage({ text: input }, { body: getScopeBody() })
+      sendMessage({ text: enhancedPrompt }, { body: getScopeBody() })
       setInput('')
+      // Reset selected command after submission
+      setSelectedCommand(null)
     }
   }
 
@@ -175,6 +189,8 @@ export const AuthenticatedChatArea = ({
         onChange={setInput}
         onSubmit={onSubmit}
         isLoading={isLoading}
+        selectedCommand={selectedCommand}
+        onCommandChange={setSelectedCommand}
       />
     </div>
   )
