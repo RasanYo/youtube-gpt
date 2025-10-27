@@ -7,7 +7,7 @@ import { useVideoSelection } from '@/contexts/VideoSelectionContext'
 import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/hooks/use-toast'
 import { processYouTubeUrl } from '@/lib/youtube'
-import { inngest } from '@/lib/inngest/client'
+import { triggerVideoDocumentsDeletion } from '@/lib/inngest/triggers'
 import { KnowledgeBaseHeader } from './knowledge-base-header'
 import { KnowledgeBasePreview } from './knowledge-base-preview'
 import { KnowledgeBaseUrlInput } from './knowledge-base-url-input'
@@ -95,18 +95,16 @@ export const KnowledgeBase = () => {
       })
 
       // Send deletion events to Inngest for each video
-      const deletionEvents = videoIds.map(videoId => 
-        inngest.send({
-          name: 'video.documents.deletion.requested',
-          data: { 
-            videoId, 
-            userId: user.id 
-          }
+      await Promise.all(videoIds.map(videoId => 
+        triggerVideoDocumentsDeletion(videoId, user.id).catch(error => {
+          console.error('Failed to trigger deletion for video:', videoId, error)
+          toast({
+            title: 'Error',
+            description: `Failed to delete video ${videoId}. Please try again.`,
+            variant: 'destructive',
+          })
         })
-      )
-
-      // Wait for all events to be sent
-      await Promise.all(deletionEvents)
+      ))
 
       // Show success toast
       toast({
