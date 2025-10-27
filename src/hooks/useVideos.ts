@@ -14,7 +14,10 @@ export function useVideos() {
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null)
 
   useEffect(() => {
+
+    
     if (!user?.id) {
+      console.log('[useVideos] No user ID, clearing videos')
       setVideos([])
       setIsLoading(false)
       return
@@ -22,11 +25,9 @@ export function useVideos() {
 
     // Check if subscription already exists
     if (subscriptionRef.current) {
-      console.log('Subscription already exists, skipping...')
+      console.log('[useVideos] Subscription already exists, skipping...')
       return
     }
-
-    console.log('useVideos useEffect triggered, user:', user?.id)
 
     // Initial fetch
     const fetchVideos = async () => {
@@ -41,9 +42,8 @@ export function useVideos() {
         
         if (error) throw error
         setVideos(data || [])
-        console.log('Videos:', data)
       } catch (err) {
-        console.error('Error fetching videos:', err)
+        console.error('[useVideos] Error fetching videos:', err)
         setError(err instanceof Error ? err.message : 'Failed to fetch videos')
       } finally {
         setIsLoading(false)
@@ -52,12 +52,13 @@ export function useVideos() {
 
     fetchVideos()
 
-    // Subscribe to real-time changes
-    console.log('Creating subscription for user:', user?.id, 'at:', new Date().toISOString())
+    
     subscriptionRef.current = true
     
+    const channelName = `video-changes-${user.id}-${Date.now()}`
+    
     const channel = supabase
-      .channel(`video-changes-${user.id}-${Date.now()}`) // Make channel name unique
+      .channel(channelName)
       .on(
         'postgres_changes',
         {
@@ -67,7 +68,7 @@ export function useVideos() {
           filter: `userId=eq.${user.id}`,
         },
         (payload) => {
-          console.log('Video change detected:', payload)
+          console.log('[useVideos] Video change detected:', payload)
           
           if (payload.eventType === 'INSERT') {
             setVideos((prev) => [payload.new as Video, ...prev])
@@ -82,19 +83,35 @@ export function useVideos() {
           }
         }
       )
-      .subscribe((status) => {
+      .subscribe((status, err) => {
+        
         if (status === 'SUBSCRIBED') {
-          console.log('Successfully subscribed to video changes')
+          // console.log('[useVideos] Successfully subscribed to video changes')
         } else if (status === 'CHANNEL_ERROR') {
-          console.error('Error subscribing to video changes')
+          console.error('[useVideos] Error subscribing to video changes', {
+            status,
+            channelName,
+            userId: user.id,
+            error: err
+          })
           setError('Failed to connect to real-time updates')
+        } else if (status === 'TIMED_OUT') {
+          console.warn('[useVideos] Subscription timed out', {
+            channelName,
+            userId: user.id
+          })
+          setError('Connection to real-time updates timed out')
+        } else if (status === 'CLOSED') {
+          console.warn('[useVideos] Subscription closed', {
+            channelName,
+            userId: user.id
+          })
         }
       })
 
     channelRef.current = channel
 
     return () => {
-      console.log('Cleaning up subscription for user:', user?.id, 'at:', new Date().toISOString())
       if (channelRef.current) {
         supabase.removeChannel(channelRef.current)
         channelRef.current = null

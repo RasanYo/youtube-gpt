@@ -1,5 +1,10 @@
 import { detectYouTubeType, type YoutubeUrlInfo } from './detector'
-import { type VideoMetadata, type ChannelMetadata, type YouTubeProcessResult } from './types'
+import {
+  type VideoMetadata,
+  type ChannelMetadata,
+  type YouTubeProcessResult,
+} from './types'
+import { createErrorResult, handleEdgeFunctionError } from './utils'
 import { getCurrentUser } from '../supabase/auth'
 import { supabase } from '../supabase/client'
 
@@ -7,26 +12,26 @@ import { supabase } from '../supabase/client'
  * Process a YouTube URL and extract video ID
  * This function validates the URL and extracts the video ID for further processing
  */
-export async function processYouTubeUrl(url: string): Promise<YouTubeProcessResult> {
+export async function processYouTubeUrl(
+  url: string,
+): Promise<YouTubeProcessResult> {
   try {
     // Validate URL format
     if (!url || typeof url !== 'string') {
-      return {
-        success: false,
-        error: 'Invalid URL: URL must be a non-empty string',
-        type: 'invalid'
-      }
+      return createErrorResult(
+        'Invalid URL: URL must be a non-empty string',
+        'invalid',
+      )
     }
 
     // Detect YouTube URL type and extract ID
     const urlInfo: YoutubeUrlInfo = detectYouTubeType(url)
-    
+
     if (urlInfo.type === 'unknown' || !urlInfo.id) {
-      return {
-        success: false,
-        error: 'Invalid YouTube URL: URL must be a valid YouTube video or channel URL',
-        type: 'invalid'
-      }
+      return createErrorResult(
+        'Invalid YouTube URL: URL must be a valid YouTube video or channel URL',
+        'invalid',
+      )
     }
 
     // Get current authenticated user
@@ -34,93 +39,67 @@ export async function processYouTubeUrl(url: string): Promise<YouTubeProcessResu
     try {
       user = await getCurrentUser()
       if (!user) {
-        return {
-          success: false,
-          error: 'User must be authenticated to process YouTube URLs',
-          type: 'auth_required'
-        }
+        return createErrorResult(
+          'User must be authenticated to process YouTube URLs',
+          'auth_required',
+        )
       }
     } catch (authError) {
       console.error('Authentication error:', authError)
-      return {
-        success: false,
-        error: 'Authentication failed. Please sign in and try again.',
-        type: 'auth_error'
-      }
+      return createErrorResult(
+        'Authentication failed. Please sign in and try again.',
+        'auth_error',
+      )
     }
-
-    // Log the URL and ID for debugging
-    console.log('YouTube URL received:', url)
-    console.log('Extracted ID:', urlInfo.id)
-    console.log('URL type:', urlInfo.type)
-    console.log('User ID:', user.id)
 
     // Call Supabase Edge function to create video record
     try {
-      const { data, error } = await supabase.functions.invoke('fetch-video-metadata', {
-        body: {
-          id: urlInfo.id,
-          type: urlInfo.type,
-          userId: user.id
-        }
-      })
+      const { data, error } = await supabase.functions.invoke(
+        'fetch-video-metadata',
+        {
+          body: {
+            id: urlInfo.id,
+            type: urlInfo.type,
+            userId: user.id,
+          },
+        },
+      )
 
       if (error) {
         console.error('Edge function error:', error)
-        return {
-          success: false,
-          error: 'Failed to queue video for processing. Please try again.',
-          type: 'processing_error'
-        }
+        return createErrorResult(
+          'Failed to queue video for processing. Please try again.',
+          'processing_error',
+        )
       }
 
       if (!data.success) {
         console.error('Edge function returned error:', data.error)
-        return {
-          success: false,
-          error: data.error || 'Failed to queue video for processing.',
-          type: 'processing_error'
-        }
+        return createErrorResult(
+          data.error || 'Failed to queue video for processing.',
+          'processing_error',
+        )
       }
-
-      console.log(`Successfully submitted ${urlInfo.type} for processing:`, urlInfo.id)
-      console.log('Video ID:', data.videoId)
     } catch (edgeFunctionError) {
       console.error('Edge function call failed:', edgeFunctionError)
-      
-      // Handle specific errors
-      let errorMessage = 'Failed to submit video for processing. Please try again.'
-      if (edgeFunctionError instanceof Error) {
-        if (edgeFunctionError.message.includes('network') || edgeFunctionError.message.includes('timeout')) {
-          errorMessage = 'Service temporarily unavailable. Please try again in a moment.'
-        } else if (edgeFunctionError.message.includes('unauthorized')) {
-          errorMessage = 'Service authentication failed. Please contact support.'
-        }
-      }
-      
-      return {
-        success: false,
-        error: errorMessage,
-        type: 'processing_error'
-      }
+      return handleEdgeFunctionError(edgeFunctionError)
     }
 
     // Return success with basic info
+    // Note: Full metadata will be fetched asynchronously by the edge function
     return {
       success: true,
+      type: urlInfo.type === 'video' ? 'video' : 'channel',
       data: {
         id: urlInfo.id,
-        type: urlInfo.type
-      } as unknown as VideoMetadata | ChannelMetadata, // We'll improve this when we add full metadata fetching
-      type: urlInfo.type === 'video' ? 'video' : 'channel'
+      } as VideoMetadata | ChannelMetadata,
     }
-
   } catch (error) {
     console.error('Error processing YouTube URL:', error)
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error occurred',
-      type: 'invalid'
+      type: 'invalid',
     }
   }
 }
@@ -129,9 +108,10 @@ export async function processYouTubeUrl(url: string): Promise<YouTubeProcessResu
  * Get video metadata from YouTube API
  * This is a placeholder for future implementation
  */
-export async function getVideoMetadata(videoId: string): Promise<VideoMetadata | null> {
+export async function getVideoMetadata(
+  videoId: string,
+): Promise<VideoMetadata | null> {
   // TODO: Implement YouTube API integration
-  console.log('Getting video metadata for ID:', videoId)
   return null
 }
 
@@ -139,8 +119,9 @@ export async function getVideoMetadata(videoId: string): Promise<VideoMetadata |
  * Get channel metadata from YouTube API
  * This is a placeholder for future implementation
  */
-export async function getChannelMetadata(channelId: string): Promise<ChannelMetadata | null> {
+export async function getChannelMetadata(
+  channelId: string,
+): Promise<ChannelMetadata | null> {
   // TODO: Implement YouTube API integration
-  console.log('Getting channel metadata for ID:', channelId)
   return null
 }

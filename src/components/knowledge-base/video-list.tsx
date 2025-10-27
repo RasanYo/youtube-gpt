@@ -2,7 +2,7 @@
 
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { VideoCard, VideoCardSkeleton } from './VideoCard'
+import { VideoCard, VideoCardSkeleton } from './video-card'
 import { Video as VideoIcon, Search } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useMemo } from 'react'
@@ -12,6 +12,7 @@ export interface VideoListProps {
   videos: Video[]
   isLoading?: boolean
   onVideoClick?: (videoId: string) => void
+  onVideoPreview?: (videoId: string) => void
   onRetry?: (videoId: string) => void
   selectedVideos?: Set<string>
   className?: string
@@ -23,6 +24,7 @@ export const VideoList = ({
   videos,
   isLoading = false,
   onVideoClick,
+  onVideoPreview,
   onRetry,
   selectedVideos = new Set(),
   className,
@@ -78,6 +80,7 @@ export const VideoList = ({
               key={video.id}
               video={video}
               onClick={onVideoClick}
+              onPreview={onVideoPreview}
               onRetry={onRetry}
               isSelected={selectedVideos.has(video.id)}
             />

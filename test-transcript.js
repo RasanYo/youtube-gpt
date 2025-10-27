@@ -5,7 +5,7 @@ async function testTranscript() {
     console.log('Testing youtube-transcript library...');
     console.log('Fetching transcript...\n');
     
-    const transcript = await fetchTranscript('xjcfNmgPM90');
+    const transcript = await fetchTranscript('ArJoVGAv_PQ');
     console.log(transcript);
     console.log('Transcript fetched successfully!');
     console.log('Number of transcript segments:', transcript.length);

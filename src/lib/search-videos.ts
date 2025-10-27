@@ -7,6 +7,7 @@ import { getOrCreateUserCollection } from './zeroentropy/collections'
 export interface SearchResult {
   content: string
   videoId: string
+  videoTitle?: string
   startTime: number
   endTime: number
   score: number
@@ -83,9 +84,13 @@ export async function searchVideos(params: SearchVideosParams): Promise<SearchRe
         ? parseFloat(documentResult.metadata.endTime as string) 
         : startTime + 30 // Default 30 second duration
       
+      // Extract video title from metadata
+      const videoTitle = documentResult?.metadata?.videoTitle as string | undefined
+      
       return {
         content: snippet.content,
         videoId,
+        videoTitle,
         startTime,
         endTime,
         score: snippet.score,
