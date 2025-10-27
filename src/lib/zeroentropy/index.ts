@@ -27,6 +27,18 @@ export {
   createPageContent
 } from './segment-metadata'
 
+// Export chunking utilities
+export {
+  estimateTokens,
+  createChunk,
+  getOverlappingSegments,
+  chunkTranscriptSegments,
+  getChunkingStats,
+  DEFAULT_CHUNKING_CONFIG,
+  type ChunkingConfig,
+  type ChunkingStats
+} from './chunking'
+
 // Export collection management utilities
 export {
   createUserCollection,

@@ -42,29 +42,22 @@ describe('ZeroEntropy Transcript Processing Tests', () => {
   const mockVideoId = 'test-video-456'
 
   describe('processTranscriptSegments', () => {
-    it('should process transcript segments with user and video context', () => {
-      const result = processTranscriptSegments(mockTranscriptData, mockUserId, mockVideoId)
-      
-      expect(result).toHaveLength(3)
+    it('should process transcript segments into chunks with user and video context', () => {
+      const result = processTranscriptSegments(mockTranscriptData, mockUserId, mockVideoId, 'Test Video')
+
+      // With short segments, should create a single chunk
+      expect(result).toHaveLength(1)
       expect(result[0]).toMatchObject({
-        text: 'Hello world, this is a test transcript.',
+        text: 'Hello world, this is a test transcript. This is the second segment with more content. And this is the final segment.',
         start: 0,
-        end: 4.0,
-        duration: 4.0,
+        end: 11,
+        duration: 11,
         language: 'en',
-        segmentIndex: 0,
         userId: mockUserId,
-        videoId: mockVideoId
-      })
-      expect(result[1]).toMatchObject({
-        text: 'This is the second segment with more content.',
-        start: 4.0,
-        end: 8.5,
-        duration: 4.5,
-        language: 'en',
-        segmentIndex: 1,
-        userId: mockUserId,
-        videoId: mockVideoId
+        videoId: mockVideoId,
+        videoTitle: 'Test Video',
+        segmentCount: 3,
+        chunkIndex: 0
       })
     })
 
@@ -80,12 +73,12 @@ describe('ZeroEntropy Transcript Processing Tests', () => {
           processingTimeMs: 0
         }
       }
-      
-      const result = processTranscriptSegments(emptyData, mockUserId, mockVideoId)
+
+      const result = processTranscriptSegments(emptyData, mockUserId, mockVideoId, 'Test Video')
       expect(result).toHaveLength(0)
     })
 
-    it('should skip segments with empty text', () => {
+    it('should skip segments with empty text and create chunk', () => {
       const dataWithEmptySegment: TranscriptData = {
         transcript: [
           {
@@ -116,9 +109,11 @@ describe('ZeroEntropy Transcript Processing Tests', () => {
           processingTimeMs: 1000
         }
       }
-      
-      const result = processTranscriptSegments(dataWithEmptySegment, mockUserId, mockVideoId)
-      expect(result).toHaveLength(2) // Should skip empty segment
+
+      const result = processTranscriptSegments(dataWithEmptySegment, mockUserId, mockVideoId, 'Test Video')
+      // Should create a single chunk from the 2 valid segments (empty segment skipped)
+      expect(result).toHaveLength(1)
+      expect(result[0].segmentCount).toBe(2)
     })
 
     it('should skip segments with invalid timestamps', () => {
@@ -146,9 +141,11 @@ describe('ZeroEntropy Transcript Processing Tests', () => {
           processingTimeMs: 1000
         }
       }
-      
-      const result = processTranscriptSegments(dataWithInvalidSegment, mockUserId, mockVideoId)
-      expect(result).toHaveLength(1) // Should skip invalid segment
+
+      const result = processTranscriptSegments(dataWithInvalidSegment, mockUserId, mockVideoId, 'Test Video')
+      // Should create a single chunk from the 1 valid segment (invalid segment skipped)
+      expect(result).toHaveLength(1)
+      expect(result[0].segmentCount).toBe(1)
     })
   })
 
@@ -225,7 +222,8 @@ describe('ZeroEntropy Transcript Processing Tests', () => {
           language: 'en',
           segmentIndex: 0,
           userId: mockUserId,
-          videoId: mockVideoId
+          videoId: mockVideoId,
+          videoTitle: 'Test Video'
         },
         {
           text: 'a',
@@ -235,7 +233,8 @@ describe('ZeroEntropy Transcript Processing Tests', () => {
           language: 'en',
           segmentIndex: 1,
           userId: mockUserId,
-          videoId: mockVideoId
+          videoId: mockVideoId,
+          videoTitle: 'Test Video'
         },
         {
           text: 'Third segment',
@@ -245,12 +244,13 @@ describe('ZeroEntropy Transcript Processing Tests', () => {
           language: 'en',
           segmentIndex: 2,
           userId: mockUserId,
-          videoId: mockVideoId
+          videoId: mockVideoId,
+          videoTitle: 'Test Video'
         }
       ]
-      
+
       const result = handleTranscriptEdgeCases(segmentsWithShortSegment)
-      
+
       expect(result).toHaveLength(2) // Should merge short segment
       expect(result[0].text).toBe('First segment')
       expect(result[0].start).toBe(0)
@@ -270,12 +270,13 @@ describe('ZeroEntropy Transcript Processing Tests', () => {
           language: 'en',
           segmentIndex: 0,
           userId: mockUserId,
-          videoId: mockVideoId
+          videoId: mockVideoId,
+          videoTitle: 'Test Video'
         }
       ]
-      
+
       const result = handleTranscriptEdgeCases(segmentsWithNegativeStart)
-      
+
       expect(result[0].start).toBe(0)
       expect(result[0].end).toBe(3)
     })
@@ -292,7 +293,8 @@ describe('ZeroEntropy Transcript Processing Tests', () => {
           language: 'en',
           segmentIndex: 0,
           userId: mockUserId,
-          videoId: mockVideoId
+          videoId: mockVideoId,
+          videoTitle: 'Test Video'
         },
         {
           text: 'This is a test',
@@ -302,7 +304,8 @@ describe('ZeroEntropy Transcript Processing Tests', () => {
           language: 'en',
           segmentIndex: 1,
           userId: mockUserId,
-          videoId: mockVideoId
+          videoId: mockVideoId,
+          videoTitle: 'Test Video'
         }
       ]
       

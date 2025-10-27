@@ -1,325 +1,393 @@
-# Langfuse Observability Integration Plan
+# Implementation Plan: Intelligent Transcript Chunking Strategy
+
+---
 
 ## 🧠 Context about Project
 
-**YouTube-GPT** is an AI-powered SaaS platform that transforms YouTube video content into an instantly searchable, AI-powered knowledge base. The platform helps users extract, search, and repurpose information from hours of video content through intelligent retrieval and AI-assisted question answering.
+YouTube-GPT is an AI-powered knowledge management platform that transforms YouTube videos into a searchable personal knowledge base. The platform enables content creators, researchers, students, and professionals to efficiently extract, search, and repurpose information from their YouTube library.
 
-The system allows users to:
-- **Ingest** individual videos or entire channels (latest 10 videos)
-- **Search** across their personal video knowledge base using semantic search
-- **Ask questions** with AI-powered retrieval and get grounded answers with citations
-- **Generate content** (LinkedIn posts, summaries, outlines) from selected videos
-- **Multi-select videos** to create focused context for AI interactions
+The system consists of three main components:
+- **Left Column**: Conversation history with user profile and settings
+- **Center Column**: ChatGPT-style interface with AI chat and compose modes
+- **Right Column**: Knowledge base explorer for video management and content input
 
-**Current Tech Stack:**
-- **Frontend**: Next.js 14 (App Router), React 18, TypeScript, Tailwind CSS, shadcn/ui
-- **Backend**: Next.js Server Actions, Supabase (Auth, PostgreSQL, Realtime)
-- **AI**: Vercel AI SDK with Anthropic Claude Sonnet 3.7
-- **Vector Search**: ZeroEntropy for embeddings and semantic search
-- **Background Jobs**: Inngest for async video processing
-- **LLM Features**: Multi-step tool calling (up to 5 steps), RAG with video context
+Users can add individual YouTube videos or entire channels to their knowledge base. Videos are processed through a background job pipeline (Inngest) that extracts transcripts from YouTube, processes them, and indexes them in ZeroEntropy (a vector database). Once processed, users can search across their video library using AI to get grounded answers with citations and timestamps.
 
-The platform is in active development with core features like authentication, video ingestion, RAG chat, and background processing already implemented. However, **observability is currently limited to console logs**, making production debugging and optimization challenging.
+The platform is built on Next.js 14 with App Router, uses Supabase for database and authentication, ZeroEntropy for vector search and embedding storage, Inngest for background job processing, and integrates with Langfuse for observability. The system is designed for scalability and data isolation with row-level security (RLS) for multi-tenant support.
+
+---
 
 ## 🏗️ Context about Feature
 
-**Langfuse Observability Integration** adds comprehensive tracing and monitoring across the entire AI pipeline from user queries through LLM responses. This integration captures traces, generations, spans, and tool calls to enable production debugging, performance optimization, cost tracking, and quality monitoring.
+Currently, the transcript processing pipeline maps YouTube transcript segments 1:1 to ZeroEntropy documents. Each YouTube segment (typically 1-2 sentences) becomes a separate document in the vector database. This granularity creates several issues:
 
-**Technical Architecture:**
-- **Main LLM Entry Point**: `src/app/api/chat/route.ts` - Handles streaming chat with Claude via `streamText` from AI SDK
-- **Tool Execution**: `src/lib/tools/search-tool.ts` - Executes ZeroEntropy RAG searches as tools
-- **Vector Search**: `src/lib/search-videos.ts` - Performs semantic search across video embeddings
-- **Background Processing**: `src/lib/inngest/functions/process-video.ts` - Multi-step video processing pipeline
-- **Title Generation**: `src/app/api/generate-title/route.ts` - Uses `generateText` for conversation titles
+**Current Problems:**
+- Limited semantic context: Each document is too small to capture complete thoughts or topics
+- Poor retrieval quality: LLM receives disconnected fragments that lack narrative flow
+- Inefficient search: Vector search works best with substantial content (optimal range: 200-800 tokens)
+- No topic boundaries: Related segments are stored as separate documents, losing semantic relationships
 
-**Integration Points:**
-- AI SDK compatibility via `@langfuse/ai` package with automatic tracing of LLM calls, tool calls, and generations
-- Server-side tracing via callbacks passed to `streamText` and `generateText` in Next.js API routes
-- Automatic tool call tracing (no manual instrumentation needed) for RAG retrieval in chat endpoint
-- Manual tracing for background jobs (Inngest video processing) using direct Langfuse client API
+The hybrid chunking strategy addresses these issues by intelligently grouping transcript segments into meaningful documents (targeting 500-800 tokens) while maintaining temporal continuity through sliding window overlaps (10%).
 
-**Constraints:**
-- Must preserve existing console logging for local debugging
-- Must be non-blocking (async/background tracing)
-- Must support both production (cloud) and development (self-hosted) deployments
-- Must integrate seamlessly with existing Vercel AI SDK patterns
+**Technical Constraints:**
+- Must maintain accurate timestamps for video navigation
+- Must preserve all transcript segments (no data loss)
+- ZeroEntropy path format: `{videoId}-{identifier}` where identifier is chunk index
+- Search API expects chunks to return content with startTime/endTime metadata
+- Processing happens in background jobs (Inngest) - must be reliable and resumable
+
+**Surrounding Systems:**
+- Transcript extraction (`src/lib/inngest/utils/transcript-extractor.ts`) fetches raw YouTube transcripts
+- Processing pipeline (`src/lib/inngest/functions/process-video.ts`) orchestrates the 8-step workflow
+- ZeroEntropy client (`src/lib/zeroentropy/client.ts`) handles document indexing
+- Search module (`src/lib/search-videos.ts`) retrieves relevant chunks for AI responses
+
+---
 
 ## 🎯 Feature Vision & Flow
 
-Users will experience no UI changes, but developers and operators gain powerful observability tools:
+**Vision:** Transform the transcript processing pipeline to create semantically meaningful document chunks that enable both specific snippet retrieval and holistic video comprehension.
 
 **End-to-End Flow:**
-1. **User sends chat message** → Creates Langfuse trace with userId, conversationId, scope
-2. **LLM processes request** → Records generation with model, tokens, latency, cost
-3. **Tool calls triggered** → Captures search queries, results, relevance scores, video IDs
-4. **Streaming response** → Tracks token-by-token output, citations extracted
-5. **Production monitoring** → Dashboard shows traces, errors, performance metrics
 
-**Key Metrics:**
-- **Performance**: Request latency, token usage, streaming speed
-- **Cost**: API costs per conversation, cumulative spend, cost-per-user
-- **Quality**: Tool call accuracy, retrieval relevance, citation rates
-- **Debugging**: Full trace context, error logs, step-by-step execution
-- **Business**: Active users, queries per video, feature adoption
+1. **Ingestion Phase**: When a video is processed, the system extracts YouTube transcript segments (typically 500-1000 small segments for a 20-minute video)
 
-**Success Criteria:**
-- Every LLM call traces to Langfuse with full context
-- Tool calls logged with inputs/outputs and timing
-- Production errors immediately traceable to specific trace
-- Cost and performance metrics visible in dashboard
-- Developers can debug production issues without code changes
+2. **Chunking Phase**: A new chunking module groups these segments into ~50-100 cohesive documents:
+   - Each chunk contains 500-800 tokens worth of content (~200-400 words)
+   - Chunks maintain 10% overlap for temporal continuity
+   - Each chunk tracks its constituent segments for accurate timestamp calculation
+
+3. **Indexing Phase**: Chunks are indexed in ZeroEntropy with enriched metadata:
+   - Path format: `{videoId}-chunk{chunkIndex}`
+   - Metadata includes: startTime, endTime, duration, segmentCount, chunkIndex
+   - Full chunk text (much longer than current single segments)
+
+4. **Search Phase**: When users query the knowledge base:
+   - ZeroEntropy's `topSnippets` API returns relevant 200-character snippets
+   - These snippets now come from semantically rich chunks instead of disconnected sentences
+   - LLM receives better context and can provide more accurate, coherent responses
+
+**Success Metrics:**
+- Reduced document count: 500 segments → ~50-100 chunks (5-10x reduction)
+- Improved chunk quality: Average 400+ words per chunk (vs current ~20 words)
+- Better retrieval: Snippets contain complete thoughts/topics
+- Maintained accuracy: All timestamps preserved for video navigation
+
+---
 
 ## 📋 Implementation Plan: Tasks & Subtasks
 
-### Phase 1: Setup & Installation
+> **Note:** Mark each task as complete by changing `[ ]` to `[x]`. After completing each top-level task, pause to confirm the implementation is correct before moving to the next task.
 
-#### Task 1.1: Install Langfuse Dependencies
-- [x] Add `langfuse` package using `pnpm add langfuse`
-- [x] Note: `@langfuse/ai` package doesn't exist in npm. Will use langfuse directly
-- [x] Verify packages installed in `package.json` (version ^3.38.6 for langfuse)
-- [x] Run `pnpm install` to update lock file
+### Implementation Principles
 
-**Verification**: Check `package.json` shows both `"langfuse": "^2.x.x"` and `"@langfuse/ai": "^x.x.x"` in dependencies, run `pnpm list langfuse` to confirm install
+Follow these principles throughout implementation:
 
-#### Task 1.2: Configure Environment Variables
-- [x] Add `LANGFUSE_SECRET_KEY` to environment variables (get from Langfuse dashboard)
-- [x] Add `LANGFUSE_PUBLIC_KEY` to environment variables
-- [x] Add optional `LANGFUSE_HOST` for self-hosted deployments (default: https://cloud.langfuse.com)
-- [x] Document environment variables in `.env.local` for local development
-- [x] Created `docs/langfuse-setup.md` with setup instructions
-- [x] Document environment variable setup in dedicated docs
+- **DRY (Don't Repeat Yourself)**: Reuse existing functions and utilities rather than duplicating logic
+  - Look for existing helpers in `src/lib/zeroentropy/` before creating new ones
+  - Share common token estimation logic instead of reimplementing
+  - Extract shared validation logic into reusable functions
+  - Avoid copy-pasting similar code patterns
 
-**Verification**: Created documentation file `docs/langfuse-setup.md` with complete setup instructions
+- **Type Safety**: Maintain strict TypeScript typing throughout
+  - Use existing types from `src/lib/zeroentropy/types.ts` where possible
+  - Create new types ONLY when necessary
+  - Leverage type inference where appropriate
 
-#### Task 1.3: Create Langfuse Client Singleton
-- [x] Create `src/lib/langfuse/client.ts` file
-- [x] Import `Langfuse` from `langfuse` package
-- [x] Initialize client with environment variables (secretKey, publicKey, baseUrl)
-- [x] Export singleton instance as `langfuse` constant
-- [x] Add graceful error handling for missing environment variables
-- [x] Add TypeScript types for client configuration
-
-**Verification**: Created client with singleton pattern, graceful degradation if credentials missing
+- **Backward Compatibility**: Ensure existing videos continue to work
+  - Support both old and new path formats during transition
+  - Add feature flags for gradual rollout
+  - Maintain API contracts for search and processing
 
 ---
 
-### Phase 2: AI SDK Integration
+### Phase 1: Foundation & Types
 
-#### Task 2.1: Set Up AI SDK Langfuse Integration
-- [x] Create helper file `src/lib/langfuse/ai-sdk.ts` for Langfuse integration helpers
-- [x] Note: `@langfuse/ai` package doesn't exist, using native Langfuse API instead
-- [x] Provide helper to check if Langfuse is configured
-- [x] Document manual tracing approach (native API)
-- [x] Add error handling to ensure tracing failures don't break app
-- [x] Document the integration pattern for team reference
+#### Task 1: Create Chunk Types and Interfaces
+- [x] Add `TranscriptChunk` interface to `src/lib/zeroentropy/types.ts`
+  - Define fields: `text`, `start`, `end`, `totalDuration`, `segmentCount`, `chunkIndex`, `userId`, `videoId`, `videoTitle`
+  - Add comprehensive JSDoc comments explaining each field
+- [x] Create new type union for chunked vs non-chunked processing
+  - Add `ChunkedTranscriptData` type that contains chunks instead of segments
+  - Ensure backward compatibility with existing `TranscriptData` type
 
-**Verification**: Helper file created, integration approach documented in comments
-
-#### Task 2.2: Integrate with Main Chat Endpoint
-- [x] Modify `src/app/api/chat/route.ts` to import Langfuse client
-- [x] Create Langfuse trace with metadata (userId, conversationId, scope)
-- [x] Trace generation with model info, usage, and tool calls in onFinish handler
-- [x] Add spans for each tool call with inputs and outputs
-- [x] Ensure error handling preserves existing functionality
-- [x] Preserve existing console.log statements for backward compatibility
-
-**Verification**: Integration complete, traces include full context (userId, conversationId, scope, tool calls)
-
-#### Task 2.3: Verify Manual Tool Call Tracing
-- [x] Note: Using manual tracing since Langfuse AI SDK callback doesn't exist
-- [x] Verify searchKnowledgeBase tool calls appear as spans in traces
-- [x] Verify tool inputs (query, videoIds) are captured in spans
-- [x] Verify tool outputs (results array) are captured in spans
-- [x] Errors in tracing are handled gracefully without breaking chat
-- [x] Document manual instrumentation approach in code
-
-**Verification**: Tool calls manually traced as spans in chat endpoint, inputs/outputs captured correctly
-
-#### Task 2.4: Integrate Title Generation Endpoint
-- [x] Modify `src/app/api/generate-title/route.ts` to import Langfuse client
-- [x] Add Langfuse trace with metadata (message lengths)
-- [x] Trace generateText generation with model, usage, and parameters
-- [x] Verify generation tracking happens after title generation
-- [x] Handle errors gracefully without affecting title generation
-
-**Verification**: Title generation route integrated, traces include model, tokens, and metadata
+**Validation Criteria:**
+- ✓ TypeScript compilation passes without errors
+- ✓ All new types are exported from `src/lib/zeroentropy/types.ts`
+- ✓ Type definitions are compatible with existing `ProcessedTranscriptSegment` usage
 
 ---
 
-### Phase 3: Background Job & Custom Instrumentation
+#### Task 2: Create Chunking Module
+- [x] Create `src/lib/zeroentropy/chunking.ts` file
+  - Implement `estimateTokens()` helper function for approximate token counting (DRY: reuse this everywhere instead of duplicating logic)
+  - Implement core `chunkTranscriptSegments()` function with 500-800 token target
+  - Implement `getOverlappingSegments()` helper for sliding window overlap
+  - Implement `createChunk()` helper to build chunk objects from segments
+  - Add comprehensive JSDoc documentation for all functions
+  - DRY Principle: Extract shared utilities to avoid code duplication across the module
+- [x] Implement chunking algorithm
+  - Target 600 tokens per chunk with 60 token overlap (10%)
+  - Maintain temporal order of segments within chunks
+  - Handle edge cases: empty segments, very short segments, single-chunk videos
+- [x] Add chunking statistics function
+  - Implement `getChunkingStats()` to calculate: total chunks, avg tokens per chunk, avg segments per chunk, avg duration per chunk
+  - Use for logging and monitoring chunk quality
 
-#### Task 3.1: Note on Automatic Vector Search Tracing
-- [x] Document that searchVideos function calls are traced within tool execution
-- [x] Verify search parameters and results are visible in tool call spans in Langfuse
-- [x] Note: Manual instrumentation is used for tool calls in chat endpoint
-- [x] Document manual tracing approach in code comments
+**Validation Criteria:**
+- ✓ Unit test for chunking logic with sample transcript data
+- ✓ Verify chunk size constraints (500-800 tokens)
+- ✓ Verify 10% overlap between chunks is maintained
+- ✓ Verify all timestamps are preserved correctly
+- ✓ Handle edge cases: empty input, single segment, very short segments
 
-**Verification**: Search queries are traced through tool call spans in chat endpoint
+---
 
-#### Task 3.2: Add Background Job Tracing
-- [x] Modify `src/lib/inngest/functions/process-video.ts` to import Langfuse client
-- [x] Create trace at job start with metadata (videoId, youtubeId, title, status, channelName)
-- [x] Add trace-level metadata for video processing job at start
-- [x] Capture step-level metadata with spans for key steps (extract-transcript, index-pages)
-- [x] Log transcript extraction results (segment count, duration, processing time) as span metadata
-- [x] Log embedding processing results (page count, collection name) as span metadata
-- [x] Update trace with final results and flush at job completion
-- [x] Handle trace errors gracefully without affecting job execution
+### Phase 2: Integrate Chunking into Processing Pipeline
 
-**Verification**: Video processing job integrated with tracing, metadata captured at start and completion
+#### Task 3: Update Transcript Processing
+- [x] Modify `processTranscriptSegments()` in `src/lib/zeroentropy/transcript.ts`
+  - Update return type from `ProcessedTranscriptSegment[]` to `TranscriptChunk[]`
+  - Add chunking step after initial segment processing
+  - Call `chunkTranscriptSegments()` from `chunking.ts` module (DRY: reuse chunking module instead of duplicating logic)
+  - Add logging for chunk count vs segment count
+  - Reuse existing segment validation logic rather than reimplementing
+- [x] Update `processTranscriptSegmentsForZeroEntropy()` in `src/lib/inngest/utils/zeroentropy-processor.ts`
+  - Update return type to match new chunk-based processing
+  - Add chunk statistics logging using `getChunkingStats()`
+  - Ensure backward compatibility with calling code
+
+**Validation Criteria:**
+- ✓ Existing tests pass with updated assertions for chunking
+- ✓ New code properly converts segments to chunks
+- ✓ Log outputs show chunk statistics (verify 5-10x reduction in document count)
+- ✓ All metadata preserved: userId, videoId, videoTitle, timestamps
+
+---
+
+#### Task 4: Update Indexing Functions
+- [x] Modify `indexTranscriptPage()` in `src/lib/zeroentropy/pages.ts`
+  - Update parameter type from `ProcessedTranscriptSegment` to `TranscriptChunk`
+  - Update `pageId` generation to use `{videoId}-chunk{chunkIndex}` format (DRY: reuse formatTimestamp utilities)
+  - Update ZeroEntropy document metadata to include `chunkIndex` and `segmentCount`
+  - Update `startTime`/`endTime` to use chunk-level timestamps (not segment-level)
+  - Add logging for chunk content length verification
+  - Reuse existing error handling patterns rather than duplicating
+- [x] Update `batchIndexPages()` in same file
+  - Update type annotations to work with `TranscriptChunk[]`
+  - Add chunk index to error messages for debugging
+  - Verify concurrency limits work with chunked data
+
+**Validation Criteria:**
+- ✓ ZeroEntropy documents indexed with correct path format (`{videoId}-chunk{index}`)
+- ✓ Metadata includes all chunk-level information
+- ✓ Timestamps span full chunk duration (start of first segment to end of last segment)
+- ✓ Batch indexing completes successfully for all chunks
+
+---
+
+### Phase 3: Update Search Integration
+
+#### Task 5: Update Search Result Parsing
+- [x] Modify `searchVideos()` in `src/lib/search-videos.ts`
+  - Update path parsing to handle chunk format: `{videoId}-chunk{chunkIndex}`
+  - Use regex pattern `/^(.+)-chunk(\d+)$/` to extract videoId and chunkIndex
+  - Add error handling for legacy path format (backward compatibility during migration)
+  - Update comments to reflect chunk-based architecture
+- [x] Verify search API compatibility
+  - Ensure `topSnippets()` API still returns precise 200-char snippets
+  - Verify metadata extraction works with new chunk structure
+  - Confirm `include_document_metadata: true` returns chunk metadata correctly
+
+**Validation Criteria:**
+- ✓ Search successfully parses chunk-based paths
+- ✓ Results include correct videoId, videoTitle, and timestamps
+- ✓ Search returns snippets from within chunk text (not just first segment)
+- ✓ Error handling gracefully handles mixed old/new path formats
+
+---
+
+#### Task 6: Update Search Tool Integration
+- [x] Update `createSearchKnowledgeBase()` in `src/lib/tools/search-tool.ts`
+  - Verify search results formatting still works with chunked data
+  - Ensure timestamp formatting (`formatTime()`) handles chunk-level timestamps
+  - Update console logging to show chunk information
+- [x] Test end-to-end search flow
+  - Verify tool returns results to LLM correctly
+  - Check that snippet content comes from full chunks (not just segments)
+  - Confirm citations show correct timestamps
+
+**Validation Criteria:**
+- ✓ Search tool successfully calls `searchVideos()` with chunk-based data
+- ✓ Results formatted correctly for LLM consumption
+- ✓ Timestamps accurate and properly formatted
+- ✓ LLM receives coherent, context-rich snippets
 
 ---
 
 ### Phase 4: Testing & Validation
 
-#### Task 4.1: Unit Tests for Langfuse Integration
-- [x] Create test file `tests/unit/lib/langfuse/client.test.ts`
-- [x] Test client export and configuration checking
-- [x] Test graceful degradation without credentials
-- [x] Test AI SDK helper (`shouldTrace()`)
-- [x] Verify error handling works correctly
-- [x] All unit tests pass (5 tests)
+#### Task 7: Unit Tests
+- [x] Create tests for chunking module
+  - Test in `tests/unit/lib/zeroentropy/chunking.test.ts`
+  - Test token estimation accuracy
+  - Test chunk size constraints (500-800 token target)
+  - Test overlap calculation (10% maintained)
+  - Test edge cases: empty input, single segment, very long segments
+- [x] Update existing transcript tests
+  - Modify `tests/unit/lib/zeroentropy/transcript.test.ts`
+  - Update to work with chunk-based processing
+  - Add tests for chunk metadata preservation
+- [x] Test search integration
+  - Create integration test for search with chunked data
+  - Verify path parsing works correctly
+  - Test backward compatibility during transition
 
-**Verification**: Unit tests created and passing, testing graceful degradation behavior
-
-#### Task 4.2: Integration Testing
-- [x] Integration testing verified through build process
-- [x] Chat endpoint integrates Langfuse tracing without errors
-- [x] Tool calls traced as spans with inputs and outputs
-- [x] Error handling tested - graceful degradation works
-- [x] Build succeeds without errors
-- [x] All routes compile successfully
-- [x] Note: Manual testing required when Langfuse credentials are added
-
-**Verification**: Build passes, no compilation errors, integration ready for manual testing
-
-#### Task 4.3: End-to-End Testing
-- [x] Build verification: all routes compile successfully
-- [x] Integration verification: Langfuse imports work correctly
-- [x] Chat endpoint: tracing integrated in onFinish handler
-- [x] Title generation: tracing integrated after generation
-- [x] Background jobs: tracing integrated in process-video job
-- [x] Performance: no build-time overhead, async tracing
-- [x] Ready for E2E manual testing with credentials
-
-**Verification**: All code compiles and integrates successfully, ready for manual testing with Langfuse credentials
+**Validation Criteria:**
+- ✓ All unit tests pass (43/43 tests across 4 test suites)
+- ✓ Test coverage maintained at >=80%
+- ✓ Edge cases handled gracefully
+- ✓ No test failures or errors
 
 ---
 
-### Phase 5: Error Handling & Resilience
+#### Task 8: Integration Testing
+- [ ] Test complete video processing pipeline
+  - Process a sample video through Inngest job
+  - Verify chunks created and indexed in ZeroEntropy
+  - Query the indexed chunks via search API
+  - Confirm results contain expected content
+- [ ] Test with various video types
+  - Short video (< 5 minutes): Should create few chunks
+  - Medium video (10-20 minutes): Should create moderate chunks
+  - Long video (30+ minutes): Should create many chunks with proper sizing
+- [ ] Verify timestamp accuracy
+  - Test that clicking citations opens correct video timestamp
+  - Verify chunk start/end times span entire segment range
+  - Confirm no gaps or overlaps in video coverage
 
-#### Task 5.1: Add Graceful Degradation
-- [x] Wrap all Langfuse calls in try-catch blocks
-- [x] Ensure tracing failures don't break core functionality
-- [x] Add fallback behavior when Langfuse is unavailable (isLangfuseConfigured check)
-- [x] Log tracing errors separately with console.error
-- [x] Graceful degradation: app works without Langfuse credentials
-- [x] All Langfuse operations wrapped in try-catch
-
-**Verification**: Error handling verified, all calls wrapped in try-catch blocks
-
-#### Task 5.2: Add Performance Monitoring
-- [x] Note: Tracing is async and non-blocking
-- [x] No synchronous blocking operations in traces
-- [x] flushAsync called after operations complete
-- [x] Performance monitoring requires production deployment
-- [x] Ready for production performance benchmarking
-
-**Verification**: Async tracing implemented, non-blocking behavior verified
-
----
-
-### Phase 6: Documentation & Deployment
-
-#### Task 6.1: Update Documentation
-- [x] Add Langfuse integration section to README with setup instructions
-- [x] Document environment variable setup in README
-- [x] Add Langfuse features and what's traced documentation
-- [x] Note: Self-hosting option available via LANGFUSE_HOST env var
-- [x] Document graceful degradation (works without credentials)
-- [x] Update `.env.example` template in README
-
-**Verification**: Documentation complete in README, setup instructions clear
-
-#### Task 6.2: Set Up Production Monitoring
-- [x] Note: Production deployment requires adding env vars to Vercel
-- [x] Document steps for adding LANGFUSE_SECRET_KEY and LANGFUSE_PUBLIC_KEY in Vercel
-- [x] Code ready for production tracing
-- [x] Error handling in place for production deployment
-- [x] Ready for manual testing in production
-- [x] Tracing is async and won't affect request latency
-
-**Verification**: Code ready for production, env vars documented
-
-#### Task 6.3: Performance Benchmarking
-- [x] Note: Tracing is async and non-blocking
-- [x] No synchronous operations in tracing code
-- [x] flushAsync called after operations complete
-- [x] Performance benchmarking requires production testing
-- [x] Code architecture optimized for minimal overhead
-
-**Verification**: Async tracing implemented, ready for production benchmarking
+**Validation Criteria:**
+- ✓ Complete pipeline runs without errors
+- ✓ Chunk count appropriate for video length
+- ✓ All timestamps accurate when clicking citations
+- ✓ Search returns relevant, coherent snippets
+- ✓ LLM can generate quality responses from retrieved chunks
 
 ---
 
-## 🧪 Regular Tests & Verifications Between Tasks
+#### Task 9: Performance & Quality Validation
+- [ ] Measure chunk quality metrics
+  - Average tokens per chunk (target: 600)
+  - Average words per chunk (target: 400-500)
+  - Overlap percentage (target: 10%)
+  - Document count reduction (target: 5-10x)
+- [ ] Verify retrieval quality
+  - Test queries against chunked videos
+  - Compare snippet quality vs old approach
+  - Verify snippets contain complete thoughts/topics
+- [ ] Monitor processing performance
+  - Measure chunking time overhead
+  - Verify indexing performance (should be faster with fewer documents)
+  - Check memory usage for chunking algorithm
 
-### After Phase 1 (Setup):
-- ✅ Verify `pnpm install` completes without errors
-- ✅ Verify Langfuse client can be imported in test script
-- ✅ Verify environment variables are accessible
-
-### After Phase 2 (AI SDK Integration):
-- ✅ Test chat endpoint still works without errors
-- ✅ Verify trace appears in Langfuse dashboard
-- ✅ Verify tool calls appear as spans automatically
-- ✅ Test with invalid input (should trace error properly)
-- ✅ Verify console.log statements still work for debugging
-
-### After Phase 3 (Background Job Tracing):
-- ✅ Test video processing job traces appear in Langfuse
-- ✅ Verify job metadata is logged (videoId, youtubeId, status)
-- ✅ Verify step metadata is captured (transcript count, pages indexed)
-- ✅ Test failed job scenario - verify error is traced
-- ✅ Verify background job tracing doesn't affect job performance
-
-### After Phase 4 (Testing):
-- ✅ All unit tests pass
-- ✅ Integration tests pass
-- ✅ E2E tests complete successfully
-- ✅ Manual verification of traces in Langfuse
-
-### After Phase 5 (Error Handling):
-- ✅ App works with Langfuse disabled
-- ✅ App works with invalid Langfuse credentials
-- ✅ No user-facing errors from tracing
-
-### After Phase 6 (Documentation & Deployment):
-- ✅ README updated with Langfuse setup instructions
-- ✅ Environment variables documented
-- ✅ Build successful
-- ✅ Ready for production deployment
-- ⏳ Production dashboard testing pending (requires credentials)
+**Validation Criteria:**
+- ✓ Chunk metrics meet targets (400-800 tokens per chunk)
+- ✓ 5-10x reduction in document count achieved
+- ✓ Search snippets are more coherent than before
+- ✓ Processing time increase acceptable (<20% overhead)
+- ✓ No memory leaks or performance degradation
 
 ---
 
-## 📝 Notes
+### Phase 5: Migration & Deployment
 
-### Implementation Approach
-- **AI SDK Integration**: Use `@langfuse/ai` package with `instrumentLangfuse()` callback pattern via `experimental_telemetry` parameter
-- **Automatic Tracing**: Tool calls, generations, and spans are automatically created by Langfuse AI SDK integration - no manual instrumentation needed
-- **Manual Tracing**: Only background jobs (Inngest) require manual `langfuse.trace()` creation
-- **Client Pattern**: Create singleton Langfuse client for direct API usage in background jobs
+#### Task 10: Backward Compatibility
+- [ ] Add feature flag for chunking
+  - Create environment variable `NEXT_PUBLIC_ENABLE_CHUNKING=true`
+  - Update `processTranscriptSegments()` to conditionally use chunking
+  - Keep legacy 1:1 segment mapping as fallback
+- [ ] Handle mixed document states
+  - Update search parsing to handle both old and new path formats
+  - Add migration detection logic
+  - Ensure existing videos can still be searched
 
-### Performance & Reliability
-- **Tracing Overhead**: Target < 100ms per request
-- **Error Resilience**: Tracing failures must never break core functionality
-- **Privacy**: Ensure no sensitive user data leaked in traces (sanitize inputs)
-- **Cost Monitoring**: Watch Langfuse usage to avoid unexpected costs
+**Validation Criteria:**
+- ✓ Feature flag enables/disables chunking correctly
+- ✓ Existing videos remain searchable
+- ✓ New videos use chunking when flag enabled
+- ✓ No errors when mixing old/new documents
 
-### Best Practices
-- **Team Training**: Document Langfuse dashboard usage for debugging
-- **Gradual Rollout**: Consider feature flag for production rollout
-- **Code Quality**: No new file created should exceed 150 lines; break into smaller modules if needed
-- **DRY Principle**: Avoid unnecessary code repetition; extract shared utilities and helpers when appropriate
+---
 
+#### Task 11: Monitoring & Observability
+- [ ] Add chunking metrics to Langfuse traces
+  - Update `process-video.ts` to log chunk statistics
+  - Add chunking span to Inngest workflow
+  - Include chunk count, avg size, processing time in trace metadata
+- [ ] Add console logging for chunking operations
+  - Log chunk creation with size and segment count
+  - Log overlap percentage verification
+  - Log any edge cases or warnings during chunking
+
+**Validation Criteria:**
+- ✓ Langfuse traces show chunking metrics
+- ✓ Console logs provide useful debugging information
+- ✓ Metrics help identify quality issues
+- ✓ Error tracking captures chunking failures
+
+---
+
+#### Task 12: Documentation & Cleanup
+- [ ] Update code documentation
+  - Add JSDoc comments to all chunking functions
+  - Update architecture diagrams if needed
+  - Document chunk size targets and rationale
+- [ ] Update README or architecture docs
+  - Explain chunking strategy
+  - Document chunk size configuration
+  - Update troubleshooting guide if needed
+- [ ] Code cleanup
+  - Remove dead code from previous implementation
+  - Ensure consistent code style
+  - Run linter and fix any issues
+  - DRY Principle: Audit for duplicate code and refactor to shared utilities if found
+
+**Validation Criteria:**
+- ✓ All new code properly documented
+- ✓ Architecture documentation updated
+- ✓ No linter errors or warnings
+- ✓ No code duplication - shared utilities used appropriately
+- ✓ Code review ready
+
+---
+
+## Success Criteria Summary
+
+### Functional Requirements
+- [ ] Transcripts are chunked into 500-800 token documents
+- [ ] Chunks maintain 10% overlap for continuity
+- [ ] All timestamps preserved accurately
+- [ ] Search returns coherent, context-rich snippets
+- [ ] Citations work correctly with chunk timestamps
+
+### Performance Requirements
+- [ ] 5-10x reduction in document count
+- [ ] Chunking adds <20% processing overhead
+- [ ] Search performance maintained or improved
+- [ ] No memory leaks or performance degradation
+
+### Quality Requirements
+- [ ] All tests pass
+- [ ] Test coverage >=80% maintained
+- [ ] No production errors or regressions
+- [ ] Backward compatibility ensured
+
+---
+
+## Next Steps After Implementation
+
+1. **Monitor Production Metrics**: Track chunk quality, search performance, and user satisfaction
+2. **Tune Parameters**: Adjust chunk size (600 tokens) and overlap (10%) based on real-world performance
+3. **Gradual Rollout**: Enable chunking for new videos while keeping old videos functional
+4. **User Feedback**: Collect feedback on search quality and citation accuracy
+5. **Future Enhancements**: Consider LLM-assisted semantic boundaries for even better chunking

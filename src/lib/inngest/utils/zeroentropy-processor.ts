@@ -4,7 +4,8 @@ import {
   processTranscriptSegments,
   validateTranscriptQuality,
   handleTranscriptEdgeCases,
-  batchIndexPages
+  batchIndexPages,
+  getChunkingStats
 } from '@/lib/zeroentropy'
 import { createLogger } from './inngest-logger'
 import { updateVideoStatus } from './video-status'
@@ -13,13 +14,13 @@ const logger = createLogger('zeroentropy-processor')
 
 /**
  * Process transcript segments for ZeroEntropy indexing
- * 
- * Transforms raw transcript data into processed segments suitable for vector indexing.
+ *
+ * Transforms raw transcript data into chunked segments suitable for vector indexing.
  * Validates transcript quality and handles edge cases.
- * 
+ *
  * @param transcriptData - The raw transcript data to process
  * @param video - The video the transcript belongs to
- * @returns Promise resolving to processed transcript segments
+ * @returns Promise resolving to processed transcript chunks
  */
 export async function processTranscriptSegmentsForZeroEntropy(
   transcriptData: TranscriptData,
@@ -27,25 +28,31 @@ export async function processTranscriptSegmentsForZeroEntropy(
 ): Promise<ProcessedTranscriptSegment[]> {
   logger.info(`Processing ${transcriptData.transcript.length} transcript segments`)
 
-  // Process transcript segments with user and video context
-  const segments = processTranscriptSegments(
+  // Validate transcript quality before processing
+  const validation = validateTranscriptQuality(transcriptData)
+  if (!validation.isValid) {
+    logger.warn(`Transcript quality issues: ${validation.issues.join(', ')}`)
+  }
+
+  // Process transcript segments with user and video context (now returns chunks)
+  const chunks = processTranscriptSegments(
     transcriptData,
     video.userId,
     video.id,
     video.title
   )
 
-  // Validate transcript quality
-  const validation = validateTranscriptQuality(transcriptData)
-  if (!validation.isValid) {
-    logger.warn(`Transcript quality issues: ${validation.issues.join(', ')}`)
-  }
+  // Log chunk statistics for monitoring
+  const stats = getChunkingStats(chunks)
+  logger.info(`Chunking completed: ${chunks.length} chunks created from ${transcriptData.transcript.length} segments`)
+  logger.info(`Chunk statistics: avg ${stats.avgTokensPerChunk.toFixed(0)} tokens/chunk, avg ${stats.avgSegmentsPerChunk.toFixed(1)} segments/chunk, range ${stats.minTokensPerChunk}-${stats.maxTokensPerChunk} tokens`)
+  logger.info(`Document reduction: ${((1 - chunks.length/transcriptData.transcript.length) * 100).toFixed(1)}% (${transcriptData.transcript.length} → ${chunks.length} documents)`)
 
-  // Handle edge cases
-  const handledSegments = handleTranscriptEdgeCases(segments)
+  // Handle edge cases (now on chunks instead of segments)
+  const handledChunks = handleTranscriptEdgeCases(chunks)
 
-  logger.info(`Successfully processed ${handledSegments.length} segments`)
-  return handledSegments
+  logger.info(`Successfully processed ${handledChunks.length} chunks`)
+  return handledChunks
 }
 
 /**

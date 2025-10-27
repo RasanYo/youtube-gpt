@@ -16,18 +16,24 @@ export interface TranscriptSegment {
 
 /**
  * Processed transcript segment for ZeroEntropy indexing
+ * Can represent either a single segment or a chunk of multiple segments
  */
 export interface ProcessedTranscriptSegment {
   text: string
   start: number
   end: number
   duration: number
-  language: string
-  segmentIndex: number
+  language?: string
+  segmentIndex?: number
   // Additional fields for ZeroEntropy
   userId: string
   videoId: string
   videoTitle: string
+  // Chunk-specific fields (optional for backward compatibility)
+  /** Number of segments combined in this chunk (1 for non-chunked segments) */
+  segmentCount?: number
+  /** Zero-based index of this chunk in the video */
+  chunkIndex?: number
 }
 
 /**

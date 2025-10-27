@@ -52,12 +52,15 @@ export const createSearchKnowledgeBase = (
         results: formattedResults,
         totalFound: results.length
       }
-      
+
       console.log(`✅ Tool Result: Found ${results.length} results`)
       formattedResults.forEach((result, index) => {
-        console.log(`   ${index + 1}. ${result.videoId} at ${result.timestamp} (score: ${result.score.toFixed(2)})`)
+        const isChunk = results[index].path.includes('-chunk')
+        const pathType = isChunk ? 'chunk' : 'segment'
+        console.log(`   ${index + 1}. ${result.videoId} at ${result.timestamp} (${pathType}, score: ${result.score.toFixed(2)})`)
+        console.log(`      Content preview: ${result.content.substring(0, 80)}...`)
       })
-      
+
       return toolResult
     } catch (error: unknown) {
       const errorResult = {

@@ -1,59 +1,68 @@
 import type { TranscriptData, TranscriptSegment, ProcessedTranscriptSegment } from './types'
+import { chunkTranscriptSegments, getChunkingStats, DEFAULT_CHUNKING_CONFIG, type ChunkingConfig } from './chunking'
 
 /**
  * Process transcript segments for ZeroEntropy indexing
- * Uses raw transcript segments directly from YouTube (no preprocessing)
- * 
+ * Converts raw transcript segments into larger, semantically coherent chunks
+ * for improved search quality and reduced document count.
+ *
  * @param transcriptData - Raw transcript data from YouTube
  * @param userId - User ID for scoping
  * @param videoId - Video ID
  * @param videoTitle - Video title
- * @returns Array of processed transcript segments ready for ZeroEntropy indexing
+ * @param config - Optional chunking configuration
+ * @returns Array of processed transcript chunks ready for ZeroEntropy indexing
  */
 export function processTranscriptSegments(
-  transcriptData: TranscriptData, 
-  userId: string, 
+  transcriptData: TranscriptData,
+  userId: string,
   videoId: string,
-  videoTitle: string
+  videoTitle: string,
+  config?: ChunkingConfig
 ): ProcessedTranscriptSegment[] {
   console.log(`[processTranscriptSegments] Processing ${transcriptData.transcript.length} segments`)
-  
-  const processedSegments: ProcessedTranscriptSegment[] = []
-  
+
+  // Validate and filter segments
+  const validSegments: TranscriptSegment[] = []
+
   transcriptData.transcript.forEach((segment, index) => {
     // Basic validation for segment data integrity
     if (!segment.text || segment.text.trim().length === 0) {
       console.warn(`[processTranscriptSegments] Skipping empty segment at index ${index}`)
       return
     }
-    
+
     if (segment.start < 0 || segment.duration <= 0) {
       console.warn(`[processTranscriptSegments] Skipping invalid segment at index ${index}: start=${segment.start}, duration=${segment.duration}`)
       return
     }
-    
-    // Calculate end time
-    const end = segment.start + segment.duration
-    
-    // Create processed segment
-    const processedSegment: ProcessedTranscriptSegment = {
+
+    // Add valid segment with trimmed text
+    validSegments.push({
+      ...segment,
       text: segment.text.trim(),
-      start: segment.start,
-      end,
-      duration: segment.duration,
-      language: segment.language || 'en',
-      segmentIndex: index,
-      userId,
-      videoId,
-      videoTitle
-    }
-    
-    processedSegments.push(processedSegment)
+      language: segment.language || 'en'
+    })
   })
-  
-  console.log(`[processTranscriptSegments] Successfully processed ${processedSegments.length} segments`)
-  
-  return processedSegments
+
+  console.log(`[processTranscriptSegments] Validated ${validSegments.length} segments`)
+
+  // Chunk the segments for improved search quality
+  const chunks = chunkTranscriptSegments(
+    validSegments,
+    userId,
+    videoId,
+    videoTitle,
+    config || DEFAULT_CHUNKING_CONFIG
+  )
+
+  // Log chunking statistics
+  const stats = getChunkingStats(chunks)
+  console.log(`[processTranscriptSegments] Created ${chunks.length} chunks from ${validSegments.length} segments`)
+  console.log(`[processTranscriptSegments] Chunk stats: avg ${stats.avgTokensPerChunk.toFixed(0)} tokens, avg ${stats.avgSegmentsPerChunk.toFixed(1)} segments/chunk, avg ${stats.avgDurationPerChunk.toFixed(1)}s duration`)
+  console.log(`[processTranscriptSegments] Document reduction: ${validSegments.length} → ${chunks.length} (${((1 - chunks.length/validSegments.length) * 100).toFixed(1)}% reduction)`)
+
+  return chunks
 }
 
 /**
