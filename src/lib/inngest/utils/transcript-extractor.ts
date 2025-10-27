@@ -137,8 +137,8 @@ export async function extractTranscript(
     // Format transcript for storage (Supadata uses offset in ms, we need to convert to seconds)
     const formattedTranscript = transcript.map(segment => ({
       text: segment.text.trim(),
-      start: segment.offset, // Already in ms
-      duration: segment.duration, // Already in ms
+      start: segment.offset / 1000, // Convert ms to seconds
+      duration: segment.duration / 1000, // Convert ms to seconds
       language: segment.lang || response.lang || 'en'
     }))
 
