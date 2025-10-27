@@ -59,6 +59,7 @@
     "googleapis": "^164.1.0",
     "inngest": "^3.44.3",
     "input-otp": "^1.4.2",
+    "langfuse": "^3.38.6",
     "lucide-react": "^0.462.0",
     "nanoid": "^5.1.6",
     "next": "^16.0.0",

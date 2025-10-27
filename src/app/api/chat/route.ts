@@ -3,6 +3,7 @@ import { streamText, UIMessage, convertToModelMessages, stepCountIs } from 'ai'
 import { anthropic } from '@ai-sdk/anthropic'
 import type { ChatRequest, ChatScope } from '@/lib/zeroentropy/types'
 import { searchTool, createSearchKnowledgeBase } from '@/lib/tools/search-tool'
+import { langfuse, isLangfuseConfigured } from '@/lib/langfuse/client'
 
 export async function POST(request: NextRequest) {
   try {
@@ -34,6 +35,25 @@ export async function POST(request: NextRequest) {
       console.log(`📹 Scope: Selected videos (${videoScope.length})`)
     } else {
       console.log(`📹 Scope: All videos`)
+    }
+
+    // Create Langfuse trace if configured
+    let trace: ReturnType<typeof langfuse.trace> | null = null
+    if (isLangfuseConfigured()) {
+      try {
+        trace = langfuse.trace({
+          name: 'chat',
+          userId,
+          sessionId: conversationId,
+          metadata: {
+            scope: scope?.type || 'all',
+            videoCount: videoScope?.length || 0,
+            messageCount: messages.length,
+          },
+        })
+      } catch (error) {
+        console.error('Failed to create Langfuse trace:', error)
+      }
     }
     
     // Create the system prompt
@@ -87,6 +107,9 @@ Current user context:
         // Extract citations from tool calls
         const citations: Array<{ videoId: string; videoTitle: string; timestamp: string }> = []
         
+        // Track tool calls for Langfuse
+        const toolCalls: Array<{ name: string; input: unknown; output: unknown }> = []
+        
         // Loop through all steps to find search tool calls
         for (const step of result.steps) {
           if (step.toolCalls) {
@@ -94,8 +117,16 @@ Current user context:
               if (toolCall.toolName === 'searchKnowledgeBase') {
                 const toolResult = step.toolResults?.find(r => r.toolCallId === toolCall.toolCallId)
                 // Access the tool result data correctly
-                // @ts-ignore - AI SDK has complex nested types for tool results
+                // @ts-expect-error - AI SDK has complex nested types for tool results
                 const resultData = toolResult?.result
+                
+                // Track tool call for Langfuse
+                toolCalls.push({
+                  name: toolCall.toolName,
+                  input: 'args' in toolCall ? toolCall.args : toolCall,
+                  output: resultData,
+                })
+                
                 if (resultData?.results) {
                   const searchResults = resultData.results as Array<{
                     videoId: string
@@ -126,6 +157,52 @@ Current user context:
         }
         
         console.log('─'.repeat(50))
+
+        // Trace to Langfuse if configured
+        if (trace) {
+          try {
+            // Create generation observation
+            const generation = trace.generation({
+              name: 'chat-generation',
+              model: 'claude-3-7-sonnet-latest',
+              modelParameters: {
+                temperature: 0.7,
+              },
+              input: userRequest,
+              output: finalStep?.text || '',
+              metadata: {
+                finishReason: result.finishReason,
+                usage: result.usage,
+                steps: result.steps.length,
+                toolCalls: toolCalls.length,
+                citations: citations.length,
+              },
+            })
+
+            // Add tool call spans
+            for (const toolCall of toolCalls) {
+              trace.span({
+                name: toolCall.name,
+                input: toolCall.input,
+                output: toolCall.output,
+              })
+            }
+
+            // No flush needed for generation - it's automatically sent
+          } catch (error) {
+            console.error('Langfuse tracing error:', error)
+          }
+          
+          // Flush async to send data to Langfuse
+          try {
+            // Use Langfuse's flush method if available
+            if (typeof langfuse.flushAsync === 'function') {
+              await langfuse.flushAsync()
+            }
+          } catch (error) {
+            console.error('Langfuse flush error:', error)
+          }
+        }
       }
     })
 
