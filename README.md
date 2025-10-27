@@ -214,7 +214,6 @@ VITE_SUPABASE_ANON_KEY=your-anon-key-here
 
 # Database - Supabase handles connection automatically
 
-# Future Configuration (To be added in later steps)
 # AI Services
 # ANTHROPIC_API_KEY=
 # ZEROENTROPY_API_KEY=
@@ -222,6 +221,11 @@ VITE_SUPABASE_ANON_KEY=your-anon-key-here
 # Background Jobs
 # INNGEST_EVENT_KEY=
 # INNGEST_SIGNING_KEY=
+
+# Observability (Optional - for production monitoring)
+# LANGFUSE_SECRET_KEY=
+# LANGFUSE_PUBLIC_KEY=
+# LANGFUSE_HOST=https://cloud.langfuse.com  # Optional, defaults to cloud
 ```
 
 **Important Notes:**
@@ -306,6 +310,35 @@ If you encounter connection issues:
 3. Check Supabase project is active (not paused)
 4. Confirm database password is correct (no special characters need escaping)
 
+### Langfuse Observability
+
+The application includes optional observability via [Langfuse](https://langfuse.com/) for tracing AI calls, monitoring performance, and debugging production issues.
+
+**Features:**
+- **Chat Tracing**: Full trace of LLM calls with model, tokens, latency, and citations
+- **Tool Call Tracking**: Search operations tracked as spans with inputs/outputs
+- **Background Job Monitoring**: Video processing jobs traced with step-level metadata
+- **Title Generation**: Conversation title generation traced
+- **Graceful Degradation**: App works perfectly without Langfuse credentials
+
+**Setup (Optional):**
+
+1. Get credentials from [https://cloud.langfuse.com](https://cloud.langfuse.com)
+2. Add to `.env.local`:
+   ```bash
+   LANGFUSE_SECRET_KEY=sk-lf-...
+   LANGFUSE_PUBLIC_KEY=pk-lf-...
+   ```
+3. Restart your dev server
+
+**What's Traced:**
+- Chat endpoint: Full conversation traces with userId, conversationId, scope
+- Tool calls: Search operations with query, videoIds, and results
+- Background jobs: Video processing with transcript extraction, indexing
+- Title generation: Model usage and token consumption
+
+**Note**: The app works without Langfuse credentials. All tracing is optional and non-blocking.
+
 ## Development
 
 ```bash
@@ -355,25 +388,23 @@ _To be documented as implementation progresses_
 - **Video Ingestion**: PENDING → QUEUED status flow with metadata fetching
 - **Real-time Updates**: Supabase Realtime subscriptions for live status updates
 - **Status Management**: Complete status flow from PENDING to QUEUED with error handling
+- **AI Chat**: RAG-powered chat with semantic search across video content
+- **Background Jobs**: Inngest for video processing and transcript extraction
+- **Observability**: Langfuse integration for AI tracing and monitoring
 - **Testing**: Comprehensive test suite with Vitest (80%+ coverage target)
 - **Development Tools**: ESLint, Prettier, TypeScript, Vite dev server
 
 ### 🚧 In Progress / Placeholder
 
-- **Background Job Processing**: QUEUED → PROCESSING → READY pipeline not yet implemented
-- **Transcript Extraction**: Video transcript fetching and processing
-- **Vector Embeddings**: Embedding generation and storage
-- **AI Chat Interface**: ChatArea component shows placeholder UI
-- **Knowledge Base**: KnowledgeBase component shows empty state
-- **Vector Search**: Embeddings and search functionality not implemented
+- **Advanced Observability**: Performance benchmarking and production dashboards
+- **Feature Flags**: Enable/disable observability at runtime
 
 ### 📋 Planned Features
 
-- Video ingestion and transcript extraction
-- AI-powered chat with video context
-- Vector search across video content
-- Real-time processing status updates
-- Multi-video selection and scoped chat
+- Advanced video filtering and search
+- Batch video processing
+- Export conversations
+- Multi-user workspaces
 
 ## Known Limitations
 
@@ -383,10 +414,11 @@ _To be documented as implementation progresses_
 
 ## Roadmap
 
+- [x] Langfuse tracing and observability
 - [ ] Video preview in chat
 - [ ] Advanced filtering
 - [ ] Export conversations
-- [ ] Langfuse tracing
+- [ ] Performance optimizations
 
 ---
 

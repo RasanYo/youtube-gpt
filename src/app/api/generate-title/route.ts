@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { generateText } from 'ai'
 import { anthropic } from '@ai-sdk/anthropic'
+import { langfuse, isLangfuseConfigured } from '@/lib/langfuse/client'
 
 export async function POST(request: NextRequest) {
   try {
@@ -43,6 +44,41 @@ Example good titles:
     })
 
     const title = result.text.trim()
+
+    // Trace to Langfuse if configured
+    if (isLangfuseConfigured()) {
+      try {
+        const trace = langfuse.trace({
+          name: 'generate-title',
+          metadata: {
+            userMessageLength: userMessage.length,
+            assistantMessageLength: assistantMessage.length,
+          },
+        })
+
+        const generation = trace.generation({
+          name: 'title-generation',
+          model: 'claude-3-7-sonnet-latest',
+          modelParameters: {
+            temperature: 0.7,
+            maxTokens: 20,
+          },
+          input: `User: "${userMessage}"\n\nAssistant: "${assistantMessage.substring(0, 200)}..."`,
+          output: title,
+          metadata: {
+            finishReason: result.finishReason,
+            usage: result.usage,
+          },
+        })
+
+        // Flush asynchronously
+        if (typeof langfuse.flushAsync === 'function') {
+          await langfuse.flushAsync()
+        }
+      } catch (error) {
+        console.error('Langfuse tracing error in generate-title:', error)
+      }
+    }
 
     return new Response(
       JSON.stringify({ title }),
