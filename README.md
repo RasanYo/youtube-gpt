@@ -4,6 +4,19 @@
 
 YouTube-GPT is a full-stack Next.js application that helps users find information hidden inside hours of YouTube video content. Users can add individual videos or full channels to create a searchable personal knowledge base, search across multiple videos, ask AI questions, and get grounded answers with citations and timestamps.
 
+## Table of Contents
+
+- [Quickstart](#quickstart)
+- [Screenshots](#screenshotsgifs)
+- [Setup Instructions](#setup-instructions)
+- [Architecture Diagram](#architecture-diagram)
+- [Retrieval/Scoping Approach](#retrievalscoping-approach)
+- [Design Decisions & Trade-offs](#design-decisions--trade-offs)
+- [AI Assistant Coding Flow](#ai-assistant-coding-flow)
+- [Known Limitations & Next Steps](#known-limitations--next-steps)
+- [Tech Stack](#tech-stack)
+- [License](#license)
+
 ## Quickstart
 
 ```bash
@@ -523,6 +536,114 @@ When AI uses the search tool:
 **Decision:** Show processing status in real-time with visual indicators
 - **Rationale:** Transparent feedback keeps users informed during long-running operations (video ingestion can take minutes)
 
+## AI Assistant Coding Flow
+
+This project was developed using AI assistants (Claude, Copilot) with an iterative, refined workflow. The following describes the evolution and current approach:
+
+### Early Challenges
+
+Initially, significant time was lost due to:
+- **Lazy prompts** that lacked context and specificity
+- **Non-optimized contexts** that didn't provide sufficient background leading to incorrect use of libraries and sometimes major bugs/unoptimized code
+- **Rigid roadmaps** that became outdated quickly as development iterated and changed course
+
+### Initial Attempt: Roadmap-Driven Approach
+
+An early attempt involved:
+1. Using LLMs to generate an extensive roadmap from task descriptions
+2. Converting that roadmap into a long list of tasks with paired commit titles and messages
+3. Creating GitHub issues for each task with full context
+
+**Problem:** This approach failed because:
+- Development is iterative and can change course
+- Tasks and issues became irrelevant as priorities shifted
+- The roadmap became a maintenance burden rather than a helpful guide
+
+### Current Refined Workflow
+
+The project now follows this iterative, context-rich flow:
+
+#### 1. Task Planning
+- **Describe the desired outcome** with clear requirements and success criteria
+- **Add documentation references** to relevant libraries, APIs, or frameworks
+- **Discuss implementation approach** with the AI to refine understanding
+
+#### 2. Issue Creation
+- Create a GitHub issue with:
+  - Descriptive title
+  - Detailed description explaining the goal and requirements
+  - Any relevant context or constraints
+
+#### 3. Branch Management
+- Create a new feature branch from `develop`
+- Keep branch focused on single feature/issue
+
+#### 4. Implementation Phase
+
+**Step A: Context Gathering**
+- Read the current issue to understand the task
+- Use a Cursor custom issue-reading command to load context
+
+**Step B: Research & Planning**
+- Read relevant library documentation thoroughly
+- Analyze the codebase structure and identify relevant files
+- Generate an implementation plan using a structured prompt template
+- Create `TASKS.md` with:
+  - Project and feature description
+  - Documentation references
+  - Step-by-step implementation plan
+  - Validation criteria for each task
+
+**Step C: Plan Validation**
+- Open separate chat sessions with library-specific assistants
+- Validate the implementation plan against (and then refine for):
+  - Security best practices
+  - Framework conventions
+  - Correct library usage patterns
+  - Performance considerations
+
+**Step D: Execution**
+- Create a dedicated assistant context with the implementation plan
+- Implement tasks one by one in `TASKS.md`
+- After each task:
+  - Validate against the plan's criteria
+  - Run tests and check for errors
+- For complex tasks, use Claude Code for higher quality output (when not constrained by session limits)
+
+#### 5. Iterative Feedback Loop
+- **For complex features:** Request human feedback between implementation phases
+- **For simple tasks:** Validate automatically before proceeding
+- Pause for review when encountering edge cases or design decisions
+
+#### 6. Completion & Commit
+- Ensure all implementations are complete and tested
+- Use Cursor command to generate commit message from code changes
+- Push modifications to the branch
+- Create pull request
+
+### Key Principles Learned
+
+1. **Context is King:** Always provide rich context (docs, code structure, requirements). Using multiple library/task specific chats to refine the implementation plan was a game changer to make sure that libraries are implemented correctly. Initially had to fight myself against he wrong implementations of the AIs
+2. **Iterative Validation:** Validate each step before moving forward
+3. **Human in the Loop:** Especially for complex features, keep human oversight
+4. **Quality over Speed:** Sometimes slower, more deliberate implementation is faster long-term
+5. **Adapt, Don't Adhere:** Roadmaps are guides, not rigid constraints
+6. **Plan out execution:** Broad and open questions with high entropy lead to poor AI work. I learned to formulate my prompts as numbered steps, with the first one being precise context generation for the AI (analyzing relevant files and documentations). Sometime having a discussion with the AI (without code generations) beforehand can also create a helpful context.
+
+
+### Future Improvements
+
+1. **Modular Specialized Agents with Structured Context Loading**
+   - Develop a framework for modular, task-oriented agents and commands—each using distinct prompting styles and responsibilities.
+   - Ensure that every agent begins with an explicit context-loading step, gathering relevant documentation, file structure, and requirement summaries before execution, improving reliability and relevance of all generated code or documentation.
+
+2. **Parallel Autonomous Agents for Background Tasks**
+   - Leverage these modular agents in background tasks (e.g., code refactoring, automated debugging, UI migration, continuous documentation) working in parallel to the main development flow.
+   - Enable agents to operate within isolated branches or sandbox environments, allowing them to propose, test, and PR improvements asynchronously—accelerating project velocity without interfering with feature delivery.
+
+
+
+
 ## Known Limitations & Next Steps
 
 ### Current Limitations
@@ -611,7 +732,9 @@ When AI uses the search tool:
 
 ## License
 
-MIT
+MIT License
+
+2025 Rasan Younis
 
 ---
 
