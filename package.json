@@ -19,6 +19,7 @@
   "dependencies": {
     "@ai-sdk/anthropic": "^2.0.37",
     "@ai-sdk/react": "^2.0.79",
+    "@danielxceron/youtube-transcript": "^1.2.3",
     "@hookform/resolvers": "^3.10.0",
     "@radix-ui/react-accordion": "^1.2.11",
     "@radix-ui/react-alert-dialog": "^1.1.14",
@@ -76,7 +77,6 @@
     "tailwind-merge": "^2.6.0",
     "tailwindcss-animate": "^1.0.7",
     "vaul": "^0.9.9",
-    "youtube-transcript-plus": "^1.1.1",
     "zeroentropy": "0.1.0-alpha.6",
     "zod": "^3.25.76"
   },
