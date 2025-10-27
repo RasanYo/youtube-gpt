@@ -26,12 +26,12 @@ const ConversationItem = ({ conversation, isActive, onClick }: ConversationItemP
     <Button
       variant="ghost"
       className={cn(
-        'w-full justify-start text-left h-auto py-3 px-3 hover:bg-accent',
+        'w-full justify-start text-left h-auto p-3 hover:bg-accent',
         isActive && 'bg-gray-100 dark:bg-white/5'
       )}
       onClick={onClick}
     >
-      <div className="flex items-start gap-2 w-full">
+      <div className="flex items-start gap-3 w-full">
         <MessageSquare className="h-4 w-4 mt-0.5 flex-shrink-0 text-muted-foreground" />
         <div className="flex-1 min-w-0">
           <div className="text-sm font-medium truncate text-sidebar-foreground">
@@ -127,7 +127,7 @@ export const ConversationSidebar = () => {
       </div>
 
       {/* Conversations List */}
-      <ScrollArea className="flex-1 p-2">
+      <ScrollArea className="flex-1 p-3">
         {error ? (
           <div className="flex flex-col items-center justify-center h-full text-center px-4 py-8">
             <p className="text-sm text-destructive mb-2">{error}</p>
@@ -150,7 +150,7 @@ export const ConversationSidebar = () => {
             </p>
           </div>
         ) : (
-          <div className="space-y-1">
+          <div className="space-y-2">
             {conversations.map((conv) => (
               <ConversationItem
                 key={conv.id}

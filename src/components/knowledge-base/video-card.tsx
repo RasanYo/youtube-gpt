@@ -341,7 +341,7 @@ export const VideoCard = ({
         )}
         onClick={() => onClick?.(videoId)}
       >
-        <CardContent className="p-3 relative">
+        <CardContent className="p-4 relative">
           <VideoCardActions 
             isSelected={isSelected}
             videoId={videoId}
@@ -350,7 +350,7 @@ export const VideoCard = ({
             youtubeId={youtubeId}
           />
           
-          <div className="flex gap-3">
+          <div className="flex gap-4">
             <VideoCardHeader 
               title={title}
               channelName={channelName}
@@ -380,8 +380,8 @@ export const VideoCard = ({
 export const VideoCardSkeleton = ({ className }: { className?: string }) => {
   return (
     <Card className={cn('animate-pulse', className)}>
-      <CardContent className="p-3">
-        <div className="flex gap-3">
+      <CardContent className="p-4">
+        <div className="flex gap-4">
           {/* Left side - Text content (70%) */}
           <div className="flex-1 min-w-0 space-y-1">
             <Skeleton className="h-4 w-full" />
