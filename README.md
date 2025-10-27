@@ -4,6 +4,8 @@
 
 YouTube-GPT is a full-stack Next.js application that helps users find information hidden inside hours of YouTube video content. Users can add individual videos or full channels to create a searchable personal knowledge base, search across multiple videos, ask AI questions, and get grounded answers with citations and timestamps.
 
+🔗 **Live Demo:** [https://youtube-gpt-navy.vercel.app/](https://youtube-gpt-navy.vercel.app/)
+
 ## Table of Contents
 
 - [Quickstart](#quickstart)
@@ -39,6 +41,17 @@ pnpm run dev          # Next.js dev server on http://localhost:8080
 ```
 
 ## Screenshots/GIFs
+
+### Demo Video
+
+<div align="center">
+  <a href="https://www.youtube.com/watch?v=xLZLJVsqDHU">
+    <img src="https://img.youtube.com/vi/xLZLJVsqDHU/0.jpg" alt="YouTube-GPT Demo Video" style="width:100%;">
+  </a>
+  <p>
+    <a href="https://www.youtube.com/watch?v=xLZLJVsqDHU">📹 Watch Full Demo Video</a>
+  </p>
+</div>
 
 ### Screenshot 1: Login Screen
 ![Login Interface](./docs/login.png)
