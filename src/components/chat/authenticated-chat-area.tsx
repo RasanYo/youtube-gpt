@@ -116,8 +116,9 @@ export const AuthenticatedChatArea = ({
   const isLoading = status === 'streaming'
 
   // Auto-scroll to bottom when new messages arrive
+  // Use 'auto' instead of 'smooth' to prevent twitching during streaming
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    messagesEndRef.current?.scrollIntoView({ behavior: 'auto' })
   }, [messages])
 
   // Handle form submission

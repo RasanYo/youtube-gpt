@@ -1323,10 +1323,6 @@ body {
   border-left-width: 1px;
 }
 
-.border-l-2 {
-  border-left-width: 2px;
-}
-
 .border-r {
   border-right-width: 1px;
 }
@@ -1432,6 +1428,11 @@ body {
   background-color: hsl(var(--foreground));
 }
 
+.bg-gray-100 {
+  --tw-bg-opacity: 1;
+  background-color: rgb(243 244 246 / var(--tw-bg-opacity, 1));
+}
+
 .bg-muted {
   background-color: hsl(var(--muted));
 }
@@ -1478,15 +1479,6 @@ body {
 
 .bg-transparent {
   background-color: #0000;
-}
-
-.bg-white\/50 {
-  background-color: #ffffff80;
-}
-
-.bg-gray-100 {
-  --tw-bg-opacity: 1;
-  background-color: rgb(243 244 246 / var(--tw-bg-opacity, 1));
 }
 
 .fill-current {
