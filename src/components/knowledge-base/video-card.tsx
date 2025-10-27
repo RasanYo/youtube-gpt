@@ -61,48 +61,50 @@ const isEmpty = (value: string | null | undefined): boolean => {
   return !value || value.trim() === ''
 }
 
+// Status configuration with theme-aware color tokens
+// Each status uses semantic colors that adapt to light/dark mode automatically
 const statusConfig = {
   pending: {
     variant: 'outline' as const,
     icon: Clock,
     label: 'Pending',
-    color: 'text-yellow-600'
+    color: 'text-warning' // Yellow in both light and dark modes
   },
   queued: {
     variant: 'secondary' as const,
     icon: Loader2,
     label: 'Queued',
-    color: 'text-muted-foreground'
+    color: 'text-muted-foreground' // Subtle gray, less prominent
   },
   processing: {
     variant: 'default' as const,
     icon: Loader2,
     label: 'Processing',
-    color: 'text-blue-600'
+    color: 'text-info' // Blue, indicates active work in progress
   },
   'transcript_extracting': {
     variant: 'default' as const,
     icon: Loader2,
     label: 'Transcript Extracting',
-    color: 'text-purple-600'
+    color: 'text-info' // Blue, informational status
   },
   'zeroentropy_processing': {
     variant: 'default' as const,
     icon: Loader2,
     label: 'ZeroEntropy Processing',
-    color: 'text-green-600'
+    color: 'text-success' // Green, indicates positive progression
   },
   ready: {
     variant: 'default' as const,
     icon: Check,
     label: 'Ready',
-    color: 'text-green-600'
+    color: 'text-success' // Green, successfully completed
   },
   failed: {
     variant: 'destructive' as const,
     icon: AlertCircle,
     label: 'Failed',
-    color: 'text-red-600'
+    color: 'text-destructive' // Red, error/destructive action
   }
 }
 
@@ -191,7 +193,7 @@ const VideoCardStatus = ({ status, onRetry, videoId }: VideoCardStatusProps) => 
         <Button
           variant="ghost"
           size="sm"
-          className="h-4 px-1 text-xs text-red-600 hover:text-red-700 hover:bg-red-50/80 backdrop-blur-sm flex items-center gap-1"
+          className="h-4 px-1 text-xs text-destructive hover:bg-destructive/10 backdrop-blur-sm flex items-center gap-1"
           onClick={(e) => {
             e.stopPropagation()
             onRetry(videoId)
@@ -339,7 +341,7 @@ export const VideoCard = ({
         )}
         onClick={() => onClick?.(videoId)}
       >
-        <CardContent className="p-3 relative">
+        <CardContent className="p-4 relative">
           <VideoCardActions 
             isSelected={isSelected}
             videoId={videoId}
@@ -348,7 +350,7 @@ export const VideoCard = ({
             youtubeId={youtubeId}
           />
           
-          <div className="flex gap-3">
+          <div className="flex gap-4">
             <VideoCardHeader 
               title={title}
               channelName={channelName}
@@ -378,8 +380,8 @@ export const VideoCard = ({
 export const VideoCardSkeleton = ({ className }: { className?: string }) => {
   return (
     <Card className={cn('animate-pulse', className)}>
-      <CardContent className="p-3">
-        <div className="flex gap-3">
+      <CardContent className="p-4">
+        <div className="flex gap-4">
           {/* Left side - Text content (70%) */}
           <div className="flex-1 min-w-0 space-y-1">
             <Skeleton className="h-4 w-full" />

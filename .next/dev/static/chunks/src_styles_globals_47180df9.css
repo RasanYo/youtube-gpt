@@ -262,63 +262,75 @@ img, video {
 
 :root {
   --background: 0 0% 100%;
-  --foreground: 215 25% 27%;
+  --foreground: 0 0% 8%;
   --card: 0 0% 100%;
-  --card-foreground: 215 25% 27%;
+  --card-foreground: 0 0% 8%;
   --popover: 0 0% 100%;
-  --popover-foreground: 215 25% 27%;
-  --primary: 217 91% 60%;
+  --popover-foreground: 0 0% 8%;
+  --primary: 0 65% 55%;
   --primary-foreground: 0 0% 100%;
-  --secondary: 214 32% 91%;
-  --secondary-foreground: 215 25% 27%;
-  --muted: 214 32% 91%;
-  --muted-foreground: 215 16% 47%;
-  --accent: 217 91% 60%;
+  --secondary: 0 0% 96%;
+  --secondary-foreground: 0 0% 20%;
+  --muted: 0 0% 94%;
+  --muted-foreground: 0 0% 45%;
+  --accent: 184 30% 45%;
   --accent-foreground: 0 0% 100%;
-  --destructive: 0 84% 60%;
+  --destructive: 0 65% 55%;
   --destructive-foreground: 0 0% 100%;
-  --border: 214 32% 91%;
-  --input: 214 32% 91%;
-  --ring: 217 91% 60%;
+  --warning: 36 100% 50%;
+  --warning-foreground: 0 0% 8%;
+  --info: 200 100% 50%;
+  --info-foreground: 0 0% 100%;
+  --success: 142 71% 45%;
+  --success-foreground: 0 0% 100%;
+  --border: 0 0% 90%;
+  --input: 0 0% 95%;
+  --ring: 0 65% 55%;
   --radius: .5rem;
   --sidebar-background: 0 0% 98%;
-  --sidebar-foreground: 215 20% 35%;
-  --sidebar-primary: 217 91% 60%;
+  --sidebar-foreground: 0 0% 20%;
+  --sidebar-primary: 0 65% 55%;
   --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 214 32% 95%;
-  --sidebar-accent-foreground: 215 25% 27%;
-  --sidebar-border: 214 32% 91%;
-  --sidebar-ring: 217 91% 60%;
+  --sidebar-accent: 0 0% 95%;
+  --sidebar-accent-foreground: 0 0% 8%;
+  --sidebar-border: 0 0% 90%;
+  --sidebar-ring: 0 65% 55%;
 }
 
 .dark {
-  --background: 215 28% 17%;
-  --foreground: 213 31% 91%;
-  --card: 215 25% 20%;
-  --card-foreground: 213 31% 91%;
-  --popover: 215 25% 20%;
-  --popover-foreground: 213 31% 91%;
-  --primary: 217 91% 60%;
-  --primary-foreground: 0 0% 100%;
-  --secondary: 215 25% 23%;
-  --secondary-foreground: 213 31% 91%;
-  --muted: 215 25% 23%;
-  --muted-foreground: 215 20% 65%;
-  --accent: 217 91% 60%;
-  --accent-foreground: 0 0% 100%;
-  --destructive: 0 63% 31%;
-  --destructive-foreground: 213 31% 91%;
-  --border: 215 25% 27%;
-  --input: 215 25% 27%;
-  --ring: 217 91% 60%;
-  --sidebar-background: 215 28% 15%;
-  --sidebar-foreground: 213 31% 91%;
-  --sidebar-primary: 217 91% 60%;
-  --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 215 25% 20%;
-  --sidebar-accent-foreground: 213 31% 91%;
-  --sidebar-border: 215 25% 25%;
-  --sidebar-ring: 217 91% 60%;
+  --background: 0 0% 8%;
+  --foreground: 0 0% 98%;
+  --card: 0 0% 11%;
+  --card-foreground: 0 0% 98%;
+  --popover: 0 0% 11%;
+  --popover-foreground: 0 0% 98%;
+  --primary: 0 70% 58%;
+  --primary-foreground: 0 0% 8%;
+  --secondary: 0 0% 14%;
+  --secondary-foreground: 0 0% 85%;
+  --muted: 0 0% 18%;
+  --muted-foreground: 0 0% 65%;
+  --accent: 184 30% 65%;
+  --accent-foreground: 0 0% 8%;
+  --destructive: 0 70% 62%;
+  --destructive-foreground: 0 0% 8%;
+  --warning: 48 100% 50%;
+  --warning-foreground: 0 0% 8%;
+  --info: 200 100% 60%;
+  --info-foreground: 0 0% 8%;
+  --success: 142 71% 50%;
+  --success-foreground: 0 0% 8%;
+  --border: 0 0% 20%;
+  --input: 0 0% 14%;
+  --ring: 0 70% 58%;
+  --sidebar-background: 0 0% 10%;
+  --sidebar-foreground: 0 0% 85%;
+  --sidebar-primary: 0 70% 58%;
+  --sidebar-primary-foreground: 0 0% 8%;
+  --sidebar-accent: 0 0% 14%;
+  --sidebar-accent-foreground: 0 0% 85%;
+  --sidebar-border: 0 0% 20%;
+  --sidebar-ring: 0 70% 58%;
 }
 
 * {
@@ -682,6 +694,11 @@ body {
   height: 1rem;
 }
 
+.size-full {
+  width: 100%;
+  height: 100%;
+}
+
 .h-1\.5 {
   height: .375rem;
 }
@@ -932,6 +949,10 @@ body {
 
 .min-w-\[12rem\] {
   min-width: 12rem;
+}
+
+.min-w-\[140px\] {
+  min-width: 140px;
 }
 
 .min-w-\[8rem\] {
@@ -1311,10 +1332,6 @@ body {
   border-left-width: 1px;
 }
 
-.border-l-2 {
-  border-left-width: 2px;
-}
-
 .border-r {
   border-right-width: 1px;
 }
@@ -1381,6 +1398,10 @@ body {
 
 .bg-accent {
   background-color: hsl(var(--accent));
+}
+
+.bg-accent\/30 {
+  background-color: hsl(var(--accent) / .3);
 }
 
 .bg-background {
@@ -1675,6 +1696,10 @@ body {
   font-size: .8rem;
 }
 
+.text-\[10px\] {
+  font-size: 10px;
+}
+
 .text-base {
   font-size: 1rem;
   line-height: 1.5rem;
@@ -1745,11 +1770,6 @@ body {
   color: hsl(var(--accent-foreground));
 }
 
-.text-blue-600 {
-  --tw-text-opacity: 1;
-  color: rgb(37 99 235 / var(--tw-text-opacity, 1));
-}
-
 .text-card-foreground {
   color: hsl(var(--card-foreground));
 }
@@ -1774,14 +1794,8 @@ body {
   color: hsl(var(--foreground) / .5);
 }
 
-.text-gray-600 {
-  --tw-text-opacity: 1;
-  color: rgb(75 85 99 / var(--tw-text-opacity, 1));
-}
-
-.text-green-600 {
-  --tw-text-opacity: 1;
-  color: rgb(22 163 74 / var(--tw-text-opacity, 1));
+.text-info {
+  color: hsl(var(--info));
 }
 
 .text-muted-foreground {
@@ -1812,16 +1826,6 @@ body {
   color: hsl(var(--primary-foreground));
 }
 
-.text-purple-600 {
-  --tw-text-opacity: 1;
-  color: rgb(147 51 234 / var(--tw-text-opacity, 1));
-}
-
-.text-red-600 {
-  --tw-text-opacity: 1;
-  color: rgb(220 38 38 / var(--tw-text-opacity, 1));
-}
-
 .text-secondary-foreground {
   color: hsl(var(--secondary-foreground));
 }
@@ -1834,14 +1838,17 @@ body {
   color: hsl(var(--sidebar-foreground) / .7);
 }
 
+.text-success {
+  color: hsl(var(--success));
+}
+
+.text-warning {
+  color: hsl(var(--warning));
+}
+
 .text-white {
   --tw-text-opacity: 1;
   color: rgb(255 255 255 / var(--tw-text-opacity, 1));
-}
-
-.text-yellow-600 {
-  --tw-text-opacity: 1;
-  color: rgb(202 138 4 / var(--tw-text-opacity, 1));
 }
 
 .underline-offset-4 {
@@ -2183,6 +2190,10 @@ body {
   background-color: hsl(var(--accent) / .5);
 }
 
+.hover\:bg-destructive\/10:hover {
+  background-color: hsl(var(--destructive) / .1);
+}
+
 .hover\:bg-destructive\/80:hover {
   background-color: hsl(var(--destructive) / .8);
 }
@@ -2211,15 +2222,6 @@ body {
   background-color: hsl(var(--primary) / .9);
 }
 
-.hover\:bg-red-100:hover {
-  --tw-bg-opacity: 1;
-  background-color: rgb(254 226 226 / var(--tw-bg-opacity, 1));
-}
-
-.hover\:bg-red-50\/80:hover {
-  background-color: #fef2f2cc;
-}
-
 .hover\:bg-secondary:hover {
   background-color: hsl(var(--secondary));
 }
@@ -2246,11 +2248,6 @@ body {
 
 .hover\:text-primary-foreground:hover {
   color: hsl(var(--primary-foreground));
-}
-
-.hover\:text-red-700:hover {
-  --tw-text-opacity: 1;
-  color: rgb(185 28 28 / var(--tw-text-opacity, 1));
 }
 
 .hover\:text-sidebar-accent-foreground:hover {
@@ -2338,12 +2335,21 @@ body {
   box-shadow: var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow, 0 0 #0000);
 }
 
+.focus-visible\:ring-gray-300:focus-visible {
+  --tw-ring-opacity: 1;
+  --tw-ring-color: rgb(209 213 219 / var(--tw-ring-opacity, 1));
+}
+
 .focus-visible\:ring-ring:focus-visible {
   --tw-ring-color: hsl(var(--ring));
 }
 
 .focus-visible\:ring-sidebar-ring:focus-visible {
   --tw-ring-color: hsl(var(--sidebar-ring));
+}
+
+.focus-visible\:ring-offset-0:focus-visible {
+  --tw-ring-offset-width: 0px;
 }
 
 .focus-visible\:ring-offset-1:focus-visible {
@@ -2408,9 +2414,8 @@ body {
   background-color: hsl(var(--background));
 }
 
-.group.destructive .group-\[\.destructive\]\:text-red-300 {
-  --tw-text-opacity: 1;
-  color: rgb(252 165 165 / var(--tw-text-opacity, 1));
+.group.destructive .group-\[\.destructive\]\:text-destructive\/70 {
+  color: hsl(var(--destructive) / .7);
 }
 
 .group.toast .group-\[\.toast\]\:text-muted-foreground {
@@ -2443,22 +2448,12 @@ body {
   color: hsl(var(--destructive-foreground));
 }
 
-.group.destructive .group-\[\.destructive\]\:hover\:text-red-50:hover {
-  --tw-text-opacity: 1;
-  color: rgb(254 242 242 / var(--tw-text-opacity, 1));
-}
-
 .group.destructive .group-\[\.destructive\]\:focus\:ring-destructive:focus {
   --tw-ring-color: hsl(var(--destructive));
 }
 
-.group.destructive .group-\[\.destructive\]\:focus\:ring-red-400:focus {
-  --tw-ring-opacity: 1;
-  --tw-ring-color: rgb(248 113 113 / var(--tw-ring-opacity, 1));
-}
-
-.group.destructive .group-\[\.destructive\]\:focus\:ring-offset-red-600:focus {
-  --tw-ring-offset-color: #dc2626;
+.group.destructive .group-\[\.destructive\]\:focus\:ring-offset-destructive:focus {
+  --tw-ring-offset-color: hsl(var(--destructive));
 }
 
 .peer\/menu-button:hover ~ .peer-hover\/menu-button\:text-sidebar-accent-foreground {
@@ -3173,6 +3168,14 @@ body {
 
 .\[\&\:has\(\[role\=checkbox\]\)\]\:pr-0:has([role="checkbox"]) {
   padding-right: 0;
+}
+
+.\[\&\>\*\:first-child\]\:mt-0 > :first-child {
+  margin-top: 0;
+}
+
+.\[\&\>\*\:last-child\]\:mb-0 > :last-child {
+  margin-bottom: 0;
 }
 
 .\[\&\>button\]\:hidden > button {

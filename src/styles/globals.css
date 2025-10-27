@@ -8,82 +8,102 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
+    /* Light Mode - YouTube-inspired minimal clean look */
     --background: 0 0% 100%;
-    --foreground: 215 25% 27%;
+    --foreground: 0 0% 8%;
 
     --card: 0 0% 100%;
-    --card-foreground: 215 25% 27%;
+    --card-foreground: 0 0% 8%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 215 25% 27%;
+    --popover-foreground: 0 0% 8%;
 
-    --primary: 217 91% 60%;
+    --primary: 0 65% 55%;       /* Muted red */
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 214 32% 91%;
-    --secondary-foreground: 215 25% 27%;
+    --secondary: 0 0% 96%;
+    --secondary-foreground: 0 0% 20%;
 
-    --muted: 214 32% 91%;
-    --muted-foreground: 215 16% 47%;
+    --muted: 0 0% 94%;
+    --muted-foreground: 0 0% 45%;
 
-    --accent: 217 91% 60%;
+    --accent: 184 30% 45%;       /* Very subtle muted teal */
     --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 84% 60%;
+    --destructive: 0 65% 55%;     /* Muted red */
     --destructive-foreground: 0 0% 100%;
 
-    --border: 214 32% 91%;
-    --input: 214 32% 91%;
-    --ring: 217 91% 60%;
+    --warning: 36 100% 50%;       /* Amber/Yellow */
+    --warning-foreground: 0 0% 8%;
+
+    --info: 200 100% 50%;         /* Bright blue */
+    --info-foreground: 0 0% 100%;
+
+    --success: 142 71% 45%;      /* Modern green */
+    --success-foreground: 0 0% 100%;
+
+    --border: 0 0% 90%;
+    --input: 0 0% 95%;
+    --ring: 0 65% 55%;
 
     --radius: 0.5rem;
 
     --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 215 20% 35%;
-    --sidebar-primary: 217 91% 60%;
+    --sidebar-foreground: 0 0% 20%;
+    --sidebar-primary: 0 65% 55%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 214 32% 95%;
-    --sidebar-accent-foreground: 215 25% 27%;
-    --sidebar-border: 214 32% 91%;
-    --sidebar-ring: 217 91% 60%;
+    --sidebar-accent: 0 0% 95%;
+    --sidebar-accent-foreground: 0 0% 8%;
+    --sidebar-border: 0 0% 90%;
+    --sidebar-ring: 0 65% 55%;
   }
 
   .dark {
-    --background: 215 28% 17%;
-    --foreground: 213 31% 91%;
+    /* Dark Mode - Sleek dark YouTube style */
+    --background: 0 0% 8%;       /* Deep black */
+    --foreground: 0 0% 98%;      /* Off white */
 
-    --card: 215 25% 20%;
-    --card-foreground: 213 31% 91%;
+    --card: 0 0% 11%;
+    --card-foreground: 0 0% 98%;
 
-    --popover: 215 25% 20%;
-    --popover-foreground: 213 31% 91%;
+    --popover: 0 0% 11%;
+    --popover-foreground: 0 0% 98%;
 
-    --primary: 217 91% 60%;
-    --primary-foreground: 0 0% 100%;
+    --primary: 0 70% 58%;         /* Muted red */
+    --primary-foreground: 0 0% 8%;
 
-    --secondary: 215 25% 23%;
-    --secondary-foreground: 213 31% 91%;
+    --secondary: 0 0% 14%;        /* Dark gray */
+    --secondary-foreground: 0 0% 85%;
 
-    --muted: 215 25% 23%;
-    --muted-foreground: 215 20% 65%;
+    --muted: 0 0% 18%;
+    --muted-foreground: 0 0% 65%;
 
-    --accent: 217 91% 60%;
-    --accent-foreground: 0 0% 100%;
+    --accent: 184 30% 65%;        /* Very subtle muted teal */
+    --accent-foreground: 0 0% 8%;
 
-    --destructive: 0 63% 31%;
-    --destructive-foreground: 213 31% 91%;
+    --destructive: 0 70% 62%;     /* Muted red for dark mode */
+    --destructive-foreground: 0 0% 8%;
 
-    --border: 215 25% 27%;
-    --input: 215 25% 27%;
-    --ring: 217 91% 60%;
-    --sidebar-background: 215 28% 15%;
-    --sidebar-foreground: 213 31% 91%;
-    --sidebar-primary: 217 91% 60%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 215 25% 20%;
-    --sidebar-accent-foreground: 213 31% 91%;
-    --sidebar-border: 215 25% 25%;
-    --sidebar-ring: 217 91% 60%;
+    --warning: 48 100% 50%;       /* Bright amber */
+    --warning-foreground: 0 0% 8%;
+
+    --info: 200 100% 60%;         /* Bright cyan/blue */
+    --info-foreground: 0 0% 8%;
+
+    --success: 142 71% 50%;       /* Bright green */
+    --success-foreground: 0 0% 8%;
+
+    --border: 0 0% 20%;
+    --input: 0 0% 14%;
+    --ring: 0 70% 58%;
+    --sidebar-background: 0 0% 10%;
+    --sidebar-foreground: 0 0% 85%;
+    --sidebar-primary: 0 70% 58%;
+    --sidebar-primary-foreground: 0 0% 8%;
+    --sidebar-accent: 0 0% 14%;
+    --sidebar-accent-foreground: 0 0% 85%;
+    --sidebar-border: 0 0% 20%;
+    --sidebar-ring: 0 70% 58%;
   }
 }
 

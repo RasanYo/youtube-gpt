@@ -18,7 +18,7 @@ export const ChatEmptyState = ({ onPromptClick }: ChatEmptyStateProps) => {
         Your intelligent YouTube assistant. Ask me anything about your videos, content strategy, or get insights
         from your knowledge base.
       </p>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-w-2xl w-full">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl w-full">
         <div
           className="p-4 rounded-lg border bg-card hover:bg-accent/50 transition-colors cursor-pointer text-left"
           onClick={() => onPromptClick('Analyze my video performance and engagement metrics')}
