@@ -30,6 +30,7 @@ import {
   getConversationsByUserId,
   createConversation,
   updateConversationTitle as updateConversationTitleInDB,
+  deleteConversation as deleteConversationInDB,
 } from '@/lib/supabase/conversations'
 import type { ConversationRaw } from '@/lib/supabase/types'
 
@@ -55,6 +56,10 @@ interface ConversationContextType {
   refreshConversationOrder: (conversationId: string, newUpdatedAt: string) => void
   /** Update a conversation's title */
   updateConversationTitle: (conversationId: string, newTitle: string) => Promise<void>
+  /** Delete a conversation */
+  deleteConversation: (conversationId: string) => Promise<void>
+  /** Clear the current error state */
+  clearError: () => void
 }
 
 const ConversationContext = createContext<
@@ -84,6 +89,7 @@ export const ConversationProvider: React.FC<{
   >(null)
   const [isLoading, setIsLoading] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isInitialized, setIsInitialized] = useState(false)
   
@@ -251,6 +257,78 @@ export const ConversationProvider: React.FC<{
     }
   }, [user])
 
+  /**
+   * Delete a conversation
+   * 
+   * Deletes the conversation from the database (with cascading message deletion)
+   * and removes it from local state. If the deleted conversation was the active
+   * one, switches to another conversation or sets active to null.
+   * 
+   * Includes race condition protection and conversation existence validation.
+   * 
+   * @param {string} conversationId - ID of the conversation to delete
+   * @throws Sets error state if deletion fails, but does not throw
+   */
+  const deleteConversation = useCallback(async (conversationId: string) => {
+    if (!user) {
+      console.error('[ConversationContext] Cannot delete conversation: user not authenticated')
+      setError('Please log in to delete conversations')
+      return
+    }
+
+    // Prevent duplicate deletion (race condition guard)
+    if (isDeleting) {
+      console.warn('[ConversationContext] Deletion already in progress, ignoring duplicate request')
+      return
+    }
+
+    // Validate conversation exists in local state
+    const conversationExists = conversations.some(conv => conv.id === conversationId)
+    if (!conversationExists) {
+      console.warn('[ConversationContext] Conversation not found in local state:', conversationId)
+      return
+    }
+
+    setIsDeleting(true)
+    setError(null)
+    try {
+      // Delete from database first
+      await deleteConversationInDB(conversationId)
+      console.log('[ConversationContext] Deleted conversation:', conversationId)
+
+      // Remove from local state
+      setConversations((prevConversations) =>
+        prevConversations.filter((conv) => conv.id !== conversationId)
+      )
+
+      // Handle active conversation switch
+      if (activeConversationId === conversationId) {
+        const remainingConversations = conversations.filter((conv) => conv.id !== conversationId)
+        if (remainingConversations.length > 0) {
+          // Switch to the most recent remaining conversation
+          setActiveConversationId(remainingConversations[0].id)
+        } else {
+          // No conversations left, set to null
+          setActiveConversationId(null)
+        }
+      }
+    } catch (error) {
+      console.error('[ConversationContext] Error deleting conversation:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Failed to delete conversation'
+      setError(errorMessage)
+      throw error // Re-throw so caller can handle
+    } finally {
+      setIsDeleting(false)
+    }
+  }, [user, isDeleting, conversations, activeConversationId])
+
+  /**
+   * Clear the current error state
+   */
+  const clearError = useCallback(() => {
+    setError(null)
+  }, [])
+
   // Load conversations when component mounts and user is authenticated
   useEffect(() => {
     if (user) {
@@ -292,6 +370,8 @@ export const ConversationProvider: React.FC<{
     createNewConversation,
     refreshConversationOrder,
     updateConversationTitle,
+    deleteConversation,
+    clearError,
   }
 
   return (

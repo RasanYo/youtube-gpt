@@ -74,7 +74,7 @@ export const VideoList = ({
   return (
     <ScrollArea className={cn('flex-1', className)}>
       <div className="p-4">
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-4">
           {sortedVideos.map((video) => (
             <VideoCard
               key={video.id}

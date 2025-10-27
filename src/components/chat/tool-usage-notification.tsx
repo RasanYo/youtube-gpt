@@ -46,18 +46,20 @@ export const ToolUsageNotification = ({
     }
   }
 
+  // Returns theme-aware color class based on tool execution status
+  // All colors automatically adapt to light/dark mode
   const getStatusColor = () => {
     switch (status) {
       case 'starting':
-        return 'text-blue-600'
+        return 'text-info' // Blue - action initiated
       case 'active':
-        return 'text-blue-600'
+        return 'text-info' // Blue - actively processing
       case 'completed':
-        return 'text-green-600'
+        return 'text-success' // Green - successful completion
       case 'error':
-        return 'text-red-600'
+        return 'text-destructive' // Red - error occurred
       default:
-        return 'text-gray-600'
+        return 'text-muted-foreground' // Gray - neutral/default state
     }
   }
 
