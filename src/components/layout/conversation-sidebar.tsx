@@ -27,7 +27,7 @@ const ConversationItem = ({ conversation, isActive, onClick }: ConversationItemP
       variant="ghost"
       className={cn(
         'w-full justify-start text-left h-auto py-3 px-3 hover:bg-accent',
-        isActive && 'bg-accent border-l-2 border-primary'
+        isActive && 'bg-gray-100 dark:bg-white/5'
       )}
       onClick={onClick}
     >

@@ -41,15 +41,17 @@ YouTube GPT helps users instantly find information hidden inside hours of video 
 ### Design System
 
 #### Color System
+- **YouTube-inspired design**: Minimal, clean aesthetic with iconic red accents
 - **Theme-aware colors**: Full light/dark mode support with semantic color tokens
 - **Semantic tokens**: 
-  - `primary` - Main brand color (blue)
-  - `destructive` - Error states, delete actions (red)
-  - `warning` - Warning states (yellow)
-  - `info` - Informational states (blue)
-  - `success` - Success states (green)
-  - `muted` - Secondary text and backgrounds
-  - `accent` - Accent elements
+  - `primary` - YouTube red (#FF0000) for branding and key actions
+  - `destructive` - YouTube red for errors and delete actions
+  - `accent` - Futuristic cyan for tech-focused highlights
+  - `warning` - Amber/yellow for warning states
+  - `info` - Bright blue for informational states
+  - `success` - Modern green for success states
+  - `muted` - Subtle grays for secondary elements
+- **Dark mode**: Deep blacks (#141414) with glowing accent colors
 - **Accessibility**: WCAG AA compliant contrast ratios in both themes
 - All colors defined in `src/styles/globals.css` using HSL CSS variables
 - Dark mode controlled via `.dark` class on root element
@@ -65,6 +67,7 @@ YouTube GPT helps users instantly find information hidden inside hours of video 
 <div className="text-success">Ready</div>
 <div className="text-warning">Pending</div>
 <div className="text-info">Processing</div>
+<div className="text-accent">AI Processing</div>
 ```
 
 ## Getting Started
