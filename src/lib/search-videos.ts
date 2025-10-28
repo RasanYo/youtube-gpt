@@ -31,7 +31,7 @@ export interface SearchVideosParams {
  * @returns Array of search results with video metadata
  */
 export async function searchVideos(params: SearchVideosParams): Promise<SearchResult[]> {
-  const { query, userId, videoIds, limit = 10 } = params
+  const { query, userId, videoIds, limit = 20 } = params
   
   try {
     // Get or create user collection
@@ -60,7 +60,8 @@ export async function searchVideos(params: SearchVideosParams): Promise<SearchRe
       k: limit,
       filter: filter || undefined,
       include_document_metadata: true,
-      precise_responses: true // Get more precise snippets (~200 chars)
+      precise_responses: true, // Get more precise snippets (~200 chars)
+      reranker: 'zerank-1'
     })
     
     console.log(`[searchVideos] Found ${response.results.length} snippets`)
