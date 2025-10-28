@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { VideoList } from './video-list'
-import { useVideos } from '@/hooks/useVideos'
+import { useVideos } from '@/contexts/VideosContext'
 import { useVideoSelection } from '@/contexts/VideoSelectionContext'
 import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/hooks/use-toast'
