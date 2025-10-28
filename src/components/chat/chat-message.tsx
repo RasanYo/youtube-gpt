@@ -40,13 +40,18 @@ export const ChatMessage = ({ message, isLoading, videos = [] }: ChatMessageProp
               case 'text':
                 return <CitationResponse key={`${message.id}-${i}`} text={part.text} videos={videos} />
               
-              case 'tool-searchKnowledgeBase':
+              case 'tool-searchDetailed':
+              case 'tool-searchThematic':
                 // Show tool usage notification for searching state
+                const toolLabel = part.type === 'tool-searchDetailed' 
+                  ? 'Searching in details...' 
+                  : 'Searching your videos...'
+                
                 if (part.state === 'input-streaming' || part.state === 'input-available') {
                   return (
                     <div key={`${message.id}-${i}`} className="inline-flex items-center gap-2 text-xs text-muted-foreground italic">
                       <Loader2 className="h-3 w-3 animate-spin" />
-                      <span>Searching through videos...</span>
+                      <span>{toolLabel}</span>
                     </div>
                   )
                 }

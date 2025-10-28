@@ -34,17 +34,25 @@ export async function processTranscriptSegmentsForZeroEntropy(
     logger.warn(`Transcript quality issues: ${validation.issues.join(', ')}`)
   }
 
-  // Process transcript segments with user and video context (now returns chunks)
+  // Process transcript segments with user and video context (now returns hierarchical chunks)
   const chunks = processTranscriptSegments(
     transcriptData,
     video.userId,
     video.id,
-    video.title
+    video.title,
+    video.duration || undefined // Pass video duration for hierarchical chunking
   )
 
-  // Log chunk statistics for monitoring
+  // Log chunk statistics for monitoring (breakdown by level)
   const stats = getChunkingStats(chunks)
+  const level1Chunks = chunks.filter(c => c.chunkLevel === "1")
+  const level2Chunks = chunks.filter(c => c.chunkLevel === "2")
+  
   logger.info(`Chunking completed: ${chunks.length} chunks created from ${transcriptData.transcript.length} segments`)
+  logger.info(`Level 1 chunks: ${level1Chunks.length} (detailed, 30-90s)`)
+  if (level2Chunks.length > 0) {
+    logger.info(`Level 2 chunks: ${level2Chunks.length} (thematic, 5-20min)`)
+  }
   logger.info(`Chunk statistics: avg ${stats.avgTokensPerChunk.toFixed(0)} tokens/chunk, avg ${stats.avgSegmentsPerChunk.toFixed(1)} segments/chunk, range ${stats.minTokensPerChunk}-${stats.maxTokensPerChunk} tokens`)
   logger.info(`Document reduction: ${((1 - chunks.length/transcriptData.transcript.length) * 100).toFixed(1)}% (${transcriptData.transcript.length} → ${chunks.length} documents)`)
 

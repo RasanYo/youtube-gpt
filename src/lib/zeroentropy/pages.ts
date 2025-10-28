@@ -19,13 +19,18 @@ export async function indexTranscriptPage(
     // Create page content with searchable text
     const pageContent = createPageContent(chunk)
 
-    // Generate page ID - use chunkIndex if available (chunked), otherwise segmentIndex (backward compatible)
+    // Generate page ID with level suffix: {videoId}-level{1|2}-chunk{N}
     const isChunk = chunk.chunkIndex !== undefined
-    const pageId = isChunk
-      ? `${chunk.videoId}-chunk${chunk.chunkIndex}`
-      : `${chunk.videoId}-${chunk.segmentIndex}`
+    const chunkLevel = chunk.chunkLevel || "1" // Default to Level 1 for backward compatibility
+    
+    let pageId: string
+    if (isChunk) {
+      pageId = `${chunk.videoId}-level${chunkLevel}-chunk${chunk.chunkIndex}`
+    } else {
+      pageId = `${chunk.videoId}-${chunk.segmentIndex}`
+    }
 
-    console.log(`[indexTranscriptPage] Indexing ${isChunk ? 'chunk' : 'segment'}: ${pageId}${isChunk ? ` (${chunk.segmentCount} segments, ${chunk.text.length} chars)` : ''}`)
+    console.log(`[indexTranscriptPage] Indexing ${isChunk ? 'chunk' : 'segment'}: ${pageId}${isChunk ? ` (Level ${chunkLevel}, ${chunk.segmentCount} segments, ${chunk.text.length} chars)` : ''}`)
 
     // Prepare metadata - include chunk-specific fields if available
     const metadata: Record<string, string> = {
@@ -42,9 +47,11 @@ export async function indexTranscriptPage(
     if (isChunk) {
       metadata.chunkIndex = chunk.chunkIndex!.toString()
       metadata.segmentCount = chunk.segmentCount!.toString()
+      metadata.chunkLevel = chunkLevel // Add chunk level metadata
       metadata.isChunk = 'true'
     } else {
       metadata.segmentIndex = chunk.segmentIndex?.toString() || '0'
+      metadata.chunkLevel = "1" // Default segments to Level 1
       metadata.isChunk = 'false'
     }
 

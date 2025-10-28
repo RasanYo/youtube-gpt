@@ -30,7 +30,8 @@ export const ToolUsageNotification = ({
 
   const getToolIcon = () => {
     switch (toolName) {
-      case 'searchKnowledgeBase':
+      case 'searchDetailed':
+      case 'searchThematic':
         return <Search className="h-3 w-3" />
       default:
         return <Loader2 className="h-3 w-3" />
@@ -39,10 +40,12 @@ export const ToolUsageNotification = ({
 
   const getToolDisplayName = () => {
     switch (toolName) {
-      case 'searchKnowledgeBase':
-        return 'Searching your videos'
+      case 'searchDetailed':
+        return 'Searching in details...'
+      case 'searchThematic':
+        return 'Searching your videos...'
       default:
-        return 'Processing'
+        return 'Thinking...'
     }
   }
 

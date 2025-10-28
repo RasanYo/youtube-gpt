@@ -1,15 +1,17 @@
 import type { TranscriptData, TranscriptSegment, ProcessedTranscriptSegment } from './types'
-import { chunkTranscriptSegments, getChunkingStats, DEFAULT_CHUNKING_CONFIG, type ChunkingConfig } from './chunking'
+import { chunkHierarchically, getChunkingStats, DEFAULT_CHUNKING_CONFIG, type ChunkingConfig } from './chunking'
 
 /**
- * Process transcript segments for ZeroEntropy indexing
- * Converts raw transcript segments into larger, semantically coherent chunks
- * for improved search quality and reduced document count.
+ * Process transcript segments for ZeroEntropy indexing using hierarchical chunking
+ * Converts raw transcript segments into two levels of chunks for improved search quality:
+ * - Level 1: Detailed chunks (30-90 seconds) for precise retrieval
+ * - Level 2: Thematic chunks (5-20 minutes) for broad overviews (videos > 15min)
  *
  * @param transcriptData - Raw transcript data from YouTube
  * @param userId - User ID for scoping
  * @param videoId - Video ID
  * @param videoTitle - Video title
+ * @param videoDuration - Video duration in seconds (optional, used for Level 2 chunking)
  * @param config - Optional chunking configuration
  * @returns Array of processed transcript chunks ready for ZeroEntropy indexing
  */
@@ -18,6 +20,7 @@ export function processTranscriptSegments(
   userId: string,
   videoId: string,
   videoTitle: string,
+  videoDuration?: number,
   config?: ChunkingConfig
 ): ProcessedTranscriptSegment[] {
   console.log(`[processTranscriptSegments] Processing ${transcriptData.transcript.length} segments`)
@@ -47,22 +50,33 @@ export function processTranscriptSegments(
 
   console.log(`[processTranscriptSegments] Validated ${validSegments.length} segments`)
 
-  // Chunk the segments for improved search quality
-  const chunks = chunkTranscriptSegments(
-    validSegments,
+  // Use hierarchical chunking (Level 1 and optionally Level 2)
+  const result = chunkHierarchically(
+    { transcript: validSegments, metadata: transcriptData.metadata },
     userId,
     videoId,
     videoTitle,
+    videoDuration || transcriptData.metadata.totalDuration,
     config || DEFAULT_CHUNKING_CONFIG
   )
 
-  // Log chunking statistics
-  const stats = getChunkingStats(chunks)
-  console.log(`[processTranscriptSegments] Created ${chunks.length} chunks from ${validSegments.length} segments`)
-  console.log(`[processTranscriptSegments] Chunk stats: avg ${stats.avgTokensPerChunk.toFixed(0)} tokens, avg ${stats.avgSegmentsPerChunk.toFixed(1)} segments/chunk, avg ${stats.avgDurationPerChunk.toFixed(1)}s duration`)
-  console.log(`[processTranscriptSegments] Document reduction: ${validSegments.length} → ${chunks.length} (${((1 - chunks.length/validSegments.length) * 100).toFixed(1)}% reduction)`)
+  // Combine Level 1 and Level 2 chunks
+  const allChunks = [...result.level1Chunks, ...result.level2Chunks]
 
-  return chunks
+  // Log chunking statistics for both levels
+  const level1Stats = getChunkingStats(result.level1Chunks)
+  const level2Stats = getChunkingStats(result.level2Chunks)
+  
+  console.log(`[processTranscriptSegments] Created ${allChunks.length} chunks from ${validSegments.length} segments`)
+  console.log(`[processTranscriptSegments] Level 1 chunks: ${result.level1Chunks.length} (detailed, 30-90s)`)
+  console.log(`[processTranscriptSegments] Level 2 chunks: ${result.level2Chunks.length} (thematic, 5-20min, videos >15min)`)
+  console.log(`[processTranscriptSegments] Level 1 stats: avg ${level1Stats.avgTokensPerChunk.toFixed(0)} tokens, avg ${level1Stats.avgDurationPerChunk.toFixed(1)}s`)
+  if (result.level2Chunks.length > 0) {
+    console.log(`[processTranscriptSegments] Level 2 stats: avg ${level2Stats.avgTokensPerChunk.toFixed(0)} tokens, avg ${level2Stats.avgDurationPerChunk.toFixed(1)}s`)
+  }
+  console.log(`[processTranscriptSegments] Document reduction: ${validSegments.length} → ${allChunks.length} (${((1 - allChunks.length/validSegments.length) * 100).toFixed(1)}% reduction)`)
+
+  return allChunks
 }
 
 /**
