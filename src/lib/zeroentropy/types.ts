@@ -16,6 +16,11 @@ export interface TranscriptSegment {
 }
 
 /**
+ * Chunk level for hierarchical chunking strategy
+ */
+export type ChunkLevel = "1" | "2"
+
+/**
  * Processed transcript segment for ZeroEntropy indexing
  * Can represent either a single segment or a chunk of multiple segments
  */
@@ -35,6 +40,8 @@ export interface ProcessedTranscriptSegment {
   segmentCount?: number
   /** Zero-based index of this chunk in the video */
   chunkIndex?: number
+  /** Chunk level for hierarchical chunking: "1" for detailed (30-90s), "2" for thematic (5-20min) */
+  chunkLevel?: ChunkLevel
 }
 
 /**

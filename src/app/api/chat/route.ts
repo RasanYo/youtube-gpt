@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server'
 import { streamText, UIMessage, convertToModelMessages, stepCountIs } from 'ai'
 import { anthropic } from '@ai-sdk/anthropic'
 import type { ChatRequest, ChatScope } from '@/lib/zeroentropy/types'
-import { searchTool, createSearchKnowledgeBase } from '@/lib/tools/search-tool'
+import { searchDetailedTool, searchThematicTool, createSearchDetailedChunks, createSearchThematicChunks } from '@/lib/tools/search-tool'
 import { langfuse, isLangfuseConfigured } from '@/lib/langfuse/client'
 import { getEnhancedPrompt } from '@/lib/chat-commands/utils'
 import { CommandId } from '@/lib/chat-commands/types'
@@ -95,9 +95,15 @@ export async function POST(request: NextRequest) {
     // Create the system prompt
     const systemPrompt = `You are Bravi AI, an intelligent assistant that helps users find information in their YouTube video knowledge base. 
 
-You have access to a search tool that can find relevant content in the user's YouTube videos. Use your judgment to decide when to search:
+You have access to TWO search tools for finding relevant content in the user's YouTube videos:
 
-- For questions about specific video content, topics, or information → Use the search tool
+**searchDetailed**: Use for specific facts, timestamps, exact quotes, or precise information (searches 30-90 second chunks)
+**searchThematic**: Use for broad overviews, main topics, key themes, or "what is this about?" questions (searches 5-20 minute sections)
+
+Use your judgment to choose the appropriate tool:
+- Specific facts, timestamps, details → Use searchDetailed
+- General topics, themes, overviews → Use searchThematic  
+- Complex questions → Use both tools sequentially for comprehensive answers
 - For general conversation, greetings, or non-video questions → Respond directly
 
 When you do search and find relevant content:
@@ -130,8 +136,9 @@ Current user context:
 - User ID: ${userId}
 - Video scope: ${videoScope ? `Selected videos (${videoScope.length}): ${videoScope.join(', ')}` : 'All videos'}`
 
-    // Create the search function with enhanced logging
-    const searchKnowledgeBase = createSearchKnowledgeBase(userId, videoScope)
+    // Create the search functions with enhanced logging
+    const searchDetailed = createSearchDetailedChunks(userId, videoScope)
+    const searchThematic = createSearchThematicChunks(userId, videoScope)
 
     // Stream the AI response with multi-step tool calling enabled
     const result = await streamText({
@@ -139,10 +146,15 @@ Current user context:
       system: systemPrompt,
       messages: convertToModelMessages(messages), // ← Use messages directly
       tools: {
-        searchKnowledgeBase: {
-          description: searchTool.description,
-          inputSchema: searchTool.parameters,
-          execute: searchKnowledgeBase
+        searchDetailed: {
+          description: searchDetailedTool.description,
+          inputSchema: searchDetailedTool.parameters,
+          execute: searchDetailed
+        },
+        searchThematic: {
+          description: searchThematicTool.description,
+          inputSchema: searchThematicTool.parameters,
+          execute: searchThematic
         }
       },
       temperature: 0.7,
@@ -164,7 +176,7 @@ Current user context:
         for (const step of result.steps) {
           if (step.toolCalls) {
             for (const toolCall of step.toolCalls) {
-              if (toolCall.toolName === 'searchKnowledgeBase') {
+              if (toolCall.toolName === 'searchDetailed' || toolCall.toolName === 'searchThematic') {
                 const toolResult = step.toolResults?.find(r => r.toolCallId === toolCall.toolCallId)
                 // Access the tool result data correctly
                 // @ts-expect-error - AI SDK has complex nested types for tool results

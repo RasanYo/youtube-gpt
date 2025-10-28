@@ -21,12 +21,26 @@ export const KnowledgeBase = () => {
   const { previewVideo, openPreview, closePreview, registerExpandCallback } = useVideoPreview()
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
-  const { selectedVideos, addVideo, removeVideo, clearSelection } = useVideoSelection()
+  const { selectedVideos, addVideo, removeVideo, clearSelection, setSelectedVideos } = useVideoSelection()
   const { toast } = useToast()
   const { user } = useAuth()
 
   // Use the useVideos hook for real-time data
   const { videos, isLoading, error } = useVideos()
+
+  // Handle select all / deselect all
+  const handleSelectAll = () => {
+    const allVideoIds = new Set(videos.map(v => v.id))
+    const allSelected = selectedVideos.size === videos.length && videos.length > 0
+    
+    if (allSelected) {
+      // Deselect all
+      clearSelection()
+    } else {
+      // Select all
+      setSelectedVideos(allVideoIds)
+    }
+  }
 
   // Register collapse control callback with context
   useEffect(() => {
@@ -261,6 +275,8 @@ export const KnowledgeBase = () => {
         showDialog={showDeleteConfirm}
         onOpenDialog={() => setShowDeleteConfirm(true)}
         onCloseDialog={() => setShowDeleteConfirm(false)}
+        totalVideos={totalVideos}
+        onSelectAll={handleSelectAll}
       />
       
       {/* Collapsible Content */}

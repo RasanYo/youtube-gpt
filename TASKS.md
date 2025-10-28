@@ -1,321 +1,180 @@
-# Implementation Plan: Fix Multiple Supabase Subscriptions
+# Hierarchical Chunking with Multi-Level Search Implementation Plan
 
 ## 🧠 Context about Project
 
-YouTube-GPT is an AI-powered YouTube search application that allows users to build a searchable knowledge base from YouTube videos. Users can add individual videos or entire channels, and the system ingests transcripts using Inngest background jobs. The AI assistant can answer questions across the user's video library, with citation support including timestamps. The application uses Next.js 14 with App Router, Supabase for database and authentication, and features a three-column ChatGPT-style interface with conversation history, chat area, and knowledge base explorer.
+YouTube-GPT is a full-stack AI-powered YouTube search application built with Next.js 14, Supabase, and ZeroEntropy. The platform helps users search across hours of video content by creating a searchable knowledge base from YouTube transcripts. Users can add individual videos or entire channels, and the system extracts transcripts, chunks them intelligently, and indexes them in ZeroEntropy for semantic search. The application features a ChatGPT-style interface with conversation history and a knowledge base explorer.
+
+The current system processes videos by extracting transcripts from YouTube, chunking them into smaller segments, and indexing them in ZeroEntropy collections. Users can then ask questions via a chat interface where Claude (via Vercel AI SDK) searches the indexed content to provide grounded answers with citations and timestamps.
 
 ## 🏗️ Context about Feature
 
-The current implementation has a critical issue where `useVideos` hook is called from 3 different components (VideoPreviewContext, AuthenticatedChatArea, KnowledgeBase), creating 3 separate Supabase realtime subscriptions. This causes:
-- Resource waste (3 WebSocket connections instead of 1)
-- "Subscription closed" warnings in console when components unmount/remount
-- Potential race conditions with state updates
-- Database load from multiple queries
+The current chunking strategy creates a single level of chunks (30-90 seconds) optimized for precise retrieval. However, for broad queries like "what do they discuss?" across multiple long videos, retrieving many small chunks is inefficient and may miss broader themes. The hierarchical chunking feature will:
 
-The fix is to move the subscription management to a VideosContext provider, following the existing pattern used by VideoSelectionContext, VideoPreviewContext, and ConversationContext. This ensures a single subscription exists at the provider level and is shared across all consumers.
+1. **Level 1 (Detailed)**: Create 30-90 second chunks (already implemented with current token-based config of 250-500 tokens)
+2. **Level 2 (Thematic)**: Create larger concatenated chunks (5-20 minutes) adaptive to video length, stored as separate entries in ZeroEntropy with level metadata
+
+The system already has a chunking pipeline in `src/lib/zeroentropy/chunking.ts` that handles token-based chunking. We need to extend this to support hierarchical chunking with duration-based adaptive sizing for Level 2. The Video model (in Supabase) has a `duration` field that we'll use to determine chunking strategy.
 
 ## 🎯 Feature Vision & Flow
 
-After implementation:
-- Only ONE Supabase subscription exists per user session
-- All components that need videos data consume the same context
-- Subscription cleanup is managed centrally
-- No more "Subscription closed" warnings in console
-- Real-time video deletion updates work immediately
-- Better performance and resource efficiency
+**End-to-End Behavior:**
+1. When a video is ingested, the system determines if Level 2 chunks are needed based on video duration
+2. For videos > 15 minutes: Create both Level 1 (detailed) and Level 2 (thematic) chunks
+3. For videos < 15 minutes: Only create Level 1 chunks
+4. Each chunk level has distinct metadata: `chunkLevel: "1" | "2"`
+5. Claude has access to two search tools:
+   - `searchDetailedChunks`: Searches Level 1 chunks for specific facts/timestamps
+   - `searchThematicChunks`: Searches Level 2 chunks for broad overviews/themes
+6. Claude intelligently chooses which tool to use based on query intent, and can call both sequentially for comprehensive answers
+7. Users get both precise citations (Level 1) and thematic understanding (Level 2)
 
 ## 📋 Implementation Plan: Tasks & Subtasks
 
-### Task 1: Create VideosContext Provider
-**Goal**: Create a new context provider that manages videos state and Supabase subscription
+### Phase 1: Extend Chunking System for Hierarchical Strategy
 
-#### Subtask 1.1: Create VideosContext file
-- [x] Create `src/contexts/VideosContext.tsx`
-- [x] Import necessary dependencies: `createContext`, `useContext`, `useState`, `useEffect`, `useRef`, `useCallback` from React
-- [x] Import `supabase` from `@/lib/supabase/client`
-- [x] Import `Video` type from `@/lib/supabase/types`
-- [x] Import `useAuth` from `@/contexts/AuthContext`
+#### Task 1.1: Update Type Definitions
+- [x] Add `ChunkLevel` type and extend `ProcessedTranscriptSegment` interface in `src/lib/zeroentropy/types.ts`
+  - Add `chunkLevel?: "1" | "2"` field to `ProcessedTranscriptSegment`
+  - This will be used to distinguish detailed vs thematic chunks in metadata
+- [x] Validation: Types export correctly and `chunkLevel` is optional for backward compatibility
 
-#### Subtask 1.2: Define context interface and initial setup
-- [x] Define `VideosContextType` interface with: `videos: Video[]`, `isLoading: boolean`, `error: string | null`, `refetch: () => Promise<void>`
-- [x] Create context using `createContext<VideosContextType | undefined>(undefined)`
-- [x] Export `useVideos` hook that throws error if used outside provider
+#### Task 1.2: Create Adaptive Level 2 Chunking Function
+- [x] Create new function `getLevel2ChunkConfig(durationSeconds: number)` in `src/lib/zeroentropy/chunking.ts`
+  - Input: Video duration in seconds
+  - Returns: `{ minChunkDuration, maxChunkDuration, targetChunkDuration } | null`
+  - Logic: Skip for videos < 15 min, return adaptive configs for longer videos
+- [x] Implement duration-based configuration:
+  - 15-30 min: 120-240 sec chunks (target 180s)
+  - 30-60 min: 180-360 sec chunks (target 270s)
+  - 60-120 min: 300-600 sec chunks (target 450s)
+  - 120+ min: 600-1200 sec chunks (target 900s)
+- [x] Add unit tests for adaptive chunking logic
+- [x] Validation: Function returns correct config ranges for various video lengths
 
-#### Subtask 1.3: Implement VideosProvider component
-- [x] Create `VideosProvider` function component with `{ children }: { children: React.ReactNode }` prop
-- [x] Initialize state: `videos`, `isLoading`, `error` using `useState`
-- [x] Get `user` from `useAuth()`
-- [x] Create refs: `channelRef` (for subscription channel) and `subscriptionRef` (boolean flag)
+#### Task 1.3: Create Hierarchical Chunking Function
+- [x] Create new function `chunkHierarchically()` in `src/lib/zeroentropy/chunking.ts`
+  - Takes: `transcriptData`, `userId`, `videoId`, `videoTitle`, `videoDuration`
+  - Returns: `{ level1Chunks: ProcessedTranscriptSegment[], level2Chunks: ProcessedTranscriptSegment[] }`
+- [x] Implement logic:
+  - Always create Level 1 chunks using existing `chunkTranscriptSegments()` function
+  - Conditionally create Level 2 chunks if video duration qualifies (using new function from 1.2)
+  - Set `chunkLevel: "1"` for detailed chunks
+  - Set `chunkLevel: "2"` for thematic chunks
+  - Calculate Level 2 chunks by grouping Level 1 chunks based on duration targets
+- [x] Add JSDoc comments explaining the two-level strategy
+- [x] Validation: Returns both levels for long videos, only Level 1 for short videos
 
-#### Subtask 1.4: Implement fetchVideos function
-- [x] Create `fetchVideos` callback using `useCallback` with `user?.id` dependency
-- [x] Add guard clause: return early if no `user?.id`
-- [x] Set `isLoading(true)` and `error(null)` at start
-- [x] Query Supabase: `supabase.from('videos').select('*').eq('userId', user.id).order('createdAt', { ascending: false })`
-- [x] Handle errors: catch block should log error and set error message
-- [x] Update state: `setVideos(data || [])`
-- [x] Set `isLoading(false)` in finally block
+### Phase 2: Update Chunking Pipeline
 
-#### Subtask 1.5: Implement subscription setup in useEffect
-- [x] Create `useEffect` with dependencies `[user?.id, fetchVideos]`
-- [x] Add guard: if no user, clear videos state and return
-- [x] Add guard: if `subscriptionRef.current` is true, log "already exists" and return
-- [x] Call `fetchVideos()` for initial load
-- [x] Set `subscriptionRef.current = true`
-- [x] Create unique channel name: `video-changes-${user.id}-${Date.now()}`
-- [x] Build channel using `supabase.channel(channelName).on('postgres_changes', ...)`
-- [x] Configure postgres_changes: event `'*'`, schema `'public'`, table `'videos'`, filter `userId=eq.${user.id}`
-- [x] Handle payload: INSERT (unshift new video), UPDATE (map and replace), DELETE (filter out)
-- [x] Subscribe with callback that handles SUBSCRIBED, CHANNEL_ERROR, CLOSED, TIMED_OUT statuses
-- [x] Store channel in `channelRef.current` only when SUBSCRIBED
+#### Task 2.1: Modify Transcript Processing Function
+- [x] Update `processTranscriptSegments()` in `src/lib/zeroentropy/transcript.ts`
+  - Change signature to accept `videoDuration?: number` parameter
+  - Call new `chunkHierarchically()` instead of `chunkTranscriptSegments()`
+  - Return both Level 1 and Level 2 chunks with `chunkLevel` metadata
+- [x] Update logging to report stats for both levels
+- [x] Validation: Function processes both levels and logs appropriate metrics
 
-#### Subtask 1.6: Implement cleanup function
-- [x] Return cleanup function from useEffect
-- [x] If `channelRef.current` exists, call `supabase.removeChannel(channelRef.current)`
-- [x] Set `channelRef.current = null`
-- [x] Set `subscriptionRef.current = false`
+#### Task 2.2: Update ZeroEntropy Processor
+- [x] Modify `processTranscriptSegmentsForZeroEntropy()` in `src/lib/inngest/utils/zeroentropy-processor.ts`
+  - Get video duration from `video.duration` field
+  - Pass duration to `processTranscriptSegments()` function
+  - Combine Level 1 and Level 2 chunks for indexing
+  - Update logging to show breakdown of chunks by level
+- [x] Validation: Processor correctly extracts duration and passes it through the pipeline
 
-#### Subtask 1.7: Implement refetch function and provider return
-- [x] Create `refetch` using `useCallback` that calls `fetchVideos()` with guard for `user?.id`
-- [x] Memoize context value with `{ videos, isLoading, error, refetch }`
-- [x] Return `VideosContext.Provider` with value and children
+#### Task 2.3: Update Indexing to Support Level Metadata
+- [x] Modify `indexTranscriptPage()` in `src/lib/zeroentropy/pages.ts`
+  - Add `chunkLevel` to metadata object with value from `chunk.chunkLevel`
+  - Update page ID generation to include level suffix: `{videoId}-level{1|2}-chunk{N}`
+  - Format: `videoId-level1-chunk0`, `videoId-level2-chunk0`, etc.
+- [x] Update path parsing logic in search functions to handle new format
+- [x] Validation: Chunks are indexed with correct level metadata and unique page IDs
 
-**Validation Criteria**:
-- [x] TypeScript compiles without errors
-- [x] No linter errors in new file
-- [x] Follows same pattern as VideoSelectionContext and VideoPreviewContext
+### Phase 3: Create Multi-Tool Search System
 
----
+#### Task 3.1: Create Separate Search Tools
+- [x] Create `searchDetailedChunks` tool in `src/lib/tools/search-tool.ts`
+  - Description: "Search precise 30-90 second video chunks for specific facts, timestamps, and detailed information"
+  - Parameters: `query`, `videoIds`, `limit` (same as current tool)
+- [x] Create `searchThematicChunks` tool in `src/lib/tools/search-tool.ts`
+  - Description: "Search broader 5-20 minute video sections for overviews, themes, and general topics"
+  - Parameters: `query`, `videoIds`, `limit`
+- [x] Keep existing `createSearchKnowledgeBase` function but create separate wrappers
+  - `createSearchDetailedChunks(userId, videoScope)` - filters for `chunkLevel: "1"`
+  - `createSearchThematicChunks(userId, videoScope)` - filters for `chunkLevel: "2"`
+- [x] Validation: Both tools are exported and have distinct descriptions
 
-### Task 2: Integrate VideosContext into App Providers
-**Goal**: Add VideosProvider to the app provider hierarchy
+#### Task 3.2: Update Search Videos Function to Filter by Level
+- [x] Modify `searchVideos()` in `src/lib/search-videos.ts`
+  - Add optional `chunkLevel?: "1" | "2"` parameter to `SearchVideosParams`
+  - Add filter condition in ZeroEntropy query:
+    ```typescript
+    if (chunkLevel) {
+      filter.chunkLevel = chunkLevel
+    }
+    ```
+- [x] Update path parsing to handle new `level{1|2}-chunk{N}` format
+- [x] Validation: Search correctly filters by chunk level when specified
 
-#### Subtask 2.1: Update providers.tsx
-- [x] Open `src/app/providers.tsx`
-- [x] Add import: `import { VideosProvider } from '@/contexts/VideosContext'`
-- [x] Wrap existing providers with `<VideosProvider>` after `<AuthProvider>` (order matters: Videos needs Auth)
-- [x] Ensure VideosProvider is before ConversationProvider in the hierarchy
+#### Task 3.3: Update Chat Route to Expose Both Tools
+- [x] Modify `src/app/api/chat/route.ts`
+  - Import both `createSearchDetailedChunks` and `createSearchThematicChunks`
+  - Create separate tool instances: `searchDetailed` and `searchThematic`
+  - Add both to `tools` object in `streamText()` call
+  - Keep `stopWhen: stepCountIs(5)` for multi-step tool calling
+- [x] Update system prompt to mention availability of two search tools
+- [x] Validation: Claude has access to both tools and can call them independently
 
-#### Subtask 2.2: Verify provider order
-- [x] Confirm order is: QueryClientProvider > TooltipProvider > AuthProvider > VideosProvider > ConversationProvider > VideoSelectionProvider > VideoPreviewProvider
-- [x] This order ensures dependencies are available when contexts initialize
+### Phase 4: Testing & Validation
 
-**Validation Criteria**:
-- [x] App builds successfully
-- [x] Provider hierarchy follows dependency order (Auth before Videos)
-- [x] No circular dependency warnings
+#### Task 4.1: Unit Tests for Adaptive Chunking
+- [ ] Create test file `src/lib/zeroentropy/__tests__/chunking.test.ts`
+- [ ] Test `getLevel2ChunkConfig()` with various video lengths:
+  - 5 min video → returns null
+  - 20 min video → returns 120-240 config
+  - 45 min video → returns 180-360 config
+  - 90 min video → returns 300-600 config
+  - 150 min video → returns 600-1200 config
+- [ ] Validation: All test cases pass with correct adaptive configurations
 
----
+#### Task 4.2: Integration Tests for Hierarchical Chunking
+- [ ] Test `chunkHierarchically()` with sample transcript data:
+  - Short video (10 min) → only Level 1 chunks created
+  - Long video (60 min) → both Level 1 and Level 2 chunks created
+  - Verify chunk counts are reasonable for each level
+- [ ] Validate metadata: All chunks have correct `chunkLevel`, `chunkIndex`, `start`, `end`, `duration`
+- [ ] Validation: Integration tests demonstrate proper two-level chunking
 
-### Task 3: Update Components to Use VideosContext
-**Goal**: Replace direct useVideos imports with context consumption
+#### Task 4.3: End-to-End Testing
+- [ ] Test full pipeline with a 1-hour video:
+  - Transcript extraction works
+  - Both Level 1 and Level 2 chunks are created
+  - Chunks are indexed in ZeroEntropy with correct metadata
+  - Search tools can retrieve chunks from correct levels
+- [ ] Test queries:
+  - "What is this video about?" → should use thematic tool
+  - "Find the timestamp where they discuss pricing" → should use detailed tool
+  - Complex query spanning both levels → should call both tools sequentially
+- [ ] Validation: End-to-end flow works correctly for both chunk levels
 
-#### Subtask 3.1: Update VideoPreviewContext.tsx
-- [x] Open `src/contexts/VideoPreviewContext.tsx`
-- [x] Replace import: change `from '@/hooks/useVideos'` to `from '@/contexts/VideosContext'`
-- [x] No other changes needed - component already calls `useVideos()` which now comes from context
+## Validation Criteria
 
-**Validation Criteria**:
-- [x] VideoPreviewContext still works correctly
-- [x] Videos are available for preview functionality
-- [x] No console errors
+### Functional Requirements
+✅ Video duration determines Level 2 chunking eligibility  
+✅ Both Level 1 and Level 2 chunks are indexed with distinct metadata  
+✅ Two separate search tools allow Claude to choose appropriate granularity  
+✅ Claude can call tools sequentially for comprehensive answers  
+✅ Backward compatibility: Existing videos without `chunkLevel` still work  
 
-#### Subtask 3.2: Update AuthenticatedChatArea.tsx
-- [x] Open `src/components/chat/authenticated-chat-area.tsx`
-- [x] Replace import: change `from '@/hooks/useVideos'` to `from '@/contexts/VideosContext'`
-- [x] No other changes needed - component uses videos for VideoScopeBar
+### Performance Requirements
+✅ Chunking overhead < 20% of original processing time  
+✅ Index size growth < 2x (most videos only get Level 1)  
+✅ Search latency unchanged for single-tool queries  
+✅ Multi-tool queries complete within 5 seconds  
 
-**Validation Criteria**:
-- [x] Chat area renders correctly
-- [x] VideoScopeBar shows videos
-- [x] No console errors
-
-#### Subtask 3.3: Update KnowledgeBase.tsx
-- [x] Open `src/components/knowledge-base/knowledge-base.tsx`
-- [x] Replace import: change `from '@/hooks/useVideos'` to `from '@/contexts/VideosContext'`
-- [x] No other changes needed - component displays videos in list
-
-**Validation Criteria**:
-- [x] Knowledge base renders correctly
-- [x] Video list shows videos
-- [x] No console errors
-
-**Validation Criteria for Task 3**:
-- [x] All three components successfully use VideosContext
-- [x] No TypeScript errors
-- [x] Import paths updated correctly
-
----
-
-### Task 4: Remove or Deprecate Old useVideos Hook
-**Goal**: Clean up the old hook file
-
-#### Subtask 4.1: Decide on approach
-- [x] Option A (Recommended): Delete `src/hooks/useVideos.ts` entirely
-- [ ] Option B (Temporary compatibility): Keep as thin re-export that throws deprecation warning
-
-#### Subtask 4.2: Execute chosen approach
-- [x] If Option A: Delete the file completely
-- [ ] If Option B: Replace content with `export { useVideos } from '@/contexts/VideosContext'` and add deprecation comment
-
-**Validation Criteria**:
-- [x] Build succeeds without missing imports
-- [x] No references to old hook implementation
-- [x] All imports resolve to new location
-
----
-
-### Task 5: Add Tests for VideosContext
-**Goal**: Create comprehensive tests for the new context
-
-#### Subtask 5.1: Create test file structure
-- [ ] Create `tests/unit/contexts/VideosContext.test.tsx`
-- [ ] Import testing utilities: `render`, `screen`, `waitFor` from `@testing-library/react`
-- [ ] Import `VideosProvider`, `useVideos` from context
-- [ ] Import `supabase` client for mocking
-
-#### Subtask 5.2: Set up mocks
-- [ ] Mock Supabase client: `jest.mock('@/lib/supabase/client')`
-- [ ] Mock `supabase.from().select()`, `supabase.channel()`, `supabase.removeChannel`
-- [ ] Mock auth: create mock `useAuth` hook
-- [ ] Get references to all mocked functions
-
-#### Subtask 5.3: Write provider render tests
-- [ ] Test: Provider renders children correctly
-- [ ] Test: Throws error when useVideos called outside provider
-- [ ] Test: Initial state shows loading = true
-
-**Validation Criteria**:
-- [ ] Tests pass for basic provider functionality
-- [ ] Error handling works correctly
-
-#### Subtask 5.4: Write data fetching tests
-- [ ] Test: Fetch calls Supabase with correct query
-- [ ] Test: Sets videos state when fetch succeeds
-- [ ] Test: Sets error state when fetch fails
-- [ ] Test: Sets loading false after fetch completes
-
-**Validation Criteria**:
-- [ ] All fetch scenarios covered
-- [ ] Error states handled correctly
-
-#### Subtask 5.5: Write subscription tests
-- [ ] Test: Creates subscription when user logs in
-- [ ] Test: Only creates one subscription (prevents duplicates)
-- [ ] Test: INSERT event adds video to array
-- [ ] Test: UPDATE event modifies existing video
-- [ ] Test: DELETE event removes video from array
-
-**Validation Criteria**:
-- [ ] All realtime event types tested
-- [ ] Subscription singleton enforced
-- [ ] State updates correctly
-
-#### Subtask 5.6: Write cleanup tests
-- [ ] Test: Unsubscribes on component unmount
-- [ ] Test: Clears videos when user logs out
-- [ ] Test: Calls removeChannel on cleanup
-
-**Validation Criteria**:
-- [ ] No memory leaks
-- [ ] Cleanup happens on all exit paths
-
-**Validation Criteria for Task 5**:
-- [ ] All tests pass: `pnpm test tests/unit/contexts/VideosContext.test.tsx`
-- [ ] Coverage above 80% for VideosContext.tsx
-- [ ] Tests follow same pattern as AuthContext.test.tsx
-
----
-
-### Task 6: Integration Testing
-**Goal**: Verify the entire system works with new context
-
-#### Subtask 6.1: Test with all consumers
-- [ ] Start dev server: `pnpm dev`
-- [ ] Log in as test user
-- [ ] Verify Knowledge Base shows videos
-- [ ] Verify Chat Area VideoScopeBar works
-- [ ] Verify VideoPreview works
-
-#### Subtask 6.2: Test realtime deletion
-- [ ] Add a test video to knowledge base
-- [ ] Open browser console
-- [ ] Verify only ONE "Successfully subscribed" log appears (not three)
-- [ ] Delete the test video
-- [ ] Verify video disappears immediately without page reload
-- [ ] Verify no "Subscription closed" warnings appear
-- [ ] Check Network tab: should show only 1 WebSocket connection
-
-#### Subtask 6.3: Test multiple component access
-- [ ] Have videos visible in knowledge base
-- [ ] Use them in chat area with VideoScopeBar
-- [ ] Open video preview from citation
-- [ ] Verify all three components show same videos (synced state)
-
-#### Subtask 6.4: Test subscription lifecycle
-- [ ] Open browser console
-- [ ] Log in - verify "Successfully subscribed" appears once
-- [ ] Navigate through app - no additional subscriptions
-- [ ] Log out - verify subscription closes cleanly
-- [ ] No warnings in console
-
-**Validation Criteria for Task 6**:
-- [ ] Only 1 subscription exists (check console logs)
-- [ ] Real-time deletion works
-- [ ] No "Subscription closed" warnings during normal use
-- [ ] All three components access same data
-- [ ] Manual testing covers all user flows
-
----
-
-### Task 7: Performance Validation
-**Goal**: Verify improvements in performance and resource usage
-
-#### Subtask 7.1: Measure WebSocket connections
-- [ ] Open Chrome DevTools > Network tab > WS filter
-- [ ] Refresh page and log in
-- [ ] Count WebSocket connections - should be only 1-2 (auth + videos)
-- [ ] Before fix: should have seen 4 connections (auth + 3 video subscriptions)
-
-#### Subtask 7.2: Measure database queries
-- [ ] Open Supabase dashboard > Logs
-- [ ] Monitor query count during initial load
-- [ ] Should only see 1 SELECT query for videos (not 3)
-- [ ] Real-time events should trigger once (not 3 times)
-
-#### Subtask 7.3: Memory leak check
-- [ ] Use React DevTools Profiler
-- [ ] Record during mount/unmount cycles
-- [ ] Verify VideosContext doesn't cause memory leaks
-- [ ] Subscription should cleanup properly
-
-**Validation Criteria for Task 7**:
-- [ ] WebSocket connections reduced by 66% (4 → 1-2)
-- [ ] Database queries reduced by 66% (3 → 1)
-- [ ] No memory leaks in React DevTools
-- [ ] Performance metrics improved
-
----
-
-## ✅ Final Acceptance Criteria
-
-**All tasks complete when**:
-1. [x] VideosContext created and follows existing patterns
-2. [x] Integrated into app providers
-3. [x] All three components updated to use context
-4. [x] Old hook removed or deprecated
-5. [ ] Tests written and passing (coverage > 80%)
-6. [ ] Integration tests pass
-7. [ ] Only ONE Supabase subscription exists
-8. [ ] Real-time video deletion works immediately
-9. [ ] No "Subscription closed" warnings in console
-10. [ ] Performance improvements validated
-11. [ ] No regression in existing functionality
-
-**Success Metrics**:
-- Console warnings eliminated
-- Network connections reduced by 66%
-- Real-time updates work flawlessly
-- All tests passing
-- No breaking changes
+### Quality Requirements
+✅ Level 2 chunks capture thematic content (5-20 min windows)  
+✅ Level 1 chunks remain precise (30-90 sec windows)  
+✅ No information loss: all transcript content is chunked  
+✅ Overlap maintained between chunks for context continuity  
 
