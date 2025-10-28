@@ -7,7 +7,6 @@ import { useVideoSelection } from '@/contexts/VideoSelectionContext'
 import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/hooks/use-toast'
 import { processYouTubeUrl } from '@/lib/youtube'
-import { triggerVideoDocumentsDeletion } from '@/lib/inngest/triggers'
 import { supabase } from '@/lib/supabase/client'
 import { KnowledgeBaseHeader } from './knowledge-base-header'
 import { KnowledgeBasePreview } from './knowledge-base-preview'
@@ -105,7 +104,7 @@ export const KnowledgeBase = () => {
         description: `Removing ${count} video${count !== 1 ? 's' : ''} from your knowledge base`,
       })
 
-      // First, update status to PROCESSING for each video to provide UI feedback
+      // First, update status to PROCESSING for each video to provide immediate UI feedback
       await Promise.all(videoIds.map(async (videoId) => {
         const { error } = await supabase
           .from('videos')
@@ -118,22 +117,65 @@ export const KnowledgeBase = () => {
         }
       }))
 
-      // Send deletion events to Inngest for each video
-      await Promise.all(videoIds.map(videoId => 
-        triggerVideoDocumentsDeletion(videoId, user.id).catch(error => {
-          console.error('Failed to trigger deletion for video:', videoId, error)
+      // Call API route to trigger deletion events
+      const response = await fetch('/api/videos/delete', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ videoIds }),
+      })
+
+      const data = await response.json()
+
+      // Handle different response statuses
+      if (!response.ok) {
+        if (response.status === 401) {
           toast({
             title: 'Error',
-            description: `Failed to delete video ${videoId}. Please try again.`,
+            description: 'You must be logged in to delete videos',
             variant: 'destructive',
           })
-        })
-      ))
+          return
+        }
+        
+        if (response.status === 400) {
+          toast({
+            title: 'Error',
+            description: data.message || 'Invalid request. Please try again.',
+            variant: 'destructive',
+          })
+          return
+        }
 
-      // Show success toast
+        // 207 Partial Success or 500 Server Error
+        const successCount = data.triggered || 0
+        const failCount = data.failed || 0
+        
+        if (successCount > 0) {
+          toast({
+            title: 'Partial Success',
+            description: `Queued ${successCount} video${successCount !== 1 ? 's' : ''} for deletion. ${failCount} failed.`,
+          })
+          clearSelection()
+        } else {
+          toast({
+            title: 'Error',
+            description: 'Failed to delete videos. Please try again.',
+            variant: 'destructive',
+          })
+        }
+        
+        setIsDeleting(false)
+        setShowDeleteConfirm(false)
+        return
+      }
+
+      // Success - all events triggered successfully
+      const triggered = data.triggered || count
       toast({
         title: 'Success',
-        description: `Successfully deleted ${count} video${count !== 1 ? 's' : ''}`,
+        description: `Successfully queued ${triggered} video${triggered !== 1 ? 's' : ''} for deletion`,
       })
 
       // Clear selection
