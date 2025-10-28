@@ -6,7 +6,7 @@
  * Target: 500-800 tokens per chunk with 10% overlap between chunks.
  */
 
-import { TranscriptSegment, ProcessedTranscriptSegment } from './types'
+import { TranscriptSegment, ProcessedTranscriptSegment, ChunkLevel, TranscriptData } from './types'
 
 /**
  * Configuration for transcript chunking
@@ -20,6 +20,33 @@ export interface ChunkingConfig {
   maxTokens: number
   /** Overlap percentage between chunks (default: 0.1 for 10%) */
   overlapPercentage: number
+}
+
+/**
+ * Configuration for Level 2 (thematic) chunking based on video duration
+ */
+export interface Level2ChunkConfig {
+  /** Minimum chunk duration in seconds */
+  minChunkDuration: number
+  /** Maximum chunk duration in seconds */
+  maxChunkDuration: number
+  /** Target chunk duration in seconds */
+  targetChunkDuration: number
+}
+
+/**
+ * Helper function to create a Level 2 chunk configuration
+ */
+function createLevel2ChunkConfig(
+  minChunkDuration: number,
+  maxChunkDuration: number,
+  targetChunkDuration: number
+): Level2ChunkConfig {
+  return {
+    minChunkDuration,
+    maxChunkDuration,
+    targetChunkDuration,
+  }
 }
 
 /**
@@ -234,5 +261,199 @@ export function getChunkingStats(chunks: ProcessedTranscriptSegment[]): Chunking
     avgDurationPerChunk: durations.reduce((sum, dur) => sum + dur, 0) / chunks.length,
     minTokensPerChunk: Math.min(...tokenCounts),
     maxTokensPerChunk: Math.max(...tokenCounts),
+  }
+}
+
+/**
+ * Gets Level 2 chunking configuration based on video duration
+ * 
+ * Level 2 chunks are larger, thematic chunks (5-20 minutes) for broad overview queries.
+ * Only videos longer than 15 minutes get Level 2 chunks to avoid redundancy.
+ * 
+ * @param durationSeconds - Video duration in seconds
+ * @returns Level 2 chunk configuration or null if video is too short
+ */
+export function getLevel2ChunkConfig(durationSeconds: number): Level2ChunkConfig | null {
+  // Skip Level 2 chunking for videos shorter than 15 minutes
+  if (durationSeconds < 15 * 60) {
+    return null
+  }
+
+  // Adaptive chunking based on video length
+  if (durationSeconds <= 30 * 60) {
+    // 15-30 min videos: 2-4 minute chunks
+    return createLevel2ChunkConfig(120, 240, 180)
+  } else if (durationSeconds <= 60 * 60) {
+    // 30-60 min videos: 3-6 minute chunks
+    return createLevel2ChunkConfig(180, 360, 270)
+  } else if (durationSeconds <= 120 * 60) {
+    // 60-120 min videos: 5-10 minute chunks
+    return createLevel2ChunkConfig(300, 600, 450)
+  } else {
+    // 120+ min videos: 10-20 minute chunks
+    return createLevel2ChunkConfig(600, 1200, 900)
+  }
+}
+
+/**
+ * Result of hierarchical chunking containing both levels
+ */
+export interface HierarchicalChunkingResult {
+  /** Level 1 chunks: detailed 30-90 second chunks for precise retrieval */
+  level1Chunks: ProcessedTranscriptSegment[]
+  /** Level 2 chunks: thematic 5-20 minute chunks for broad overviews (only for videos > 15min) */
+  level2Chunks: ProcessedTranscriptSegment[]
+}
+
+/**
+ * Creates a Level 2 chunk from an array of Level 1 chunks
+ */
+function buildLevel2Chunk(
+  level1Chunks: ProcessedTranscriptSegment[],
+  chunkIndex: number,
+  userId: string,
+  videoId: string,
+  videoTitle: string
+): ProcessedTranscriptSegment {
+  const combinedText = level1Chunks.map(c => c.text).join(' ')
+  const start = level1Chunks[0].start
+  const end = level1Chunks[level1Chunks.length - 1].end
+  const duration = end - start
+
+  return {
+    text: combinedText,
+    start,
+    end,
+    duration,
+    userId,
+    videoId,
+    videoTitle,
+    language: level1Chunks[0].language,
+    segmentCount: level1Chunks.reduce((sum, c) => sum + (c.segmentCount || 1), 0),
+    chunkIndex,
+    chunkLevel: "2"
+  }
+}
+
+/**
+ * Creates Level 2 chunks by grouping Level 1 chunks based on duration targets
+ * Uses the provided configuration to determine chunk size boundaries.
+ * 
+ * @param level1Chunks - Level 1 chunks to group into Level 2 chunks
+ * @param config - Level 2 chunking configuration specifying duration ranges
+ * @param userId - User ID who owns this video
+ * @param videoId - YouTube video ID
+ * @param videoTitle - Title of the video
+ * @returns Array of Level 2 chunks
+ */
+function createLevel2Chunks(
+  level1Chunks: ProcessedTranscriptSegment[],
+  config: Level2ChunkConfig,
+  userId: string,
+  videoId: string,
+  videoTitle: string
+): ProcessedTranscriptSegment[] {
+  if (level1Chunks.length === 0) {
+    return []
+  }
+
+  const level2Chunks: ProcessedTranscriptSegment[] = []
+  let currentChunks: ProcessedTranscriptSegment[] = []
+  let currentDuration = 0
+
+  for (let i = 0; i < level1Chunks.length; i++) {
+    const chunk = level1Chunks[i]
+    const nextChunk = level1Chunks[i + 1]
+    
+    // Extract boolean conditions for clarity
+    const isLastChunk = i === level1Chunks.length - 1
+    const wouldExceedMax = currentDuration + chunk.duration > config.maxChunkDuration
+    const isAtTargetDuration = currentDuration >= config.targetChunkDuration
+    const addingNextWouldExceedMax = isAtTargetDuration && 
+      currentDuration + chunk.duration + (nextChunk?.duration || 0) > config.maxChunkDuration
+    
+    const shouldFinalizeBefore = isLastChunk || wouldExceedMax || addingNextWouldExceedMax
+
+    if (shouldFinalizeBefore && currentChunks.length > 0) {
+      // Finalize current Level 2 chunk
+      const level2Chunk = buildLevel2Chunk(
+        currentChunks,
+        level2Chunks.length,
+        userId,
+        videoId,
+        videoTitle
+      )
+      level2Chunks.push(level2Chunk)
+
+      // Reset for next Level 2 chunk
+      currentChunks = []
+      currentDuration = 0
+    }
+
+    // Add current chunk
+    currentChunks.push(chunk)
+    currentDuration += chunk.duration
+  }
+
+  return level2Chunks
+}
+
+/**
+ * Performs hierarchical chunking with two levels of granularity
+ * 
+ * This function implements a two-level chunking strategy:
+ * - Level 1: Detailed chunks (30-90 seconds) for precise retrieval of specific facts and timestamps
+ * - Level 2: Thematic chunks (5-20 minutes) for broad overview queries and general topics
+ * 
+ * Level 2 chunks are only created for videos longer than 15 minutes to avoid redundancy.
+ * Level 2 chunks are created by grouping Level 1 chunks based on duration targets.
+ * 
+ * @param transcriptData - Raw transcript data from YouTube
+ * @param userId - User ID who owns this video
+ * @param videoId - YouTube video ID
+ * @param videoTitle - Title of the video
+ * @param videoDuration - Video duration in seconds
+ * @param config - Optional chunking configuration (uses defaults if not provided)
+ * @returns Hierarchical chunking result with both levels
+ */
+export function chunkHierarchically(
+  transcriptData: TranscriptData,
+  userId: string,
+  videoId: string,
+  videoTitle: string,
+  videoDuration: number,
+  config: ChunkingConfig = DEFAULT_CHUNKING_CONFIG
+): HierarchicalChunkingResult {
+  // Always create Level 1 chunks using existing function
+  const level1Chunks = chunkTranscriptSegments(
+    transcriptData.transcript,
+    userId,
+    videoId,
+    videoTitle,
+    config
+  )
+
+  // Set chunkLevel for Level 1 chunks
+  level1Chunks.forEach(chunk => {
+    chunk.chunkLevel = "1"
+  })
+
+  // Conditionally create Level 2 chunks if video duration qualifies
+  const level2Config = getLevel2ChunkConfig(videoDuration)
+  let level2Chunks: ProcessedTranscriptSegment[] = []
+
+  if (level2Config) {
+    level2Chunks = createLevel2Chunks(
+      level1Chunks,
+      level2Config,
+      userId,
+      videoId,
+      videoTitle
+    )
+  }
+
+  return {
+    level1Chunks,
+    level2Chunks
   }
 }

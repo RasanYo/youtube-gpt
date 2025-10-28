@@ -22,6 +22,7 @@ export interface SearchVideosParams {
   userId: string
   videoIds?: string[] // If provided, only search in these specific videos
   limit?: number
+  chunkLevel?: "1" | "2" // Optional: filter by chunk level (1 for detailed, 2 for thematic)
 }
 
 /**
@@ -31,7 +32,7 @@ export interface SearchVideosParams {
  * @returns Array of search results with video metadata
  */
 export async function searchVideos(params: SearchVideosParams): Promise<SearchResult[]> {
-  const { query, userId, videoIds, limit = 20 } = params
+  const { query, userId, videoIds, limit = 20, chunkLevel } = params
   
   try {
     // Get or create user collection
@@ -40,14 +41,33 @@ export async function searchVideos(params: SearchVideosParams): Promise<SearchRe
     // Get ZeroEntropy client
     const client = getZeroEntropyClient()
     
-    // Build filter for specific videos if provided
+    // Build filter for specific videos and chunk level if provided
+    // ZeroEntropy requires using $and operator for multiple conditions
     let filter: Record<string, unknown> | undefined
-    if (videoIds && videoIds.length > 0) {
-      filter = {
-        videoId: {
-          $in: videoIds
-        }
+    
+    if (videoIds && videoIds.length > 0 || chunkLevel) {
+      const conditions: Array<Record<string, unknown>> = []
+      
+      if (videoIds && videoIds.length > 0) {
+        conditions.push({
+          videoId: {
+            $in: videoIds
+          }
+        })
       }
+      
+      // Add chunk level filter
+      if (chunkLevel) {
+        conditions.push({
+          chunkLevel: {
+            $eq: chunkLevel
+          }
+        })
+      }
+      
+      // If we have multiple conditions, wrap in $and operator
+      // If only one condition, use it directly
+      filter = conditions.length > 1 ? { $and: conditions } : conditions[0]
     }
     
     console.log(`[searchVideos] Searching for: "${query}" in collection: ${collectionName}`)
@@ -69,18 +89,24 @@ export async function searchVideos(params: SearchVideosParams): Promise<SearchRe
     // Transform results to our format
     const results: SearchResult[] = response.results.map(snippet => {
       // Extract video metadata from the document path
-      // Path format: "{videoId}-chunk{chunkIndex}" (new) or "{videoId}-{segmentIndex}" (legacy)
+      // Path format: "{videoId}-level{1|2}-chunk{N}" (hierarchical) or "{videoId}-chunk{N}" (legacy chunk) or "{videoId}-{N}" (legacy segment)
 
       let videoId: string
 
-      // Try to parse as chunk format first: videoId-chunk0, videoId-chunk1, etc.
-      const chunkMatch = snippet.path.match(/^(.+)-chunk(\d+)$/)
-      if (chunkMatch) {
-        videoId = chunkMatch[1]
+      // Try to parse as hierarchical format first: videoId-level1-chunk0, videoId-level2-chunk5, etc.
+      const hierarchicalMatch = snippet.path.match(/^(.+)-level([12])-chunk(\d+)$/)
+      if (hierarchicalMatch) {
+        videoId = hierarchicalMatch[1]
       } else {
-        // Fall back to legacy segment format: videoId-0, videoId-1, etc.
-        const pathParts = snippet.path.split('-')
-        videoId = pathParts.slice(0, -1).join('-') // Handle video IDs with dashes
+        // Try legacy chunk format: videoId-chunk0, videoId-chunk1, etc.
+        const chunkMatch = snippet.path.match(/^(.+)-chunk(\d+)$/)
+        if (chunkMatch) {
+          videoId = chunkMatch[1]
+        } else {
+          // Fall back to legacy segment format: videoId-0, videoId-1, etc.
+          const pathParts = snippet.path.split('-')
+          videoId = pathParts.slice(0, -1).join('-') // Handle video IDs with dashes
+        }
       }
 
       // Get document metadata for this snippet
