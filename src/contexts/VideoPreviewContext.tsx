@@ -1,7 +1,7 @@
 'use client'
 
 import { createContext, useContext, useState, useCallback, useRef } from 'react'
-import { useVideos } from '@/hooks/useVideos'
+import { useVideos } from '@/contexts/VideosContext'
 import { useToast } from '@/hooks/use-toast'
 
 /**
