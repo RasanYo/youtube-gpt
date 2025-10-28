@@ -26,10 +26,10 @@ export interface ChunkingConfig {
  * Default chunking configuration
  */
 export const DEFAULT_CHUNKING_CONFIG: ChunkingConfig = {
-  targetTokens: 600,
-  minTokens: 500,
-  maxTokens: 800,
-  overlapPercentage: 0.1,
+  targetTokens: 375,
+  minTokens: 250,
+  maxTokens: 500,
+  overlapPercentage: 0.20,
 }
 
 /**
