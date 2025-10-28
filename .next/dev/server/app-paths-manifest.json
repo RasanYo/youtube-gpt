@@ -1,4 +1,3 @@
 {
-  "/api/videos/delete/route": "app/api/videos/delete/route.js",
   "/page": "app/page.js"
 }
