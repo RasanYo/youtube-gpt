@@ -1,255 +1,321 @@
-# Video Deletion Fix - Implementation Plan
+# Implementation Plan: Fix Multiple Supabase Subscriptions
 
 ## 🧠 Context about Project
 
-**YouTube-GPT** is a full-stack AI-powered search application that helps users find information hidden inside hours of YouTube video content. Users can add individual videos or full channels to create a searchable personal knowledge base. The app uses Next.js 14 (App Router), Supabase for auth/database, ZeroEntropy for vector search, and Inngest for background job processing (transcription, embeddings generation). The application features a three-column ChatGPT-style interface with conversation history, real-time chat, and a knowledge base explorer.
-
-Currently, the system has a critical bug where video deletion functions work perfectly in local development but fail completely in Vercel production environment. This is blocking users from managing their knowledge base in production.
+YouTube-GPT is an AI-powered YouTube search application that allows users to build a searchable knowledge base from YouTube videos. Users can add individual videos or entire channels, and the system ingests transcripts using Inngest background jobs. The AI assistant can answer questions across the user's video library, with citation support including timestamps. The application uses Next.js 14 with App Router, Supabase for database and authentication, and features a three-column ChatGPT-style interface with conversation history, chat area, and knowledge base explorer.
 
 ## 🏗️ Context about Feature
 
-The video deletion feature is part of the knowledge base management system. When users select videos and trigger deletion, the system should:
-1. Update video status to PROCESSING (UI feedback)
-2. Trigger Inngest background job to delete documents from ZeroEntropy
-3. Delete videos from Supabase database
-4. Show success/error feedback to user
+The current implementation has a critical issue where `useVideos` hook is called from 3 different components (VideoPreviewContext, AuthenticatedChatArea, KnowledgeBase), creating 3 separate Supabase realtime subscriptions. This causes:
+- Resource waste (3 WebSocket connections instead of 1)
+- "Subscription closed" warnings in console when components unmount/remount
+- Potential race conditions with state updates
+- Database load from multiple queries
 
-**Problem:** Client-side code (`knowledge-base.tsx`) imports and calls `triggerVideoDocumentsDeletion` from `@/lib/inngest/triggers`. This function uses the Inngest client which requires `INNGEST_EVENT_KEY` environment variable. In production, this env var isn't available in the browser bundle, causing `inngest.send()` calls to fail silently or with errors. The Inngest client at `src/lib/inngest/client.ts` initializes with `process.env` values that don't exist in client-side code.
-
-**Architecture Pattern:** The project already uses server-side API routes for sensitive operations (see `src/app/api/chat/route.ts`). Server-side code runs in Node.js environment with full access to environment variables.
+The fix is to move the subscription management to a VideosContext provider, following the existing pattern used by VideoSelectionContext, VideoPreviewContext, and ConversationContext. This ensures a single subscription exists at the provider level and is shared across all consumers.
 
 ## 🎯 Feature Vision & Flow
 
-Users should be able to delete videos from their knowledge base seamlessly in both local and production environments. When they select videos and confirm deletion:
-1. Client sends POST request to `/api/videos/delete` with videoIds array
-2. Server-side API route validates authentication via Supabase
-3. API route triggers Inngest deletion events for each video using server-side Inngest client
-4. Inngest background function processes deletions asynchronously
-5. Client receives success/failure feedback immediately
-6. UI updates to reflect deletion status
-
-The key change is routing Inngest event triggers through server-side API instead of calling them directly from client components.
+After implementation:
+- Only ONE Supabase subscription exists per user session
+- All components that need videos data consume the same context
+- Subscription cleanup is managed centrally
+- No more "Subscription closed" warnings in console
+- Real-time video deletion updates work immediately
+- Better performance and resource efficiency
 
 ## 📋 Implementation Plan: Tasks & Subtasks
 
-### Phase 1: Create Server-Side Supabase Client Helper
-- [x] **Task 1.1:** Create `src/lib/supabase/server.ts` for server-side Supabase operations
-  - Create server-side client using `createServerClient` from `@supabase/ssr`
-  - Import `cookies` from `next/headers` for cookie management
-  - Configure cookie handlers (get, set, remove) for session management
-  - Export `createClient` function that returns authenticated Supabase client instance
-  - Add error handling for missing environment variables (NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY)
-  - Wrap cookie set/remove calls in try-catch for server component compatibility
-  - Reference: Next.js docs for Supabase SSR client setup
+### Task 1: Create VideosContext Provider
+**Goal**: Create a new context provider that manages videos state and Supabase subscription
 
-**Validation Criteria:**
-- ✅ Server client utility exists at `src/lib/supabase/server.ts`
-- ✅ Uses `createServerClient` from `@supabase/ssr` (not client-side createClient)
-- ✅ Properly handles cookies using Next.js cookies() helper
-- ✅ Test with Postman/curl to verify cookie-based auth works
-- ✅ Can instantiate client successfully in API route context
+#### Subtask 1.1: Create VideosContext file
+- [x] Create `src/contexts/VideosContext.tsx`
+- [x] Import necessary dependencies: `createContext`, `useContext`, `useState`, `useEffect`, `useRef`, `useCallback` from React
+- [x] Import `supabase` from `@/lib/supabase/client`
+- [x] Import `Video` type from `@/lib/supabase/types`
+- [x] Import `useAuth` from `@/contexts/AuthContext`
 
----
+#### Subtask 1.2: Define context interface and initial setup
+- [x] Define `VideosContextType` interface with: `videos: Video[]`, `isLoading: boolean`, `error: string | null`, `refetch: () => Promise<void>`
+- [x] Create context using `createContext<VideosContextType | undefined>(undefined)`
+- [x] Export `useVideos` hook that throws error if used outside provider
 
-### Phase 2: Create Video Deletion API Route
-- [x] **Task 2.1:** Create `src/app/api/videos/delete/route.ts` file structure
-  - Set up POST handler function
-  - Import Next.js Response utilities
-  - Add basic error handling structure
-  - Follow Next.js App Router API route conventions
+#### Subtask 1.3: Implement VideosProvider component
+- [x] Create `VideosProvider` function component with `{ children }: { children: React.ReactNode }` prop
+- [x] Initialize state: `videos`, `isLoading`, `error` using `useState`
+- [x] Get `user` from `useAuth()`
+- [x] Create refs: `channelRef` (for subscription channel) and `subscriptionRef` (boolean flag)
 
-- [x] **Task 2.2:** Implement request validation
-  - Validate request method (POST only)
-  - Parse and validate `videoIds` array from request body
-  - Verify videoIds is non-empty array
-  - Return 400 error for invalid requests
-  - Log validation errors for debugging
+#### Subtask 1.4: Implement fetchVideos function
+- [x] Create `fetchVideos` callback using `useCallback` with `user?.id` dependency
+- [x] Add guard clause: return early if no `user?.id`
+- [x] Set `isLoading(true)` and `error(null)` at start
+- [x] Query Supabase: `supabase.from('videos').select('*').eq('userId', user.id).order('createdAt', { ascending: false })`
+- [x] Handle errors: catch block should log error and set error message
+- [x] Update state: `setVideos(data || [])`
+- [x] Set `isLoading(false)` in finally block
 
-- [x] **Task 2.3:** Add authentication check using server client
-  - Import `createClient` from `@/lib/supabase/server`
-  - Create Supabase client instance: `const supabase = await createClient()`
-  - Call `supabase.auth.getUser()` to get authenticated user
-  - Return 401 Unauthorized if user is not authenticated or auth fails
-  - Extract userId from authenticated user object
-  - Log authentication failures for debugging
+#### Subtask 1.5: Implement subscription setup in useEffect
+- [x] Create `useEffect` with dependencies `[user?.id, fetchVideos]`
+- [x] Add guard: if no user, clear videos state and return
+- [x] Add guard: if `subscriptionRef.current` is true, log "already exists" and return
+- [x] Call `fetchVideos()` for initial load
+- [x] Set `subscriptionRef.current = true`
+- [x] Create unique channel name: `video-changes-${user.id}-${Date.now()}`
+- [x] Build channel using `supabase.channel(channelName).on('postgres_changes', ...)`
+- [x] Configure postgres_changes: event `'*'`, schema `'public'`, table `'videos'`, filter `userId=eq.${user.id}`
+- [x] Handle payload: INSERT (unshift new video), UPDATE (map and replace), DELETE (filter out)
+- [x] Subscribe with callback that handles SUBSCRIBED, CHANNEL_ERROR, CLOSED, TIMED_OUT statuses
+- [x] Store channel in `channelRef.current` only when SUBSCRIBED
 
-- [x] **Task 2.4:** Implement Inngest event triggering
-  - Import `triggerVideoDocumentsDeletion` from `@/lib/inngest/triggers`
-  - Loop through videoIds array
-  - Call `triggerVideoDocumentsDeletion(videoId, userId)` for each
-  - Use `Promise.allSettled()` to handle batch operations
-  - Track success/failure counts for each video
-  - Log triggering results
+#### Subtask 1.6: Implement cleanup function
+- [x] Return cleanup function from useEffect
+- [x] If `channelRef.current` exists, call `supabase.removeChannel(channelRef.current)`
+- [x] Set `channelRef.current = null`
+- [x] Set `subscriptionRef.current = false`
 
-- [x] **Task 2.5:** Add response handling
-  - Return JSON response with success status
-  - Include triggered count (successful events sent)
-  - Include failed count (events that couldn't be sent)
-  - Return 500 error if all events fail
-  - Return 207 (partial success) if some succeed and some fail
+#### Subtask 1.7: Implement refetch function and provider return
+- [x] Create `refetch` using `useCallback` that calls `fetchVideos()` with guard for `user?.id`
+- [x] Memoize context value with `{ videos, isLoading, error, refetch }`
+- [x] Return `VideosContext.Provider` with value and children
 
-**Validation Criteria:**
-- ✅ API route responds to POST requests at `/api/videos/delete`
-- ✅ Returns 401 for unauthenticated requests
-- ✅ Returns 400 for invalid/missing videoIds array
-- ✅ Successfully triggers Inngest events for authenticated users
-- ✅ Returns proper JSON response with success/failure counts
-- ✅ Test with cURL/Postman: unauthorized request returns 401
-- ✅ Test with valid auth: events appear in Inngest dashboard
+**Validation Criteria**:
+- [x] TypeScript compiles without errors
+- [x] No linter errors in new file
+- [x] Follows same pattern as VideoSelectionContext and VideoPreviewContext
 
 ---
 
-### Phase 3: Update Client Component
-- [x] **Task 3.1:** Remove direct Inngest import from knowledge-base.tsx
-  - Remove `import { triggerVideoDocumentsDeletion } from '@/lib/inngest/triggers'`
-  - Keep all other imports unchanged
-  - Verify no other direct Inngest client usage in component
+### Task 2: Integrate VideosContext into App Providers
+**Goal**: Add VideosProvider to the app provider hierarchy
 
-- [x] **Task 3.2:** Keep immediate UI feedback, then call API route
-  - Keep existing PROCESSING status update (lines 108-119) for immediate user feedback
-  - Add fetch call to POST `/api/videos/delete` endpoint with videoIds array
-  - Replace `triggerVideoDocumentsDeletion()` calls with this API fetch
-  - Send `{ videoIds: Array.from(selectedVideos) }` as request body
-  - Set Content-Type header to 'application/json'
-  - Keep the toast notification showing deletion progress
-  - This hybrid approach provides instant UI feedback while server handles actual deletion
+#### Subtask 2.1: Update providers.tsx
+- [x] Open `src/app/providers.tsx`
+- [x] Add import: `import { VideosProvider } from '@/contexts/VideosContext'`
+- [x] Wrap existing providers with `<VideosProvider>` after `<AuthProvider>` (order matters: Videos needs Auth)
+- [x] Ensure VideosProvider is before ConversationProvider in the hierarchy
 
-- [x] **Task 3.3:** Update error handling in handleDeleteVideos
-  - Keep existing try-catch structure
-  - Check `response.ok` status after fetch completes
-  - Parse error response body if request fails
-  - Show appropriate toast messages based on API response (401, 400, 500 errors)
-  - Log errors to console for debugging
-  - Handle both client-side and server-side failures gracefully
+#### Subtask 2.2: Verify provider order
+- [x] Confirm order is: QueryClientProvider > TooltipProvider > AuthProvider > VideosProvider > ConversationProvider > VideoSelectionProvider > VideoPreviewProvider
+- [x] This order ensures dependencies are available when contexts initialize
 
-- [x] **Task 3.4:** Update success feedback based on API response
-  - Parse API response JSON to get success/failure counts
-  - Show success toast with accurate count of videos successfully queued for deletion
-  - Show partial success message if some videos failed to queue
-  - Clear selection after successful API call (even if partial)
-  - Reset UI state (setIsDeleting(false), setShowDeleteConfirm(false))
-  - Handle cases where API returns success but some events failed to trigger
-
-**Validation Criteria:**
-- ✅ KnowledgeBase component no longer imports Inngest triggers
-- ✅ handleDeleteVideos calls `/api/videos/delete` API route
-- ✅ Error handling works for 401/400/500 responses
-- ✅ Success toast shows correct count of deleted videos
-- ✅ UI updates correctly (selection cleared, loading states)
-- ✅ Manual test in browser: delete videos and verify API is called
+**Validation Criteria**:
+- [x] App builds successfully
+- [x] Provider hierarchy follows dependency order (Auth before Videos)
+- [x] No circular dependency warnings
 
 ---
 
-### Phase 4: Testing & Verification
-- [ ] **Task 4.1:** Manual local testing
-  - Start dev server with `pnpm dev`
-  - Start Inngest dev server with `npx inngest-cli dev`
-  - Test video deletion in local environment
-  - Verify events appear in Inngest dev dashboard
-  - Verify Inngest function executes successfully
-  - Check Supabase database for deleted records
-  - Check ZeroEntropy for deleted documents
+### Task 3: Update Components to Use VideosContext
+**Goal**: Replace direct useVideos imports with context consumption
 
-- [ ] **Task 4.2:** Manual production testing
-  - Deploy to Vercel (push to main branch)
-  - Test video deletion in production environment
-  - Verify events appear in Inngest cloud dashboard
-  - Verify Inngest function executes in cloud
-  - Check production Supabase for deleted records
-  - Monitor Vercel logs for any errors
-  - Check Inngest dashboard for function execution logs
+#### Subtask 3.1: Update VideoPreviewContext.tsx
+- [x] Open `src/contexts/VideoPreviewContext.tsx`
+- [x] Replace import: change `from '@/hooks/useVideos'` to `from '@/contexts/VideosContext'`
+- [x] No other changes needed - component already calls `useVideos()` which now comes from context
 
-- [ ] **Task 4.3:** Edge case testing
-  - Test deletion with single video
-  - Test deletion with multiple videos (batch)
-  - Test deletion when user is not authenticated
-  - Test deletion with invalid videoIds array
-  - Test deletion when network fails
-  - Test concurrent deletion requests
-  - Verify RLS policies still work (users can only delete own videos)
+**Validation Criteria**:
+- [x] VideoPreviewContext still works correctly
+- [x] Videos are available for preview functionality
+- [x] No console errors
 
-- [ ] **Task 4.4:** Verify existing functionality still works
-  - Test video ingestion still works
-  - Test video processing pipeline
-  - Test chat functionality
-  - Test knowledge base search
-  - Test conversation history
-  - Verify no regressions in other features
+#### Subtask 3.2: Update AuthenticatedChatArea.tsx
+- [x] Open `src/components/chat/authenticated-chat-area.tsx`
+- [x] Replace import: change `from '@/hooks/useVideos'` to `from '@/contexts/VideosContext'`
+- [x] No other changes needed - component uses videos for VideoScopeBar
 
-**Validation Criteria:**
-- ✅ Video deletion works in local dev environment
-- ✅ Video deletion works in Vercel production environment
-- ✅ Events are successfully triggered to Inngest cloud
-- ✅ Background functions execute and delete data correctly
-- ✅ All edge cases handled gracefully
-- ✅ No regressions in other functionality
-- ✅ Production logs show successful API calls and Inngest triggers
+**Validation Criteria**:
+- [x] Chat area renders correctly
+- [x] VideoScopeBar shows videos
+- [x] No console errors
+
+#### Subtask 3.3: Update KnowledgeBase.tsx
+- [x] Open `src/components/knowledge-base/knowledge-base.tsx`
+- [x] Replace import: change `from '@/hooks/useVideos'` to `from '@/contexts/VideosContext'`
+- [x] No other changes needed - component displays videos in list
+
+**Validation Criteria**:
+- [x] Knowledge base renders correctly
+- [x] Video list shows videos
+- [x] No console errors
+
+**Validation Criteria for Task 3**:
+- [x] All three components successfully use VideosContext
+- [x] No TypeScript errors
+- [x] Import paths updated correctly
 
 ---
 
-### Phase 5: Code Quality & Documentation
-- [x] **Task 5.1:** Add code comments and JSDoc
-  - Document API route handler with JSDoc
-  - Add comments explaining authentication flow
-  - Add comments explaining batch deletion logic
-  - Document response format and error codes
-  - Reference existing code style patterns
+### Task 4: Remove or Deprecate Old useVideos Hook
+**Goal**: Clean up the old hook file
 
-- [x] **Task 5.2:** Update relevant documentation
-  - Update README if API route creation needed clarification
-  - Document the fix in architecture notes
-  - Add troubleshooting note about client vs server Inngest usage
-  - Update inline comments in knowledge-base.tsx if needed
+#### Subtask 4.1: Decide on approach
+- [x] Option A (Recommended): Delete `src/hooks/useVideos.ts` entirely
+- [ ] Option B (Temporary compatibility): Keep as thin re-export that throws deprecation warning
 
-- [x] **Task 5.3:** Clean up any temporary/debug code
-  - Remove any console.log statements added for debugging
-  - Remove any commented out code
-  - Ensure consistent error logging patterns
-  - Verify code follows project conventions (kebab-case, etc.)
+#### Subtask 4.2: Execute chosen approach
+- [x] If Option A: Delete the file completely
+- [ ] If Option B: Replace content with `export { useVideos } from '@/contexts/VideosContext'` and add deprecation comment
 
-**Validation Criteria:**
-- ✅ All code is well-documented with JSDoc
-- ✅ Comments explain architecture decisions
-- ✅ README/docs updated with relevant information
-- ✅ No debug code or console.logs in production code
-- ✅ Code follows project conventions and style guide
+**Validation Criteria**:
+- [x] Build succeeds without missing imports
+- [x] No references to old hook implementation
+- [x] All imports resolve to new location
 
 ---
 
-## 🔍 Testing Strategy Summary
+### Task 5: Add Tests for VideosContext
+**Goal**: Create comprehensive tests for the new context
 
-**Local Testing:**
-- Start Inngest dev server alongside Next.js dev server
-- Monitor Inngest dev dashboard for events
-- Check Supabase local database for data changes
-- Verify ZeroEntropy documents are deleted
+#### Subtask 5.1: Create test file structure
+- [ ] Create `tests/unit/contexts/VideosContext.test.tsx`
+- [ ] Import testing utilities: `render`, `screen`, `waitFor` from `@testing-library/react`
+- [ ] Import `VideosProvider`, `useVideos` from context
+- [ ] Import `supabase` client for mocking
 
-**Production Testing:**
-- Deploy to Vercel
-- Monitor Inngest cloud dashboard
-- Check production Supabase database
-- Verify Vercel logs show successful API calls
-- Test authentication flow works in production
+#### Subtask 5.2: Set up mocks
+- [ ] Mock Supabase client: `jest.mock('@/lib/supabase/client')`
+- [ ] Mock `supabase.from().select()`, `supabase.channel()`, `supabase.removeChannel`
+- [ ] Mock auth: create mock `useAuth` hook
+- [ ] Get references to all mocked functions
 
-**Test Scenarios:**
-1. Single video deletion
-2. Batch video deletion (multiple videos)
-3. Unauthenticated request (should return 401)
-4. Invalid request (missing videoIds - should return 400)
-5. Network failure handling
-6. Partial failure (some events succeed, some fail)
-7. Verify RLS policies enforced
+#### Subtask 5.3: Write provider render tests
+- [ ] Test: Provider renders children correctly
+- [ ] Test: Throws error when useVideos called outside provider
+- [ ] Test: Initial state shows loading = true
 
-## 📝 Notes
+**Validation Criteria**:
+- [ ] Tests pass for basic provider functionality
+- [ ] Error handling works correctly
 
-- **Key Architectural Change:** Moving from client-side Inngest trigger calls to server-side API route pattern (similar to `/api/chat/route.ts`)
-- **Auth Pattern:** Using Supabase SSR client with cookies - instantiate client in API route using `createClient()` from `@/lib/supabase/server`
-- **Client-Side Fix:** Updated `src/lib/supabase/client.ts` to use `createBrowserClient` from `@supabase/ssr` instead of `createClient` from `@supabase/supabase-js`. This ensures cookie-based authentication works seamlessly between client components and server-side API routes.
-- **Hybrid UI Approach:** Keep immediate PROCESSING status update on client for UX, but route actual deletion through API route for Vercel compatibility
-- **Error Handling:** Maintain existing UI feedback patterns (toasts, loading states) while adding proper HTTP error responses from API route
-- **Backwards Compatibility:** Inngest function signature remains unchanged (videoId, userId)
-- **No Breaking Changes:** Existing Inngest functions (`deleteVideoDocuments`) don't need modification
-- **Performance:** Batch deletion using Promise.allSettled() in API route is efficient for multiple videos
-- **Security:** Authentication enforced at API route level prevents unauthorized deletions via RLS policies
-- **Vercel Requirements:** Ensure `INNGEST_EVENT_KEY` and `INNGEST_SIGNING_KEY` are set in Vercel environment variables before deployment
+#### Subtask 5.4: Write data fetching tests
+- [ ] Test: Fetch calls Supabase with correct query
+- [ ] Test: Sets videos state when fetch succeeds
+- [ ] Test: Sets error state when fetch fails
+- [ ] Test: Sets loading false after fetch completes
+
+**Validation Criteria**:
+- [ ] All fetch scenarios covered
+- [ ] Error states handled correctly
+
+#### Subtask 5.5: Write subscription tests
+- [ ] Test: Creates subscription when user logs in
+- [ ] Test: Only creates one subscription (prevents duplicates)
+- [ ] Test: INSERT event adds video to array
+- [ ] Test: UPDATE event modifies existing video
+- [ ] Test: DELETE event removes video from array
+
+**Validation Criteria**:
+- [ ] All realtime event types tested
+- [ ] Subscription singleton enforced
+- [ ] State updates correctly
+
+#### Subtask 5.6: Write cleanup tests
+- [ ] Test: Unsubscribes on component unmount
+- [ ] Test: Clears videos when user logs out
+- [ ] Test: Calls removeChannel on cleanup
+
+**Validation Criteria**:
+- [ ] No memory leaks
+- [ ] Cleanup happens on all exit paths
+
+**Validation Criteria for Task 5**:
+- [ ] All tests pass: `pnpm test tests/unit/contexts/VideosContext.test.tsx`
+- [ ] Coverage above 80% for VideosContext.tsx
+- [ ] Tests follow same pattern as AuthContext.test.tsx
+
+---
+
+### Task 6: Integration Testing
+**Goal**: Verify the entire system works with new context
+
+#### Subtask 6.1: Test with all consumers
+- [ ] Start dev server: `pnpm dev`
+- [ ] Log in as test user
+- [ ] Verify Knowledge Base shows videos
+- [ ] Verify Chat Area VideoScopeBar works
+- [ ] Verify VideoPreview works
+
+#### Subtask 6.2: Test realtime deletion
+- [ ] Add a test video to knowledge base
+- [ ] Open browser console
+- [ ] Verify only ONE "Successfully subscribed" log appears (not three)
+- [ ] Delete the test video
+- [ ] Verify video disappears immediately without page reload
+- [ ] Verify no "Subscription closed" warnings appear
+- [ ] Check Network tab: should show only 1 WebSocket connection
+
+#### Subtask 6.3: Test multiple component access
+- [ ] Have videos visible in knowledge base
+- [ ] Use them in chat area with VideoScopeBar
+- [ ] Open video preview from citation
+- [ ] Verify all three components show same videos (synced state)
+
+#### Subtask 6.4: Test subscription lifecycle
+- [ ] Open browser console
+- [ ] Log in - verify "Successfully subscribed" appears once
+- [ ] Navigate through app - no additional subscriptions
+- [ ] Log out - verify subscription closes cleanly
+- [ ] No warnings in console
+
+**Validation Criteria for Task 6**:
+- [ ] Only 1 subscription exists (check console logs)
+- [ ] Real-time deletion works
+- [ ] No "Subscription closed" warnings during normal use
+- [ ] All three components access same data
+- [ ] Manual testing covers all user flows
+
+---
+
+### Task 7: Performance Validation
+**Goal**: Verify improvements in performance and resource usage
+
+#### Subtask 7.1: Measure WebSocket connections
+- [ ] Open Chrome DevTools > Network tab > WS filter
+- [ ] Refresh page and log in
+- [ ] Count WebSocket connections - should be only 1-2 (auth + videos)
+- [ ] Before fix: should have seen 4 connections (auth + 3 video subscriptions)
+
+#### Subtask 7.2: Measure database queries
+- [ ] Open Supabase dashboard > Logs
+- [ ] Monitor query count during initial load
+- [ ] Should only see 1 SELECT query for videos (not 3)
+- [ ] Real-time events should trigger once (not 3 times)
+
+#### Subtask 7.3: Memory leak check
+- [ ] Use React DevTools Profiler
+- [ ] Record during mount/unmount cycles
+- [ ] Verify VideosContext doesn't cause memory leaks
+- [ ] Subscription should cleanup properly
+
+**Validation Criteria for Task 7**:
+- [ ] WebSocket connections reduced by 66% (4 → 1-2)
+- [ ] Database queries reduced by 66% (3 → 1)
+- [ ] No memory leaks in React DevTools
+- [ ] Performance metrics improved
+
+---
+
+## ✅ Final Acceptance Criteria
+
+**All tasks complete when**:
+1. [x] VideosContext created and follows existing patterns
+2. [x] Integrated into app providers
+3. [x] All three components updated to use context
+4. [x] Old hook removed or deprecated
+5. [ ] Tests written and passing (coverage > 80%)
+6. [ ] Integration tests pass
+7. [ ] Only ONE Supabase subscription exists
+8. [ ] Real-time video deletion works immediately
+9. [ ] No "Subscription closed" warnings in console
+10. [ ] Performance improvements validated
+11. [ ] No regression in existing functionality
+
+**Success Metrics**:
+- Console warnings eliminated
+- Network connections reduced by 66%
+- Real-time updates work flawlessly
+- All tests passing
+- No breaking changes
 
