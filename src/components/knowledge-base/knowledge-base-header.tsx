@@ -1,6 +1,6 @@
 'use client'
 
-import { ChevronRight, ChevronLeft, Folder, Trash2, Loader2 } from 'lucide-react'
+import { ChevronRight, ChevronLeft, Folder, Trash2, Loader2, CheckSquare, Square } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   AlertDialog,
@@ -22,6 +22,8 @@ interface KnowledgeBaseHeaderProps {
   showDialog: boolean
   onOpenDialog: () => void
   onCloseDialog: () => void
+  totalVideos: number
+  onSelectAll: () => void
 }
 
 export const KnowledgeBaseHeader = ({
@@ -33,8 +35,15 @@ export const KnowledgeBaseHeader = ({
   showDialog,
   onOpenDialog,
   onCloseDialog,
+  totalVideos,
+  onSelectAll,
 }: KnowledgeBaseHeaderProps) => {
   const selectedCount = selectedVideos.size
+  const allSelected = selectedVideos.size === totalVideos && totalVideos > 0
+
+  const handleSelectAll = () => {
+    onSelectAll()
+  }
 
   return (
     <div className="flex h-14 items-center border-b px-4">
@@ -42,6 +51,19 @@ export const KnowledgeBaseHeader = ({
         <>
           <h2 className="text-sm font-semibold">Knowledge Base</h2>
           <div className="flex items-center gap-2 ml-auto">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleSelectAll}
+              disabled={totalVideos === 0}
+              title={allSelected ? 'Deselect all videos' : 'Select all videos'}
+            >
+              {allSelected ? (
+                <CheckSquare className="h-4 w-4" />
+              ) : (
+                <Square className="h-4 w-4" />
+              )}
+            </Button>
             <AlertDialog open={showDialog} onOpenChange={onCloseDialog}>
               <Button
                 variant="ghost"
