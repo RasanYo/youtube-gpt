@@ -120,45 +120,6 @@ LANGFUSE_PUBLIC_KEY=pk-lf-...
 LANGFUSE_HOST=https://cloud.langfuse.com
 ```
 
-**How to get credentials:**
-
-1. **Supabase:**
-   - Go to your Supabase project dashboard
-   - Navigate to Project Settings > API
-   - Copy the Project URL and anon/public key
-   - Get database password from Project Settings > Database > Connection String
-
-2. **YouTube Data API:**
-   - Go to [Google Cloud Console](https://console.cloud.google.com/)
-   - Create a new project or select existing
-   - Enable YouTube Data API v3
-   - Create credentials (API Key)
-   - Copy the API key
-
-3. **Anthropic:**
-   - Go to [Anthropic Console](https://console.anthropic.com/)
-   - Create an API key
-   - Copy the key (starts with `sk-ant-`)
-
-4. **ZeroEntropy:**
-   - Sign up at [zeroentropy.dev](https://zeroentropy.dev)
-   - Get your API key from dashboard
-   - Base URL is typically `https://api.zeroentropy.dev`
-
-5. **Supadata:**
-   - Sign up at [supadata.dev](https://supadata.dev)
-   - Get your API key from dashboard
-   - Used for extracting YouTube transcripts
-
-6. **Inngest:**
-   - Sign up at [inngest.com](https://inngest.com)
-   - Create a new app
-   - Copy Event Key and Signing Key from settings
-
-7. **Langfuse (Optional):**
-   - Sign up at [cloud.langfuse.com](https://cloud.langfuse.com)
-   - Get your secret and public keys from settings
-
 #### 3. Set up Supabase Database
 
 **Option A: Using Supabase Dashboard (Recommended)**
@@ -187,7 +148,7 @@ npx supabase gen types typescript --linked > src/lib/supabase/types.ts
 ```
 
 The database schema includes:
-- **videos** table - Tracks ingested YouTube videos with processing status (PENDING, QUEUED, PROCESSING, READY, FAILED)
+- **videos** table - Tracks ingested YouTube videos with processing status (PENDING, QUEUED, PROCESSING, TRANSCRIPT_EXTRACTING, ZEROENTROPY_INDEXING, READY, FAILED)
 - **conversations** table - Stores chat sessions
 - **messages** table - Stores conversation messages with citations
 - RLS (Row Level Security) policies for multi-tenant data isolation
@@ -195,12 +156,10 @@ The database schema includes:
 
 #### 4. Start Development Servers
 
-You need to run two servers simultaneously:
-
 **Terminal 1: Next.js Development Server**
 
 ```bash
-pnpm run dev
+pnpm dev
 ```
 
 The app will be available at `http://localhost:8080`
@@ -208,28 +167,11 @@ The app will be available at `http://localhost:8080`
 **Terminal 2: Inngest Development Server** (optional: for local testing purposes)
 
 ```bash
-npx inngest-cli dev
+pnpm run dev:inngest
+# Visit http://localhost:8288 for the Inngest Dev server
 ```
 
-This runs the Inngest dev server for background job processing (video transcription, embedding generation).
-
-#### 5. Deploy to Production (Vercel)
-
-Push to `main` branch
-
-Don't forget to add all environment variables in the Vercel project settings!
-
-### Setup Checklist
-
-- [ ] Node.js 18+ installed
-- [ ] pnpm package manager installed
-- [ ] Supabase account created
-- [ ] Environment variables configured in `.env.local`
-- [ ] Dependencies installed (`pnpm install`)
-- [ ] Database migrations applied (via Supabase SQL editor)
-- [ ] Dev server running (`pnpm run dev`)
-- [ ] Inngest dev server running (`npx inngest-cli dev`)
-- [ ] App accessible at `http://localhost:8080`
+This runs the Inngest dev server for background job processing (video transcription, embedding generation, video deletions).
 
 ## Architecture Diagram
 
@@ -304,19 +246,14 @@ Don't forget to add all environment variables in the Vercel project settings!
 2. **Detection**: Server Action detects URL type:
    - Video URL → Single video to process
    - Channel URL → Fetch latest 10 videos
-3. **Metadata Fetch**: Supabase Edge Function calls YouTube Data API to get:
-   - Video title
-   - Thumbnail URL
-   - Channel name
-   - Duration
-4. **Database Update**: Create video record with status `PENDING`
-5. **Status Update**: Update status to `QUEUED` after metadata fetch
-6. **Inngest Trigger**: Trigger `video.transcript.processing.requested` event
-7. **Background Processing**:
-   - Status: `QUEUED` → `PROCESSING`
-   - Extract transcript using `youtube-transcript` package
-   - Status: `PROCESSING` → `TRANSCRIPT_EXTRACTING`
-   - Chunk transcript into 30-second segments
+3. **Database Update**: Create video record with status `PENDING`
+4. **Metadata Fetch**: Supabase Edge Function calls YouTube Data API to get video metadata (status `PENDING` → `QUEUED`)
+5. **Inngest Trigger**: Trigger `video.transcript.processing.requested` event (status `QUEUED` → `PROCESSING`)
+7. **Inngest Background Processing**:
+   - Extract transcript using `youtube-transcript` package (status `PROCESSING` → `TRANSCRIPT_EXTRACTING`)
+   - Hiearchical chunking of transcript:
+       - Level 1: 30-90 sec segments (for precise information pinpointing)
+       - Level 2: Segment size proportional to video size
    - Status: `TRANSCRIPT_EXTRACTING` → `INDEXING`
    - Generate embeddings for each chunk via ZeroEntropy
    - Store chunks in user's ZeroEntropy collection
