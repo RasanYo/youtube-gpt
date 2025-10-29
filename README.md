@@ -126,10 +126,7 @@ LANGFUSE_HOST=https://cloud.langfuse.com
 
 1. Go to your Supabase project dashboard
 2. Navigate to SQL Editor
-3. Run the migration files from `supabase/migrations/`:
-   - `20251023170117_init_base_tables.sql`
-   - `20251024090804_add_pending_video_status.sql`
-   - `20251024090940_set_pending_as_default_video_status.sql`
+3. Run the migration file from `supabase/migrations/init_database.sql`
 
 **Option B: Using Supabase CLI (Local Development)**
 
@@ -176,66 +173,97 @@ This runs the Inngest dev server for background job processing (video transcript
 ## Architecture Diagram
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                         Browser                             │
-│                        (Next.js)                            │
+┌──────────────────────────────────────────────────────────┐
+│                         Browser                          │
+│                        (Next.js)                         │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐    │
 │  │ Conversation │  │  Chat Area   │  │ Knowledge    │    │
 │  │   Sidebar    │  │              │  │  Base        │    │
 │  └──────────────┘  └──────────────┘  └──────────────┘    │
-└────────────┬──────────────────────────────────────────────┘
+└────────────┬─────────────────────────────────────────────┘
              │
-             ├── HTTP/SSE ───────────────────┐
+             ├── HTTP/SSE ─────────────────────┐
              │                                 │
-             │                         ┌──────▼─────────┐
-             │                         │  Supabase    │
-             │                         │   (Auth + DB) │
-             │                         │   Realtime    │
-             │                         └──────┬─────────┘
+             │                         ┌───────▼────────┐
+             │                         │  Supabase      │
+             │                         │   (Auth + DB)  │
+             │                         │   Realtime     │
+             │                         └───────┬────────┘
              │                                 │
              ▼                                 │
-    ┌─────────────────────────────────────┐   │
-    │   Next.js App Router (Server)      │   │
-    │                                     │   │
-    │   ┌─────────────────────────┐      │   │
-    │   │   Server Actions         │      │   │
-    │   │   - addYouTubeContent    │      │   │
-    │   │   - getConversations     │      │   │
-    │   │   - createConversation   │      │   │
-    │   └─────────────────────────┘      │   │
-    │                                     │   │
-    │   ┌─────────────────────────┐      │   │
-    │   │   API Routes            │      │   │
-    │   │   - /api/chat           │      │   │
-    │   │   - /api/inngest        │      │   │
-    │   └─────────────────────────┘      │   │
-    └────────┬──────────────────────┬──────┘   │
-             │                     │          │
-             │                     ▼          │
-             │           ┌──────────────────┐ │
-             │           │  Inngest         │ │
-             │           │  (Background     │ │
-             │           │   Jobs)          │ │
-             │           └──────────────────┘ │
-             │                                │
-             ▼                                │
-┌────────────────────────┐    ┌─────────────▼───────────────┐
-│    YouTube Data API    │    │  ZeroEntropy                │
-│                        │    │  (Vector Search)            │
-│  - Fetch metadata      │    │                             │
-│  - Get channel videos  │    │  - Store embeddings         │
-└────────────────────────┘    │  - Semantic search         │
-                              │  - User collections         │
-                              └──────┬──────────────────────┘
-                                     │
-                              ┌──────▼──────────────┐
-                              │  Anthropic Claude   │
-                              │  (LLM)              │
-                              │                     │
-                              │  - Generates        │
-                              │    answers          │
-                              │  - Creates citations│
-                              └─────────────────────┘
+    ┌────────────────────────────────────┐     │
+    │   Next.js App Router (Server)      │     │
+    │                                    │     │
+    │   ┌─────────────────────────┐      │     │
+    │   │   API Routes            │      │     │
+    │   │   - /api/chat           │      │     │
+    │   │   - /api/inngest        │      │     │
+    │   │   - /api/generate-title │      │     │
+    │   └─────────────────────────┘      │     │
+    │                                    │     │
+    │   ┌─────────────────────────┐      │     │
+    │   │   Client Functions      │      │     │
+    │   │   - processYouTubeUrl() │      │     │
+    │   │     (lib/youtube/api.ts)│      │     │
+    │   └─────────────────────────┘      │     │
+    └────────┬──────────────────────┬────┘     │
+             │                      │          │
+             │ YouTube Ingestion    │ Chat     │
+             ▼                      ▼          ▼
+    ┌──────────────────┐   ┌──────────────────────────┐
+    │ Supabase Edge    │   │  /api/chat Route         │
+    │  Functions       │   │  (Next.js API)           │
+    │                  │   └──────────┬───────────────┘
+    │ - fetch-video-   │              │
+    │   metadata       │              │
+    │   (Deno runtime) │              ├──► Anthropic Claude
+    └───────┬──────────┘              │    (Via AI SDK)
+            │                         │
+            ├──► YouTube Data API     │    Tool Calls:
+            │    (Fetch metadata)     │    ├─ searchDetailed ───┐
+            │                         │    └─ searchThematic ───┤
+            ├──► Inngest Event        │                         │
+            │    (Trigger)            │                         │
+            │                         │                         │
+            └──► Supabase DB          │                         │
+                 (Update status)      │                         │
+                                      │                         │
+                                      │                         ▼
+                                      │              ┌────────────────────┐
+                                      │              │   ZeroEntropy      │
+                                      │              │  (Vector Search)   │
+                                      │              │                    │
+                                      │              │  - Store embeddings│
+                                      │              │  - Semantic search │
+                                      │              │  - User collections│
+                                      │              │                    │
+                                      │              │  (Called by Claude │
+                                      │              │   via tool calls)  │
+                                      │              └────────────────────┘
+                                      │
+                     ┌────────────────┘
+                     │
+                     ▼
+         ┌──────────────────────┐
+         │  Inngest Functions   │
+         │  (Background Jobs)   │
+         │                      │
+         │  - processVideo      │
+         │  - deleteVideoDocs   │
+         └──────────┬───────────┘
+                    │
+                    ├──► Supadata
+                    │    (Transcript extraction)
+                    │
+                    └──► ZeroEntropy
+                         (Index chunks)
+
+      ┌─────────────────────────────┐
+      │   Langfuse (Optional)       │
+      │   (Observability)           │
+      │   - Traces chat API         │
+      │   - Traces video processing │
+      └─────────────────────────────┘
 ```
 
 ### Data Flow
