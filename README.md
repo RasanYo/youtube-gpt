@@ -253,45 +253,36 @@ This runs the Inngest dev server for background job processing (video transcript
    - Extract transcript using `youtube-transcript` package (status `PROCESSING` → `TRANSCRIPT_EXTRACTING`)
    - Hiearchical chunking of transcript:
        - Level 1: 30-90 sec segments (for precise information pinpointing)
-       - Level 2: Segment size proportional to video size
-   - Status: `TRANSCRIPT_EXTRACTING` → `INDEXING`
-   - Generate embeddings for each chunk via ZeroEntropy
-   - Store chunks in user's ZeroEntropy collection
-   - Status: `INDEXING` → `READY`
+       - Level 2: Segment size proportional to video size (cf. [chunking.ts](src/lib/zeroentropy/chunking.ts) for more details)
+   - Create embeddings and store chunks in user's ZeroEntropy collection (status `TRANSCRIPT_EXTRACTING` → `ZEROENTROPY_INDEXING` → `READY` on success)
 8. **Real-time Update**: Frontend receives update via Supabase Realtime subscription
 9. **User Feedback**: Toast notification and UI update
 
 #### Chat Flow
 
-1. **User Query**: User types question in chat interface
-2. **Scope Detection**: Extract scope from request (all videos or selected subset)
-3. **Scope Filter**: If specific videos selected, pass `videoId` filter to search
-4. **Semantic Search**: Call ZeroEntropy to search user's collection:
-   - Query: User's question
-   - Filter: Video IDs (if scoped)
-   - Limit: Top 5 results
-   - Include metadata: Video title, timestamps, score
-5. **Context Building**: Format search results as context for Claude
-6. **LLM Call**: Send to Anthropic Claude with:
-   - System prompt (instructions for citations)
-   - Search results as context
-   - Conversation history
-   - User's question
-7. **Streaming Response**: Stream response back to frontend via SSE
+1. **User Query**: User types question in chat interface (and optionally a command, i.e `Summarize` or `Create Post`)
+2. **Scope Detection**: Extract scope from request (all videos by default or selected subset)
+3.1. **Request Transmission**: Transmit active conversation messages, scoped videoIds, and optional command to `/api/chat` route
+3.2 **User message saving**: In parallel, save user question to database. Frontend receives update via Supabase Realtime subscription and updates chat UI (cf. [useChatMessagePersistence](src/components/chat/use-chat-message-persistence.tsx))
+4. **AI response generation**: 
+   - If a command is selected, reformulate the user query usinng a command-specific prompt template
+   - AI calls knowledgebase-querying-tools
+   - Include video citation placeholders (video titles, timestamps)
+6. **Streaming Response**: Stream response back to frontend via SSE
 8. **Citation Parsing**: Parse citations from response using regex
 9. **Message Storage**: Save message to Supabase with:
    - Content
    - Role (user/assistant)
    - Conversation ID
    - Citations metadata
-10. **Display**: Render response with clickable citations
+10. **Display**: Render response with clickable citations and markdown format
 
 #### Scope Management
 
 - **Scope Types**:
   - `all`: Searches across all user's videos (default)
   - `selected`: Searches only within selected videos (passed as `videoIds` array)
-- **Scope Tracking**: Each conversation stores its scope in `conversationMetadata` JSON field
+- **Scope Tracking**: _(TODO — not yet implemented)_ Each conversation is intended to store its scope in `conversationMetadata`
 - **Scope Restoration**: When user clicks conversation in history, scope is restored automatically
 - **Visual Feedback**: Scope bar shows video chips when limited, "Reset to All" button to clear
 
@@ -303,8 +294,10 @@ The application uses ZeroEntropy for semantic search across video transcripts wi
 
 #### Collection Strategy
 
-- **Per-User Collections**: Each user has their own ZeroEntropy collection named `user-{userId}`
-- **Document Structure**: Each video transcript is split into 30-second chunks
+- **Per-User Collections**: Each user has their own ZeroEntropy collection named `user-{userId}-videos`
+- **Document Structure**: Hierarchical two-level chunking strategy:
+  - **Level 1 chunks**: 30-90 second segments for precise retrieval
+  - **Level 2 chunks**: Segment size proportional to video size (cf. [chunking.ts](src/lib/zeroentropy/chunking.ts) for more details)
 - **Metadata per Chunk**:
   ```json
   {
@@ -313,178 +306,84 @@ The application uses ZeroEntropy for semantic search across video transcripts wi
     "channelName": "Tech Talks",
     "startTime": 120.5,
     "endTime": 150.5,
-    "chunkIndex": 4
+    "chunkIndex": 4,
+    "chunkLevel": "1"
   }
   ```
 
 #### Search Implementation
 
-Located in `src/lib/search-videos.ts`:
+- **ZeroEntropy Vector Database**: The system uses ZeroEntropy's vector database to perform semantic searches across video transcripts. Each user has their own collection named `user-{userId}-videos` that is automatically created on first use, providing natural multi-tenant isolation.
 
-```typescript
-// Search with scoping support
-export async function searchVideos(params: SearchVideosParams): Promise<SearchResult[]> {
-  const { query, userId, videoIds, limit = 10 } = params
-  
-  // Get user's collection
-  const collectionName = await getOrCreateUserCollection(userId)
-  
-  // Build filter for specific videos if provided
-  let filter: Record<string, unknown> | undefined
-  if (videoIds && videoIds.length > 0) {
-    filter = {
-      videoId: {
-        $in: videoIds  // Only search in selected videos
-      }
-    }
-  }
-  
-  // Search ZeroEntropy collection
-  const response = await client.queries.topSnippets({
-    collection_name: collectionName,
-    query,
-    k: limit,
-    filter: filter || undefined,  // Apply scope filter
-    include_document_metadata: true,
-    precise_responses: true  // Get precise snippets (~200 chars)
-  })
-  
-  // Transform and return results with video metadata
-  return results
-}
-```
+- **Hierarchical Indexing**: When a video is ingested, its transcript is chunked hierarchically and indexed with metadata including video ID, video title, timestamps, and chunk level.
 
-#### Scoping Mechanism
+- **Two-Level Search Strategy**: The system provides two search tools to Claude, each targeting different chunk granularities:
+  - **searchDetailed**: Searches Level 1 chunks (30-90 second segments) for precise facts, timestamps, exact quotes, and detailed information
+  - **searchThematic**: Searches Level 2 chunks (5-20 minute sections) for broad overviews, main topics, themes, and high-level concepts
 
-**All Videos (Default)**:
-```typescript
-// No filter applied - searches entire collection
-searchVideos({ query: "pricing strategies", userId })
-```
+- **Search Process Flow**: 
+  - AI calls a search tool with the user's question
+  - System queries ZeroEntropy with filters for video scope (selected videos or all videos) and chunk level (1 or 2)
+  - ZeroEntropy returns top matching snippets ranked by relevance with scores and metadata
+  - Results are formatted with video titles, timestamps, and content excerpts
 
-**Selected Videos**:
-```typescript
-// Filter applied - only searches in selected videos
-searchVideos({ 
-  query: "remote work tips", 
-  userId,
-  videoIds: ["video1", "video2"]  // Scope to these videos only
-})
-```
+- **Scope Filtering**: 
+  - If conversation is scoped to specific videos, search only looks within those video IDs
+  - When no scope is set, search covers all videos in the user's collection
+  - Chunk level filter ensures detailed searches return precise segments, while thematic searches return broader sections
 
-#### Retrieval-Augmented Generation (RAG)
-
-The chat API uses AI SDK with tool calling:
-
-**Tool Definition** (`src/lib/tools/search-tool.ts`):
-```typescript
-export const searchTool = {
-  name: 'searchKnowledgeBase',
-  description: 'Search across videos for relevant content',
-  parameters: z.object({
-    query: z.string().describe('Search query'),
-    videoIds: z.array(z.string()).optional()
-  })
-}
-```
-
-**System Prompt** (instructs AI when to search):
-```typescript
-const systemPrompt = `You are Bravi AI, an intelligent assistant.
-
-You have access to a search tool. Use your judgment:
-- Questions about video content → Use search tool
-- General conversation → Respond directly
-
-When searching:
-1. Provide comprehensive answers
-2. Always include video citations with timestamps
-3. Format: [Video Title] (timestamp)`
-
-Example: Based on the videos, here are pricing strategies:
-1. Value-based pricing [Remote Work Video (3:45)]
-2. Competitive pricing [Team Mgmt Video (5:12)]
-```
-
-#### Citation Format
-
-Citations are automatically parsed from AI responses and made clickable:
-
-**Format**: `[Video Title] (timestamp)`
-
-**Example**: "Managing Remote Teams (2:34)"
-
-**Implementation** (`src/lib/citations/parser.ts`):
-- Regex pattern: `/\[([^\]]+)\] \((\d+):(\d+)\)/g`
-- Extracts video title and timestamp
-- Creates clickable links that open YouTube at specific timestamp
-- Renders as inline component with hover effects
+- **AI Tool Selection**: Claude decides which tool to use based on query type:
+  - Specific questions trigger detailed searches
+  - General overview questions trigger thematic searches
+  - Complex questions may cause Claude to use both tools sequentially for comprehensive coverage
 
 #### Visual Feedback
 
 When AI uses the search tool:
-- Shows "🔍 AI is searching your videos..." in chat
-- Updates status to "AI is thinking..."
-- Displays citation count when results found
+- Shows "Searching your videos..." or "Searching in detail..." in chat
 - Highlights citations in response
 
 ## Design Decisions & Trade-offs
 
+Many decisions were taken with the goal of advancing fast in the codebase. Refinements and optimizations were planned for further iterations rather than perfecting each decision upfront. Due to time constraints, iterative UX testing was limited.
+
 ### Architecture & Framework
 **Decision:** Built with Next.js 14 App Router
 - **Rationale:** Server-side rendering for better performance, built-in API routes, and React Server Components reduce client-side JavaScript. Server Actions provide type-safe server-side mutations without separate API files.
-- **Trade-off:** Generated initial interface with Lovable which works with Vite. Noticed quite late the limitations and complexity it brought, so huge time loss on battling against it and migrating to Next.js
+- **Trade-off:** Generated initial interface with Lovable which works uses only Vite. Noticed quite late the limitations and complexity it brought, so huge time loss trying to implement SSR and migrating to Next.js
 
-**Decision:** Three-column ChatGPT-style interface
-- **Rationale:** Familiar UX pattern users already understand, allows simultaneous view of history, chat, and knowledge base
+**Decision:** Multiple specific Context Providers
+- **Rationale:** Separating providers by use and functionality. Easier debugging, file simplicity, granulare re-rendering on specific context change
+- **Tradeoff:** Intercontext dependencies (ConversationProvider depends on AuthProvider), changing order can lead to bugs
+
 
 ### Technology Stack Choices
-**Decision:** Supabase for auth, database, and real-time
-- **Rationale:** All-in-one solution reduces infrastructure complexity, built-in RLS for multi-tenant security, real-time subscriptions for live updates. Also a requirement for this Task
-
-**Decision:** ZeroEntropy for vector search
-- **Rationale:** Managed service with per-user collections, automatic scaling, simple API, handles embeddings internally. Requirement for this task.
-- **Trade-off** New tool for me, small learning curbe
-
-**Decision:** Inngest for background jobs
-- **Rationale:** Durable event-driven architecture, built-in retries, visual debugging dashboard, automatic status tracking
-- **Trade-off:** Another service to manage and also new to me. Initial hard time syncing with application, leading to consequent time loss. Eventually very intuitive.
+**Decision:** Omitted Prisma ORM, using Supabase auto-generated types directly
+- **Rationale:** Initially stuck with Vite (no SSR), Prisma didn't work, so switched to Supabase's auto-generated TypeScript types to advance quickly.
+- **Trade-off:** Database modifications require manual SQL scripts, then semi-automatic code adaptation, instead of Prisma's migration workflow.
 
 **Decision:** Supadata for transcript extraction
 - **Rationale:** `youtube-transcript` was not working in deployed environment. Only worked on local Node.js server. Issue notices by community and never fixed
 - **Trade-off:** Priced API and took some time finding an alternative for `youtube-transcript`
 
-### Scope Management
-**Decision:** Conversation-level scope tracking
-- **Rationale:** Users can restore conversations with their exact video context preserved, maintains conversation continuity
-- **Trade-off:** Additional database storage for scope metadata vs simpler application-level state
-
-**Decision:** Two modes: "All videos" vs "Selected videos" with tool based search function
-- **Rationale:** Flexibility to search broad or narrow, allows users to progressively refine context, intuitive UX
-- **Trade-off:** Sometimes performs a lot of consequent search, leading to higher response time, but for more qualititave result.
-
-
 ### Citation Strategy
-**Decision:** Format: `[Video Title] (timestamp)` with clickable links
-- **Rationale:** Clear source attribution, direct navigation to exact moments in videos, familiar notation and comfortable flow
-- **Trade-off:** Additional parsing logic to extract citations from AI responses vs structured output format.
-
-**Decision:** Automatic citation detection via regex
+**Decision:** Automatic citation detection in AI response via regex
 - **Rationale:** Works with any LLM output format without forcing structured responses, robust fallback parsing
 - **Trade-off:** Regex maintenance for edge cases vs formal schema-based citations. Imprecise LLM formatting in the output can cause bad referencing.
 
 ### Chunking Strategy
-**Decision:** 3-minute video transcript chunks
-- **Rationale:** Balance between context size and precision, optimal for semantic search, good match for video segments
-- **Trade-off:** May miss context spanning chunks vs longer chunks with less precision. Video referencing off by a couple seconds or minutes based on query sometimes, but has better context for grounded response.
+**Decision:** Hierarchical two-level chunking
+- **Rationale:** Level 1 chunks enable precise timestamp retrieval for specific facts and quotes, while Level 2 chunks capture thematic overviews for broad questions. This dual granularity allows the AI to choose appropriate search depth based on query intent—detailed questions use Level 1, overview questions use Level 2.
+- **Trade-off:** Duplicate information is stored in the vector store since Level 2 chunks are created by grouping Level 1 chunks, meaning the same content exists at both granularities. This increases storage costs and indexing time, but enables more effective semantic search by matching chunk size to query type.
 
-### Real-time Communication
-**Decision:** Server-Sent Events (SSE) for streaming AI responses
-- **Rationale:** Simpler than WebSockets, works reliably behind firewalls/proxies, one-way communication sufficient for streaming responses
+**Decision:** Custom chunking implementation instead of ZeroEntropy's built-in semantic chunking
+- **Rationale:** Custom chunking allows full control over chunk metadata and embedding timestamps directly in metadata. Embedding timestamps in text content instead of metadata could potentially degrade RAG quality, though this remains hypothetical and untested. Unsure about LLM timestamp extraction quality
+- **Trade-off:** Increased code complexity and maintenance burden. We don't benefit from ZeroEntropy's built-in and refined semantic chunking algorithms that may better preserve semantic meaning across chunk boundaries.
 
 ### User Experience
-**Decision:** Show processing status in real-time with visual indicators
-- **Rationale:** Transparent feedback keeps users informed during long-running operations (video ingestion can take minutes)
+**Decision:** Going for ChatGPT similar flow
+- **Rationale:** Reduced user friction
+- **Tradeoff:** User feedback needed to evaluate if it is actually coherent with our use cases.
 
 ## AI Assistant Coding Flow
 
@@ -574,11 +473,12 @@ The project now follows this iterative, context-rich flow:
 ### Key Principles Learned
 
 1. **Context is King:** Always provide rich context (docs, code structure, requirements). Using multiple library/task specific chats to refine the implementation plan was a game changer to make sure that libraries are implemented correctly. Initially had to fight myself against he wrong implementations of the AIs
-2. **Iterative Validation:** Validate each step before moving forward
+2. **Iterative Validation:** Validate each step before moving forward for complex tasks
 3. **Human in the Loop:** Especially for complex features, keep human oversight
-4. **Quality over Speed:** Sometimes slower, more deliberate implementation is faster long-term
+4. **Quality over Speed:** Assign small and concret tasks one at a time rather than giving broad intepretable tasks.
 5. **Adapt, Don't Adhere:** Roadmaps are guides, not rigid constraints
 6. **Plan out execution:** Broad and open questions with high entropy lead to poor AI work. I learned to formulate my prompts as numbered steps, with the first one being precise context generation for the AI (analyzing relevant files and documentations). Sometime having a discussion with the AI (without code generations) beforehand can also create a helpful context.
+7. **Code Quality:** Maintain readable code and keep files under a size threshold. Well-structured, concise code helps the AI understand the codebase better, leading to more coherent code generations. Hence regularly refactor code base (due to time constraints not done fully towards the end...)
 
 
 ### Future Improvements
@@ -590,8 +490,6 @@ The project now follows this iterative, context-rich flow:
 2. **Parallel Autonomous Agents for Background Tasks**
    - Leverage these modular agents in background tasks (e.g., code refactoring, automated debugging, UI migration, continuous documentation) working in parallel to the main development flow.
    - Enable agents to operate within isolated branches or sandbox environments, allowing them to propose, test, and PR improvements asynchronously—accelerating project velocity without interfering with feature delivery.
-
-
 
 
 ## Known Limitations & Next Steps
@@ -634,15 +532,32 @@ The project now follows this iterative, context-rich flow:
 2. **Content Generation**
    - [ ] UI component to directly copy AI response or generated summary/post with one click, instead of having to manually select and copy output
 
-3. **Collaboration**
+3. **Collaboration ?**
    - [ ] Team workspaces with shared video libraries
    - [ ] Multi-user conversations with @mentions
    - [ ] Video annotations and comments
 
 4. **Platform Expansion**
-   - [ ] Support for Vimeo, self-hosted videos
+   - [ ] Support for Vimeo, self-hosted videos, moodle course videos
    - [ ] Audio-only podcast support
    - [ ] Local video file upload and processing
+
+5. **UX Improvements & Bug Fixes**
+   - [ ] Automatic redirect to login screen on logout
+   - [ ] Fix conversation item menu display bug
+   - [ ] Handle deleted video citations gracefully: when a citation references a deleted video, automatically open video preview with option to re-add to knowledge base
+   - [ ] Improve markdown formatting of AI responses
+   - [ ] Add "Thinking..." state when AI is generating without using tools
+   - [ ] Remove or hide intermediate AI thinking messages (e.g., "Let me think...", "Let me walk through the knowledge base") - make them temporary and remove/hide when final message is generated
+   - [ ] Avoid multiple references to the same video snippet within the same AI response
+   - [ ] When generating posts with "Create Post" command, exclude citations from the post body (keep them separate or omit entirely)
+   - [ ] Add user avatar to user messages in chat (needs UX review to evaluate actual value)
+   - [ ] Add retry button for failed video uploads; make videos not selectable while processing
+   - [ ] Fix footer height inconsistencies across columns for better visual alignment
+
+6. **User Feedback & Analytics**
+   - [ ] Add user feedback features: random popup for user satisfaction (binary input or similar to Claude Code asking to evaluate experience between 1-5 during response generation); appears at random moments, not for all messages
+   - [ ] Integrate Microsoft Clarity for UX feedback and user behavior analytics (heatmaps, session recordings, insights)
 
 ---
 
